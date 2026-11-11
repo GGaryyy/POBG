@@ -23,7 +23,6 @@ ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
 MARKET = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
 PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-PROJECT_MCP = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
 SKILL = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
 REPO_URL = "https://github.com/GGaryyy/POBG"
 # The advisor skill is the workflow for Claude Code, so it does not need the tool that returns the
@@ -54,7 +53,7 @@ def test_names_agree():
     assert PLUGIN["name"] == server.name == "pobg"
     assert MARKET["name"] == PYPROJECT["project"]["name"] == "pobg"
     assert [p["name"] for p in MARKET["plugins"]] == ["pobg"] and MARKET["plugins"][0]["source"] == "./"
-    assert list(PLUGIN["mcpServers"]) == list(PROJECT_MCP["mcpServers"]) == ["pobg"]
+    assert list(PLUGIN["mcpServers"]) == ["pobg"]
     assert PLUGIN["repository"] == REPO_URL and REPO_URL in USER_AGENT
     assert MARKET["owner"]["name"] == PLUGIN["author"]["name"]
     assert MARKET["metadata"]["description"] and PLUGIN["description"]
@@ -84,10 +83,9 @@ def test_runtime_dependencies_stay_lean_and_tests_live_in_the_dev_group():
     assert PYPROJECT["tool"]["uv"]["package"] is False
 
 
-def test_project_mcp_file_starts_the_server_without_the_dev_group():
-    launcher = PROJECT_MCP["mcpServers"]["pobg"]
-    assert launcher == {"command": "uv", "args": ["run", "--frozen", "--no-dev", "python", "-m",
-                                                  "src.tools.mcp_server"]}
+def test_the_plugin_is_the_only_place_that_registers_the_server():
+    # a project .mcp.json would register a second, identical server next to the plugin's
+    assert not (ROOT / ".mcp.json").exists()
 
 
 def test_skill_frontmatter():

@@ -23,7 +23,6 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 | Client | Status (2026-11-11, version 0.7.0) |
 |---|---|
 | Claude Code — plugin | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `pobg` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
-| Claude Code — project `.mcp.json` | Tested on Linux (WSL) |
 | Claude Desktop (Windows) | Launcher tested: a scripted MCP session through Windows `uv.exe` and Python 3.12 (system code page 950) ran the lookup and build tools with Chinese input, `data_status` and a dry-run `update_data`. In-app test: pending |
 | MCP Inspector CLI (`npx @modelcontextprotocol/inspector --cli`) | Tested with the twelve lookup and build tools: `tools/list`, `prompts/list`, `tools/call` |
 | Cursor, VS Code, Gemini CLI, Codex CLI | Not tested. The configuration below follows each client's documentation as read on 2026-11-11 |
@@ -41,8 +40,8 @@ Plugin (server + `/pobg:poe2-advisor` skill):
 ```
 
 The plugin keeps its Python environment in the plugin's own data folder. Working inside a
-clone of this repo instead, the project `.mcp.json` registers the same server; Claude Code asks
-once before starting it.
+clone of this repo instead, load the plugin from the folder: `claude --plugin-dir .` (the repo
+has no project `.mcp.json`, so the server is never registered twice).
 
 ## Claude Desktop
 

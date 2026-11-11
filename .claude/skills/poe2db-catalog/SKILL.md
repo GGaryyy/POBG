@@ -17,7 +17,8 @@ All commands run from the repo root; prefix them with `uv run` (after `uv sync`)
 
 ## 0. Prefer the MCP tools
 
-When the `pobg` MCP server is connected (project `.mcp.json`), use its tools instead of the
+When the `pobg` MCP server is connected (start Claude Code with `claude --plugin-dir .` in this
+repo, or install the plugin), use its tools instead of the
 commands below: `lookup_entity`, `get_gem`, `get_passive`, `passives_with_stat`,
 `explain_keyword`, `gems_by`, `supports_for`, `path_to`, `refresh_gem`. They return records
 with source URLs.

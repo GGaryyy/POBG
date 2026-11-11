@@ -47,7 +47,7 @@ that work with a new history.
 - Names: repository `GGaryyy/POBG`, Python project, plugin and MCP server `pobg`
   (skill `/pobg:poe2-advisor`), scraper User-Agent
   `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)`.
-- Launchers use `uv run --frozen --no-dev` (plugin manifest, `.mcp.json`, documentation), so
+- Launchers use `uv run --frozen --no-dev` (plugin manifest and documentation), so
   the server environment never includes the test tools.
 - `passives_with_stat` returns at most 100 nodes per list (was 200): 200 rows with
   `include_without_page` exceeded 140,000 characters.
@@ -84,6 +84,8 @@ that work with a new history.
 - The test suite also collects on Python 3.10 (`tomli` fallback).
 
 ### Removed
+- The project `.mcp.json`: the plugin registers the server; a second registration gave Claude
+  Code two identical tool sets when both were active. Develop with `claude --plugin-dir .`.
 - The local LangGraph / Ollama pipeline, the FastAPI service, the FAISS indexes and
   retrievers, their tests, the legacy notebook and `requirements.txt`. The project is the MCP
   server and the plugin.

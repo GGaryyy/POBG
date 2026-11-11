@@ -3,8 +3,8 @@ mcp_server.py — the POBG MCP server: Path of Exile 2 lookup, build and data to
 
     python -m src.tools.mcp_server
 
-Any MCP client can start it (docs/clients.md); the Claude Code plugin manifest and the project
-.mcp.json register it as "pobg". The lookup and build tools answer from local data and return
+Any MCP client can start it (docs/clients.md); the Claude Code plugin manifest
+registers it as "pobg". The lookup and build tools answer from local data and return
 poe2db source URLs. Three tools can reach the network: `refresh_gem` (one gem page),
 `update_data` (one data set, a bounded number of pages) and `data_status` when asked to check
 the live sites.
