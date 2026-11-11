@@ -13,25 +13,40 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import shutil
 import sys
 import tempfile
+import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlparse
 
 import requests
 
 from src import __version__
+from src import fetch_poe_ninja_builds as ladder
 from src.catalog.entity_index import EntityIndex, build_entity_index, fetch_zh_names
 from src.catalog.probe import run_probe
 from src.catalog.spec import Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, save_graph
 from src.kg.stats import MIN_PARSED_RATIO, build_stat_index, parse_summary, write_stat_index
+from src.scrapers import collect_glossary as glossary
 from src.scrapers.collect_gems import CollectionError, collect_kind
 from src.scrapers.collect_passives import PassiveBuildError, load_tree_data, write_passives
 from src.scrapers.collect_passives import build as build_passives
-from src.scrapers.common import DATA_LOCK_FILE, LockBusy, fetch_html, file_lock, now_iso, read_jsonl, write_jsonl
+from src.scrapers.common import (
+    DATA_LOCK_FILE,
+    LockBusy,
+    cached_fetch,
+    fetch_html,
+    file_lock,
+    now_iso,
+    read_jsonl,
+    safe_cache_name,
+    write_jsonl,
+)
 from src.tools.lookup import BASE_DIR, DATA_LOCK, BadArgument, ServiceUnavailable
 
 # ---------------------------------------------------------------------------
@@ -40,17 +55,29 @@ from src.tools.lookup import BASE_DIR, DATA_LOCK, BadArgument, ServiceUnavailabl
 
 GEM_SCOPES = {"skill_gems": "skill_gem", "spirit_gems": "spirit_gem", "support_gems": "support_gem"}
 PASSIVES = "passives"
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES)
-NOT_UPDATABLE = {
-    "glossary": "terminal only: uv run python -m src.scrapers.collect_glossary (about 700 small requests)",
-    "ladder": "the poe.ninja fetcher does not parse the site's current response format; the snapshot stays as it is",
-}
+LADDER = "ladder"
+GLOSSARY = "glossary"
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, GLOSSARY, LADDER)
+WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, LADDER)      # re-fetched as a whole: no names, ages, caps or dry run
+NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
 MAX_GEMS = 40                    # detail pages per call: keeps one tool call under about a minute
 MAX_NAMES = 40
 MAX_NAME_LEN = 120
 MAX_OLDER_THAN_DAYS = 3650
 RECENT_SECONDS = 900             # a named or stale gem fetched this recently is not fetched again
+GLOSSARY_BATCH = 50              # requests per glossary call; the run is resumed by the next call
+GLOSSARY_RUN_SECONDS = 1800      # how long a half-finished glossary run may be resumed
+GLOSSARY_GEM_PAGES = 20          # gem pages read to find terms that no listing page links
+MIN_GLOSSARY_KEPT_RATIO = 0.9    # a refresh that reaches fewer of the known terms is not written
+MIN_GLOSSARY_ZH_RATIO = 0.5      # ... nor one that finds Chinese text for fewer of the terms that had it
+MAX_CONSECUTIVE_FAILURES = 5     # network errors in a row before a glossary call gives up
+GLOSSARY_TEXT_FIELDS = ("name_en", "name_zh_tw", "text_en", "text_zh_tw")
+MIN_LADDER_SHARE_OF_PREVIOUS = 0.5   # same league: a snapshot this much smaller than the last is refused
+HOVER_HOST = "cdn.poe2db.tw"
+MIN_LADDER_ROWS = 100            # a ladder snapshot below these marks is not written
+MIN_LADDER_CLASS_RATIO = 0.9
+MIN_LADDER_SKILL_RATIO = 0.5
 PROBE_LANGS = ["en", "zh-tw"]
 CHANGED_NODE_FIELDS = ("name", "name_zh_tw", "type", "stats", "stats_zh_tw", "neighbors")
 NOTHING_WRITTEN = "Nothing was written. Run data_status with check_online=true to see what changed on the site."
@@ -76,6 +103,42 @@ class _Counting:
         return self.fetch(url)
 
 
+class _BudgetSpent(Exception):
+    """This call has made all the requests it may; the next call continues from the cache."""
+
+
+class _Budget:
+    """A fetcher that stops after `limit` requests in total, gives up after several network errors
+    in a row, and asks for a URL that failed in this run only once."""
+
+    def __init__(self, counting: _Counting, limit: int, failed_file: Path) -> None:
+        self.counting, self.limit, self.failed_file = counting, limit, failed_file
+        self.failed = set(_read_json(failed_file).get("urls", []))
+        self.streak = 0
+
+    def __call__(self, url: str) -> str:
+        if url in self.failed:
+            raise requests.ConnectionError("failed earlier in this run; not asked again")
+        if self.counting.count >= self.limit:
+            raise _BudgetSpent
+        try:
+            body = self.counting(url)
+        except requests.RequestException:
+            if urlparse(url).hostname != HOVER_HOST:
+                raise                      # a page the crawl cannot do without: the call fails, a later call retries it
+            self.streak += 1
+            self.failed.add(url)
+            self.failed_file.parent.mkdir(parents=True, exist_ok=True)
+            self.failed_file.write_text(json.dumps({"urls": sorted(self.failed)}), encoding="utf-8")
+            if self.streak >= MAX_CONSECUTIVE_FAILURES:
+                raise ServiceUnavailable(
+                    f"{self.streak} requests in a row failed; the site or the network is down. Nothing was "
+                    "written; what was fetched so far is kept, so calling again later continues") from None
+            raise
+        self.streak = 0
+        return body
+
+
 class DataMaintenance:
     """Reports what the local data holds and updates one data set at a time."""
 
@@ -85,6 +148,9 @@ class DataMaintenance:
         self.data_dir = base_dir / "data"
         self.graph_path = graph_path or base_dir / GRAPH_PATH.relative_to(BASE_DIR)
         self.index_path = self.data_dir / "catalog" / "entity_index.jsonl"
+        self.ladder_path = self.data_dir / "community_builds" / "poe_ninja_builds.jsonl"
+        self.keywords_path = self.data_dir / "kg" / "keywords.jsonl"
+        self.glossary_run = base_dir / "output" / "cache" / "glossary_update"
 
     # -- status ---------------------------------------------------------------
 
@@ -133,14 +199,13 @@ class DataMaintenance:
                 "oldest_fetched_at": fetched, "newest_fetched_at": fetched, "oldest_age_days": _age_days(fetched)}
 
     def _glossary_status(self) -> dict:
-        return {"name": "glossary", "update_scope": None, "note": NOT_UPDATABLE["glossary"],
-                **_dated(self.data_dir / "kg" / "keywords.jsonl")}
+        return {"name": GLOSSARY, "update_scope": GLOSSARY, **_dated(self.keywords_path)}
 
     def _ladder_status(self) -> dict:
-        path = self.data_dir / "community_builds" / "poe_ninja_builds.jsonl"
+        path = self.ladder_path
         rows, _ = _rows(path)
-        return {"name": "ladder", "update_scope": None, "note": NOT_UPDATABLE["ladder"],
-                "league": rows[0].get("league") if rows else None, **_dated(path)}
+        return {"name": LADDER, "update_scope": LADDER, "league": rows[0].get("league") if rows else None,
+                **_dated(path)}
 
     def _index_status(self) -> dict:
         return {"name": "entity_index", "update_scope": None, "note": "rebuilt by every update",
@@ -168,6 +233,10 @@ class DataMaintenance:
                 stack.enter_context(contextlib.redirect_stdout(sys.stderr))
                 if scope == PASSIVES:
                     result = self._update_passives(counting)
+                elif scope == LADDER:
+                    result = self._update_ladder(counting)
+                elif scope == GLOSSARY:
+                    result = self._update_glossary(counting)
                 else:
                     result = self._update_gems(scope, names or [], older_than_days, max_gems, dry_run, counting)
         except LockBusy as exc:
@@ -194,6 +263,8 @@ class DataMaintenance:
             raise ServiceUnavailable(f"network error: {exc}. {NOTHING_WRITTEN}") from exc
         except OSError as exc:
             raise ServiceUnavailable(f"a data file could not be written ({exc}). {PARTIAL_WRITE}") from exc
+        except ValueError as exc:
+            raise ServiceUnavailable(f"a local gem file is unreadable ({exc}). {NOTHING_WRITTEN}") from exc
         result = {"selected": summary["targets_total"], "updated": summary["refetched"],
                   "left": summary["targets_left"], "reasons": summary["reasons"],
                   "recently_updated": summary["recently_fetched"], "added": summary["added"],
@@ -254,6 +325,119 @@ class DataMaintenance:
                 "tree_version": self.spec.source("pob2_tree")["version"], "tree_data_version": tree_data["version"],
                 **self._rebuild_derived(fetch, None)}
 
+    def _update_glossary(self, counting: _Counting) -> dict:
+        """Refresh every glossary term. One call makes at most GLOSSARY_BATCH requests and keeps what
+        it fetched under output/cache; the next call continues. The file is written once, when the
+        whole crawl is in the cache and passes the checks."""
+        old = {entry["slug"]: entry for entry in _rows(self.keywords_path)[0] if entry.get("slug")}
+        if not old:
+            raise ServiceUnavailable("there is no local glossary to update; a first crawl is done in a terminal: "
+                                     "uv run python -m src.scrapers.collect_glossary")
+        try:
+            self._start_or_resume_glossary_run()
+            fetch = _Budget(counting, GLOSSARY_BATCH, self.glossary_run / "failed.json")
+            parsed = self._crawl_glossary(fetch, set(old))
+        except _BudgetSpent:
+            cached = sum(1 for _ in (self.glossary_run / "hover").rglob("*.html"))
+            return {"done": False, "left": max(2 * len(old) - cached, 1), "fetched": counting.count,
+                    "note": "not finished: call update_data with scope glossary again to continue"}
+        except requests.RequestException as exc:      # (a RequestException is also an OSError: keep this first)
+            raise ServiceUnavailable(f"network error: {exc}. Nothing was written; what was fetched so far is kept, "
+                                     "so calling again continues from there") from exc
+        except OSError as exc:
+            raise ServiceUnavailable(f"the update cache under output/ could not be used ({exc}). {NOTHING_WRITTEN}") from exc
+        fresh = {entry["slug"]: entry for entry in glossary.build_entries(self.spec, parsed)}
+        self._check_glossary(old, fresh)
+        merged = {slug: _merge_term(old.get(slug), fresh.get(slug)) for slug in sorted(set(old) | set(fresh))}
+        try:
+            write_jsonl(self.keywords_path, merged.values())
+        except OSError as exc:
+            raise ServiceUnavailable(f"the glossary file could not be written ({exc}); the old one is kept") from exc
+        failed = len(fetch.failed)
+        shutil.rmtree(self.glossary_run, ignore_errors=True)
+        changed = sum(1 for slug in fresh if slug in old
+                      and any(merged[slug].get(f) != old[slug].get(f) for f in GLOSSARY_TEXT_FIELDS))
+        return {"done": True, "left": 0, "records": len(merged), "refreshed": len(fresh), "changed": changed,
+                "added": sorted(set(fresh) - set(old)), "kept_without_refresh": len(set(old) - set(fresh)),
+                "failed_requests": failed, **self._rebuild_derived(fetch, None)}
+
+    def _check_glossary(self, old: dict[str, dict], fresh: dict[str, dict]) -> None:
+        """Refuse a crawl that reached too few known terms, mostly lacks English text, or lost the
+        Chinese text of most terms that had it (a zh-TW outage must not look like a refresh)."""
+        reached = [slug for slug in fresh if slug in old]
+        with_english = sum(1 for entry in fresh.values() if entry.get("text_en"))
+        had_zh = [slug for slug in reached if old[slug].get("text_zh_tw")]
+        has_zh = sum(1 for slug in had_zh if fresh[slug].get("text_zh_tw"))
+        if (len(reached) < MIN_GLOSSARY_KEPT_RATIO * len(old)
+                or with_english < glossary.MIN_EN_TEXT_RATIO * len(fresh)
+                or has_zh < MIN_GLOSSARY_ZH_RATIO * len(had_zh)):
+            shutil.rmtree(self.glossary_run, ignore_errors=True)
+            raise ServiceUnavailable(
+                f"the glossary crawl reached {len(reached)} of {len(old)} known terms, {with_english} of {len(fresh)} "
+                f"have English text and {has_zh} of {len(had_zh)} kept their Chinese text. {NOTHING_WRITTEN}")
+
+    def _start_or_resume_glossary_run(self) -> None:
+        marker = self.glossary_run / "started"
+        if self.glossary_run.exists():
+            newest = max((p.stat().st_mtime for p in self.glossary_run.rglob("*") if p.is_file()), default=0.0)
+            if not marker.exists() or time.time() - newest > GLOSSARY_RUN_SECONDS:
+                shutil.rmtree(self.glossary_run)   # idle too long to resume: the hover hashes may have moved on
+        if not marker.exists():
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text(now_iso(), encoding="utf-8")
+
+    def _crawl_glossary(self, fetch: Fetcher, known: set[str]) -> dict[str, dict[str, dict]]:
+        """The collector's crawl over a run cache: listing pages, then gem pages for the known terms
+        no listing links, then every hover snippet. Cached pages cost nothing, so a later call
+        gets further."""
+        pages, hover, detail = (self.glossary_run / name for name in ("pages", "hover", "detail"))
+        for lang in glossary.LANGS:
+            for source in (*glossary.PASSIVE_SOURCES, *glossary.GEM_LISTING_SOURCES):
+                slug = self.spec.source(source)["slug"]
+                cached_fetch(self.spec.resolve_url(slug, lang), pages / f"{lang}_{slug}.html", fetch)
+        hashes = glossary.harvest_refs(self.spec, page_cache=pages, detail_cache=detail)
+        mentions = glossary._gems_mentioning(self.spec, self.data_dir)
+        gems = sorted({mentions[slug][0] for slug in known - set(hashes) if mentions.get(slug)})[:GLOSSARY_GEM_PAGES]
+        for gem in gems:
+            cached_fetch(self.spec.resolve_url(gem, "en"), detail / "en" / f"{safe_cache_name(gem)}.html", fetch)
+        if gems:
+            hashes = glossary.harvest_refs(self.spec, page_cache=pages, detail_cache=detail)
+        options = {"fetch": fetch, "data_dir": self.data_dir, "page_cache": pages, "cache_dir": hover}
+        glossary.fill_from_gem_hovers(self.spec, hashes, **options)
+        parsed = glossary.crawl(self.spec, hashes, fetch=fetch, cache_dir=hover)
+        if glossary.fill_from_gem_hovers(self.spec, hashes, **options):
+            parsed = glossary.crawl(self.spec, hashes, fetch=fetch, cache_dir=hover)
+        return parsed
+
+    def _update_ladder(self, counting: _Counting) -> dict:
+        """A new poe.ninja snapshot (at most 14 requests). Character and account names are used in
+        memory to tell characters apart and are never written."""
+        previous, _ = _rows(self.ladder_path)
+
+        def get_json(url: str) -> dict:
+            counting.count += 1
+            return ladder._get_json(url)
+
+        def get_binary(url: str) -> bytes:
+            counting.count += 1
+            return ladder._get_binary(url)
+
+        try:
+            records = ladder._validate(ladder.collect_builds(get_json, get_binary))
+        except requests.RequestException as exc:
+            raise ServiceUnavailable(f"network error: {exc}. {NOTHING_WRITTEN}") from exc
+        except (RuntimeError, KeyError, TypeError, ValueError, AttributeError) as exc:
+            traceback.print_exc(file=sys.stderr)
+            raise ServiceUnavailable(f"poe.ninja answered in an unexpected shape ({type(exc).__name__}: {exc}). "
+                                     f"{NOTHING_WRITTEN}") from exc
+        _check_ladder(records, previous)
+        try:
+            ladder._write_jsonl(records, self.ladder_path)
+        except OSError as exc:
+            raise ServiceUnavailable(f"the ladder file could not be written ({exc}); the old snapshot is kept") from exc
+        return {"records": len(records), "league": records[0]["league"],
+                "previous_records": len(previous), "previous_league": previous[0].get("league") if previous else None}
+
     def _rebuild_derived(self, fetch: Fetcher, gem_kind: str | None) -> dict:
         """Entity index and, when a graph file exists, the knowledge graph."""
         try:
@@ -292,7 +476,9 @@ class DataMaintenance:
     # -- helpers --------------------------------------------------------------
 
     def _polite_fetch(self, url: str) -> str:
-        return fetch_html(url, delay=self.spec.raw["robots"]["polite_delay_seconds"])
+        robots = self.spec.raw["robots"]
+        delay = robots["hover_delay_seconds"] if urlparse(url).hostname == HOVER_HOST else robots["polite_delay_seconds"]
+        return fetch_html(url, delay=delay)
 
     def _writable(self) -> bool:
         return self.data_dir.is_dir() and os.access(self.data_dir, os.W_OK)
@@ -319,10 +505,10 @@ def _check_options(scope: str, names: list[str] | None, older_than_days: int | N
         raise BadArgument("max_gems must be a whole number")
     if older_than_days is not None and (isinstance(older_than_days, bool) or not isinstance(older_than_days, int)):
         raise BadArgument("older_than_days must be a whole number")
-    if scope == PASSIVES:
+    if scope in WHOLE_SET_SCOPES:
         if names or older_than_days is not None or dry_run or max_gems != DEFAULT_MAX_GEMS:
             raise BadArgument("names, older_than_days, max_gems and dry_run only apply to the gem scopes; "
-                              "a passives update always re-fetches the whole tree (7 requests)")
+                              f"a {scope} update always re-fetches the whole data set")
         return
     if not 1 <= max_gems <= MAX_GEMS:
         raise BadArgument(f"max_gems must be between 1 and {MAX_GEMS}")
@@ -335,6 +521,30 @@ def _check_options(scope: str, names: list[str] | None, older_than_days: int | N
             raise BadArgument("names must be non-empty strings")
         if len(name) > MAX_NAME_LEN:
             raise BadArgument(f"a name is longer than {MAX_NAME_LEN} characters")
+
+
+def _check_ladder(records: list[dict], previous: list[dict]) -> None:
+    """Refuse a snapshot that is too small, mostly unnamed, without keystones, or much smaller than
+    the last one of the same league: the site's format has probably changed."""
+    total = len(records)
+    with_class = sum(1 for r in records if r.get("class"))
+    with_skill = sum(1 for r in records if r.get("main_skill"))
+    with_keystones = sum(1 for r in records if r.get("keystones"))
+    same_league = bool(previous) and total > 0 and previous[0].get("league") == records[0].get("league")
+    if (total < MIN_LADDER_ROWS or with_class < MIN_LADDER_CLASS_RATIO * total
+            or with_skill < MIN_LADDER_SKILL_RATIO * total or with_keystones == 0
+            or (same_league and total < MIN_LADDER_SHARE_OF_PREVIOUS * len(previous))):
+        raise ServiceUnavailable(f"poe.ninja returned {total} characters, {with_class} with a class, {with_skill} with "
+                                 f"a skill and {with_keystones} with keystones (the previous snapshot has "
+                                 f"{len(previous)}); its response format has probably changed. The old snapshot is kept.")
+
+
+def _merge_term(old: dict | None, fresh: dict | None) -> dict:
+    """A refreshed glossary term never loses text: a field the crawl did not get keeps its old value."""
+    if old is None or fresh is None:
+        return fresh or old
+    merged = {**old, **{key: value for key, value in fresh.items() if value not in (None, "", [])}}
+    return merged
 
 
 def _rows(path: Path) -> tuple[list[dict], dict]:

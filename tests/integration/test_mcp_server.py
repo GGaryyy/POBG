@@ -160,7 +160,7 @@ def prompt_text(name, args):
 def test_server_version_is_package_version():
     from src import __version__
     assert __version__ == "0.7.0" and mcp_server.server.version == __version__
-    assert mcp_server.server.name == mcp_server.SERVER_NAME == "poe2db"
+    assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
 def test_instructions_mention_the_cited_workflow():
@@ -238,7 +238,7 @@ def test_build_tool_failures_surface_as_tool_errors(svc, ladder, tool, args, mes
 
 def test_reference_builds_missing_file_is_a_tool_error(svc, monkeypatch, tmp_path):
     monkeypatch.setattr(mcp_server, "_tools", BuildTools(svc, builds_path=tmp_path / "none.jsonl"))
-    with pytest.raises(ToolError, match="fetch_poe_ninja_builds"):
+    with pytest.raises(ToolError, match="scope ladder"):
         call("reference_builds", {})
 
 
@@ -403,7 +403,7 @@ def test_data_status_through_the_server_uses_the_loaded_folder_and_no_network(fr
     status = payload(call("data_status", {}))
     assert status["data_dir"] == str(service.base_dir / "data") and "online" not in status
     assert {d["name"]: d["records"] for d in status["datasets"]}["skill_gems"] == 3
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "glossary", "ladder"]
     assert calls == []
 
 
@@ -476,9 +476,10 @@ def test_update_data_respects_max_gems_and_reports_what_is_left(fresh):
 
 
 @pytest.mark.parametrize("args, message", [
-    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives"),
+    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, glossary, ladder"),
     ({"scope": "all"}, "there is no update for everything"),
-    ({"scope": "glossary"}, "glossary cannot be updated by command"),
+    ({"scope": "items"}, "scope is required"),
+    ({"scope": "ladder", "names": ["x"]}, "only apply to the gem scopes"),
     ({"scope": "skill_gems", "max_gems": 100}, "max_gems must be between 1 and 40"),
     ({"scope": "skill_gems", "names": ["Nope"]}, "not a skill_gem in the local data"),
     ({"scope": "passives", "dry_run": True}, "only apply to the gem scopes"),
@@ -520,9 +521,37 @@ def test_update_prompt_without_a_scope_tells_the_model_not_to_update(args):
     assert "skill_gems, spirit_gems, support_gems, passives" in text and "dry_run" not in text
 
 
-def test_update_prompt_for_a_data_set_that_has_no_command_explains_why():
+def test_update_prompt_for_a_data_set_that_has_no_command_explains_why(monkeypatch):
+    from src.tools import build_workflow
+    monkeypatch.setitem(build_workflow.NOT_UPDATABLE, "runes", "no source for runes yet")
+    text = prompt_text("update", {"scope": "runes"})
+    assert "Do not call update_data" in text and "runes cannot be updated by command: no source for runes yet" in text
+
+
+def test_update_prompt_for_the_glossary_repeats_until_done():
+    text = prompt_text("update", {"scope": "glossary", "names": "Stun"})
+    assert 'scope="glossary" and no other argument' in text and "While `done` is false" in text
+    assert "at most 20 calls" in text and f"at most {mnt.GLOSSARY_BATCH}" in text and "Stun" not in text
+
+
+def test_update_prompt_for_the_ladder_is_one_call_and_mentions_names_are_not_stored():
     text = prompt_text("update", {"scope": "ladder"})
-    assert "Do not call update_data" in text and "ladder cannot be updated by command" in text
+    assert 'scope="ladder" and no other argument' in text and "poe.ninja" in text
+    assert "never stored" in text and "dry_run" not in text
+
+
+def test_ladder_update_through_the_server_is_visible_to_reference_builds(fresh, monkeypatch):
+    from tests.ninja_support import LEAGUE, FakeNinja
+    site = FakeNinja()
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    with pytest.raises(ToolError, match="community builds"):
+        call("reference_builds", {})                                # the fresh folder has no ladder file
+    result = payload(call("update_data", {"scope": "ladder"}))
+    assert result["records"] == 120 and result["league"] == LEAGUE
+    builds = payload(call("reference_builds", {"class_name": "Titan", "limit": 3}))
+    text = json.dumps(builds, ensure_ascii=False)
+    assert builds["total_matching"] == 40 and builds["league"] == LEAGUE and "Secret" not in text
 
 
 def test_update_prompt_for_a_gem_scope_starts_with_a_dry_run():

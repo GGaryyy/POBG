@@ -1,16 +1,16 @@
 # Connecting an MCP client
 
-`poe2db-mcp` is a local **stdio** MCP server. Every client starts it with the same command:
+POBG is a local **stdio** MCP server. Every client starts it with the same command:
 
 ```
-uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.tools.mcp_server
+uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
 
 - `uv` must be installed ([instructions](https://docs.astral.sh/uv/getting-started/installation/))
   and found by the client. If the client reports "command not found", put the full path of
   `uv` in `command` (`which uv` on macOS / Linux, `where uv` on Windows).
 - The path after `--directory` is where you cloned this repo. On Windows write it with
-  doubled backslashes inside JSON: `"C:\\Users\\you\\poe2db-mcp"`.
+  doubled backslashes inside JSON: `"C:\\Users\\you\\POBG"`.
 - The first start downloads about 40 packages (four direct dependencies) and takes longer
   (seconds on a fast connection, a few minutes on a slow one). If the client gives up, run the command once in a
   terminal, stop it with Ctrl+C when it sits waiting, and restart the client.
@@ -22,7 +22,7 @@ uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.
 
 | Client | Status (2026-11-11, version 0.7.0) |
 |---|---|
-| Claude Code — plugin | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `poe2db` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
+| Claude Code — plugin | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `pobg` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
 | Claude Code — project `.mcp.json` | Tested on Linux (WSL) |
 | Claude Desktop (Windows) | Launcher tested: a scripted MCP session through Windows `uv.exe` and Python 3.12 (system code page 950) ran the lookup and build tools with Chinese input, `data_status` and a dry-run `update_data`. In-app test: pending |
 | MCP Inspector CLI (`npx @modelcontextprotocol/inspector --cli`) | Tested with the twelve lookup and build tools: `tools/list`, `prompts/list`, `tools/call` |
@@ -33,11 +33,11 @@ Reports from other clients are welcome — open an issue with the client name an
 
 ## Claude Code
 
-Plugin (server + `/poe2db:poe2-advisor` skill):
+Plugin (server + `/pobg:poe2-advisor` skill):
 
 ```
-/plugin marketplace add GGaryyy/poe2db-mcp
-/plugin install poe2db@poe2db-mcp
+/plugin marketplace add GGaryyy/POBG
+/plugin install pobg@pobg
 ```
 
 The plugin keeps its Python environment in the plugin's own data folder. Working inside a
@@ -57,20 +57,20 @@ Add the server next to any existing ones, then quit Claude Desktop completely an
 ```json
 {
   "mcpServers": {
-    "poe2db": {
+    "pobg": {
       "command": "uv",
-      "args": ["run", "--frozen", "--no-dev", "--directory", "C:\\Users\\you\\poe2db-mcp",
+      "args": ["run", "--frozen", "--no-dev", "--directory", "C:\\Users\\you\\POBG",
                "python", "-m", "src.tools.mcp_server"]
     }
   }
 }
 ```
 
-The server's stderr is written to `mcp-server-poe2db.log` in `%APPDATA%\Claude\logs`
+The server's stderr is written to `mcp-server-pobg.log` in `%APPDATA%\Claude\logs`
 (Windows), `~/Library/Logs/Claude` (macOS) or `~/.config/Claude/logs` (Linux).
 
 If the same folder is also used from WSL or another operating system, keep the environments
-apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Local\\poe2db-mcp\\venv" }`.
+apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Local\\pobg\\venv" }`.
 
 ## Cursor
 
@@ -79,10 +79,10 @@ apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Lo
 ```json
 {
   "mcpServers": {
-    "poe2db": {
+    "pobg": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/poe2db-mcp",
+      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG",
                "python", "-m", "src.tools.mcp_server"]
     }
   }
@@ -97,10 +97,10 @@ apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Lo
 ```json
 {
   "servers": {
-    "poe2db": {
+    "pobg": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/poe2db-mcp",
+      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG",
                "python", "-m", "src.tools.mcp_server"]
     }
   }
@@ -113,7 +113,7 @@ apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Lo
 `mcpServers` JSON from the README. Or from a terminal:
 
 ```bash
-gemini mcp add -s user poe2db uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.tools.mcp_server
+gemini mcp add -s user pobg uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
 
 ## Codex CLI
@@ -121,12 +121,12 @@ gemini mcp add -s user poe2db uv run --frozen --no-dev --directory /absolute/pat
 `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.poe2db]
+[mcp_servers.pobg]
 command = "uv"
-args = ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/poe2db-mcp", "python", "-m", "src.tools.mcp_server"]
+args = ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG", "python", "-m", "src.tools.mcp_server"]
 ```
 
-Or: `codex mcp add poe2db -- uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.tools.mcp_server`
+Or: `codex mcp add pobg -- uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server`
 
 ## Any other stdio client
 

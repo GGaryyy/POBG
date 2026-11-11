@@ -44,7 +44,7 @@ flowchart LR
         LK[lookup.py]
         BT[build_tools.py + pathing.py]
         MT[maintenance.py: status + scoped update]
-        MCP[MCP server poe2db: 14 tools + build_guide / status / update prompts]
+        MCP[MCP server pobg: 14 tools + build_guide / status / update prompts]
     end
 
     subgraph Clients
@@ -118,7 +118,7 @@ query "躍擊" ──make_aliases──▶ ["躍擊"] ──exact alias──▶
 ```mermaid
 sequenceDiagram
     participant AI as AI client
-    participant M as MCP server poe2db
+    participant M as MCP server pobg
     participant L as LookupService
     participant D as data/ + knowledge graph
     participant W as poe2db (only refresh_gem)
@@ -149,7 +149,7 @@ not verify as passives.
 sequenceDiagram
     participant U as Player
     participant AI as Model (skill, build_guide prompt or build_workflow tool)
-    participant M as MCP server poe2db
+    participant M as MCP server pobg
     participant B as BuildTools
     participant D as data/ + knowledge graph
     U->>AI: "fire slam warrior build"
@@ -192,7 +192,14 @@ selects it again.
 ```mermaid
 flowchart TD
     U[update command: scope + optional names / older than N days] --> V{scope valid?}
-    V -->|no scope, all, glossary, ladder| R[refuse, list the scopes, no request]
+    V -->|no scope, all, unknown| R[refuse, list the scopes, no request]
+    V -->|glossary| GL1[listing pages, a few gem pages, then hover snippets: at most 100 requests per call, kept in a run cache]
+    GL1 -->|not finished| U
+    GL1 -->|all fetched and at least 90 % of the known terms reached| GLW[merge with the old entries and write]
+    V -->|ladder| LD[poe.ninja: index, result pages, dictionaries, about 18 requests]
+    LD --> LG{at least 100 characters, most with class and skill?}
+    LG -->|no| A
+    LG -->|yes| LW[write the snapshot without names]
     V -->|skill_gems / spirit_gems / support_gems| L[fetch the listing page]
     L --> S[select: requested, new, listing changed, broken, stale]
     S -->|dry run| D[report what would be fetched, write nothing]
@@ -206,6 +213,8 @@ flowchart TD
     PG -->|yes| PW[write nodes, edges, classes, stat index]
     W --> I[rebuild entity index, Chinese names reused; rebuild graph file if present]
     PW --> I
+    GLW --> I
+    LW --> RL
     I --> RL[server reloads its data; result says how many gems are left]
     RL -->|left > 0| U
 ```

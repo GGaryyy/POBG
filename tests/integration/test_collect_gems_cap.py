@@ -178,3 +178,14 @@ def test_spirit_gems_are_not_filtered_by_the_skill_data(tmp_path):
     run(tmp_path)                                               # skill data now holds Leap_Slam, Unearth, Grim_Feast
     assert _stored_under_another_kind("spirit_gem", lowered_spec(1), tmp_path) == set()
     assert _stored_under_another_kind("support_gem", lowered_spec(1), tmp_path) == set()
+
+
+def test_all_kinds_are_collected_owners_first(monkeypatch, tmp_path):
+    from src.scrapers import collect_gems
+    order = []
+    monkeypatch.setattr(collect_gems, "collect_kind", lambda kind, spec, **kw: order.append(kind) or {
+        "kind": kind, "mode": "full", "listing_rows": 0, "records": 0, "refetched": 0, "added": [], "removed": [],
+        "skipped": [], "gemcutting_rows": 0, "null_rate": {}, "warnings": {}, "files": []})
+    monkeypatch.setattr(collect_gems, "_print_summary", lambda summaries: None)
+    assert collect_gems.main(["--kind", "all", "--out-dir", str(tmp_path)]) == 0
+    assert order.index("spirit_gem") < order.index("skill_gem") and len(order) == 3

@@ -7,7 +7,7 @@ It continues Phase 15 (`docs/plan_public_release.md`); all work is in the new fo
 
 The README has no user-facing command for the data: updating means six terminal commands, and
 from an AI client only `refresh_gem` (one gem) exists. The user wants commands such as
-`/poe2db status` and `/poe2db update`, with two rules: **status is required**, and **update must
+`/pobg status` and `/pobg update`, with two rules: **status is required**, and **update must
 name a scope** (skill gems, passives, …) — there is no "update everything".
 
 Decisions (user, 2026-11-11):
@@ -71,9 +71,9 @@ Facts that shape the design:
 
 | Where | Command | Does |
 |---|---|---|
-| Claude Code plugin | `/poe2db:status` (`skills/status/SKILL.md`) | Calls `data_status`; offers the online check |
-| Claude Code plugin | `/poe2db:update <scope> [names…]` (`skills/update/SKILL.md`, user-invoked only) | Requires a scope, shows the dry run, then updates and repeats while `left > 0` |
-| Any MCP client | prompts `status` and `update(scope, names)` | The same instructions (Claude Desktop "+" menu, `/poe2db.update` in VS Code, slash commands in Gemini CLI) |
+| Claude Code plugin | `/pobg:status` (`skills/status/SKILL.md`) | Calls `data_status`; offers the online check |
+| Claude Code plugin | `/pobg:update <scope> [names…]` (`skills/update/SKILL.md`, user-invoked only) | Requires a scope, shows the dry run, then updates and repeats while `left > 0` |
+| Any MCP client | prompts `status` and `update(scope, names)` | The same instructions (Claude Desktop "+" menu, `/pobg.update` in VS Code, slash commands in Gemini CLI) |
 
 Both the skill and the prompt refuse to run `update` without a scope and list the scopes.
 
@@ -222,3 +222,33 @@ Design notes:
 - **`ladder` and `glossary` scopes**: designed in the sections below once the sources have
   been examined. Both keep the rules of the other scopes: one scope per call, a bounded number
   of requests, nothing written when the source does not validate.
+
+### `ladder` scope (as built)
+
+poe.ninja's search response had moved its columns (protobuf field 5 → 12, one message per
+column instead of per cell) and its dictionaries (protobuf → a binary "NDIC" container). The
+fetcher was rewritten for that layout, takes the main skill from the site's `dps.skill` column,
+fetches only the three dictionaries it needs, validates their hashes, drops any column whose
+row count does not match, and treats over-long or unterminated varints as malformed. A failed
+result page stops the run. `update ladder` writes only when there are at least 100 characters,
+90 % with a class, half with a skill, some keystones, and at least half as many rows as the
+previous snapshot of the same league. Measured on the real site: 14 requests, 16 s, 593
+characters of "Runes of Aldur".
+
+### `glossary` scope (as built)
+
+From the listing pages alone 342 of the 357 known terms are reachable; the rest are found
+through at most 20 gem pages that mention them. One call makes at most 50 requests (100 took 95–108 s on the real site, too long for clients with a short tool timeout); pages and
+hover snippets are kept in `output/cache/glossary_update/`, which is resumed while it was used
+in the last 30 minutes and removed when the update is written or refused. The file is written
+once: after the whole crawl, when at least 90 % of the known terms were reached, 95 % of the
+refreshed terms have English text and at least half of the terms that had Chinese text still
+have it. Terms are merged field by field, so text the crawl did not get is kept.
+
+### After the third independent review
+
+Verdict "Needs Revision" for one data-loss bug: a refreshed term replaced the whole old entry,
+so a missing Chinese hover erased the Chinese text. Fixed by the field-by-field merge and the
+Chinese-coverage gate above; the real glossary update that was running with the old code was
+stopped before it wrote anything (checked: the file was byte-identical to the committed one).
+The other findings and what was done with them are in `docs/reports/code_review_2026-11-11.md`.

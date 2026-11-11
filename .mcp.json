@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "poe2db": {
+    "pobg": {
       "command": "uv",
       "args": [
         "run",

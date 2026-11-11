@@ -455,6 +455,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     spec = load_spec()
     kinds = list(GEM_KINDS) if args.kind == "all" else [KIND_ALIASES[args.kind]]
+    kinds.sort(key=lambda kind: kind in OWNED_BY)      # owners first: spirit gems before the skill listing
     summaries: list[dict] = []
     failed = False
     for kind in kinds:

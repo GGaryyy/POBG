@@ -3,9 +3,9 @@ name: poe2-advisor
 description: Answer Path of Exile 2 questions and write build advice from the local poe2db data with source links. Use when the user asks about a PoE2 skill / support / spirit gem, a passive node or keystone, a game term (e.g. Stun, Critical Hit), "which passives give X", or wants a build / 流派 / 配裝 recommendation, in English or 繁體中文.
 ---
 
-# PoE2 advisor (poe2db tools)
+# PoE2 advisor (pobg tools)
 
-Every fact comes from the `poe2db` MCP tools, which read a local copy of poe2db.tw and the
+Every fact comes from the `pobg` MCP tools, which read a local copy of poe2db.tw and the
 PathOfBuilding-PoE2 passive tree. Do not answer numbers, costs, tags or effects from memory:
 the game changes every patch and the tools carry the fetch date of each record.
 

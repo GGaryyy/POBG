@@ -38,19 +38,29 @@ nested result message:
           field 1 (varint) -> dict index (0 if omitted)
           field 2 (varint) -> number of characters with this value
   field 3 (bytes)  -> integer dimension definition (repeated)
-  field 5 (bytes)  -> value-list column (repeated, one per requested column):
-      field 1 (bytes)   -> column name
-      field 2 (bytes)   -> per-row value cell (repeated, 100 items):
-          string cols  -> field 1 (bytes) = UTF-8 string
-          integer cols -> field 2 (varint) = integer value
-          list cols    -> field 3 (bytes) = packed varints (dict indices)
+  field 12 (bytes) -> column (repeated, one per column; as observed on 2026-11-11 —
+                      until early 2026 the columns were in field 5 with one cell message per row):
+      field 1 (bytes)   -> column key (e.g. "name", "class", "skills")
+      field 2 (bytes)   -> display key
+      field 11 (bytes)  -> dictionary the indices refer to ("class", "gem", "keypassive")
+      field 13 (varint) -> row count
+      string cols  -> field 7 (bytes, repeated) = one UTF-8 string per row
+      integer cols -> field 6 (bytes) = packed varints, one per row (a dictionary index for "class")
+      list cols    -> field 9 (bytes, repeated) = per row a message whose field 1 holds packed
+                      varints (dictionary indices)
   field 6 (bytes)  -> dictionary reference (repeated):
       field 1 (bytes)   -> dimension key
       field 2 (bytes)   -> hex SHA-1 hash of the dictionary blob
 
-dictionary blob:
-  field 1 (bytes)   -> dimension name
-  field 2 (bytes)   -> value string (repeated, order = index)
+dictionary blob (as observed on 2026-11-11; a protobuf with repeated field 2 until early 2026):
+  "NDIC" container, little-endian:
+    bytes 0-3    magic "NDIC"        bytes 4-7    version (2)
+    bytes 12-15  number of strings   bytes 16-23  hash
+    bytes 24-27  strings per block   bytes 28-31  number of blocks
+    bytes 32-35  number of strings (again)
+    then one 8-byte entry per block (offset into the string data, first index),
+    then one length per string (a varint; one byte in practice),
+    then the strings, concatenated, in index order
 
 Output schema (per record)
 --------------------------
@@ -59,7 +69,7 @@ never written to disk (PRIVATE_FIELDS).
 {
   "class":          str | null,   # ascendancy name (e.g. "Stormweaver")
   "level":          int | null,
-  "main_skill":     str | null,   # first entry in skills list (primary active)
+  "main_skill":     str | null,   # the skill the DPS figure is for ("dps.skill"), else the first skill
   "skill_gems":     [str],        # all gems from the 'skills' column
   "keystones":      [str],        # passive keystones from 'keypassives' column
   "league":         str,
@@ -71,7 +81,8 @@ never written to disk (PRIVATE_FIELDS).
 Output: data/community_builds/poe_ninja_builds.jsonl
 """
 
-import json
+import re
+import struct
 import sys
 import time
 from datetime import datetime, timezone
@@ -80,7 +91,7 @@ from typing import Optional
 
 import requests
 
-from src.scrapers.common import USER_AGENT
+from src.scrapers.common import USER_AGENT, write_jsonl
 
 # ---------------------------------------------------------------------------
 # CONSTANTS
@@ -110,6 +121,20 @@ SORT_KEYS_ASC = [
 ]
 
 MAX_RECORDS = 500          # stop after collecting this many unique characters
+# Layout of the search response (reverse-engineered; it changed in 2026, see the module docstring)
+COLUMN_FIELD = 12          # one message per column in the result message
+STRING_CELL_FIELD = 7      # string column: one cell per row
+PACKED_INT_FIELD = 6       # integer column: every row in one packed field
+LIST_CELL_FIELD = 9        # list column: one cell per row, packed dictionary indices inside
+# Layout of a dictionary blob ("NDIC" container, little-endian)
+MAX_VARINT_BYTES = 10       # a 64-bit varint; anything longer is malformed input
+DICTIONARIES = ("class", "gem", "keypassive")   # the only dictionaries fetched, once each
+HASH_PATTERN = re.compile(r"[0-9a-f]{1,64}")
+NDIC_MAGIC = b"NDIC"
+NDIC_COUNT_OFFSET = 12     # u32: number of strings
+NDIC_BLOCKS_OFFSET = 28    # u32: number of entries in the block index that follows the header
+NDIC_HEADER_SIZE = 36
+NDIC_BLOCK_ENTRY_SIZE = 8  # (u32 offset into the string data, u32 first index)
 REQUEST_DELAY = 0.8        # seconds before every HTTP request
 REQUEST_TIMEOUT = 30       # seconds
 
@@ -153,15 +178,15 @@ def _get_binary(url: str) -> bytes:
 def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
     """Decode a varint from bytes at pos.  Returns (value, new_pos)."""
     result = 0
-    shift = 0
-    while pos < len(data):
+    for shift in range(0, 7 * MAX_VARINT_BYTES, 7):
+        if pos >= len(data):
+            raise ValueError("varint runs past the end of the data")
         b = data[pos]
         pos += 1
         result |= (b & 0x7F) << shift
-        shift += 7
         if not (b & 0x80):
-            break
-    return result, pos
+            return result, pos
+    raise ValueError("varint is longer than 10 bytes")
 
 
 def _parse_proto(data: bytes) -> list[tuple[int, str, object]]:
@@ -200,87 +225,117 @@ def _parse_proto(data: bytes) -> list[tuple[int, str, object]]:
 
 
 def _decode_dict_blob(raw: bytes) -> list[str]:
+    """A poe.ninja dictionary as a list of strings (position = index)."""
+    if raw.startswith(NDIC_MAGIC):
+        return _decode_ndic(raw)
+    return _decode_proto_dict(raw)
+
+
+def _decode_ndic(raw: bytes) -> list[str]:
+    """The "NDIC" container poe.ninja serves since 2026 (see the module docstring).
+
+    Returns an empty list when the sizes in the header do not add up, so that a format change
+    shows up as missing names instead of wrong ones.
     """
-    Parse a poe.ninja dictionary blob into a list of string values.
-    field 1 = dimension name (skipped here)
-    field 2 = value string (repeated, position = index)
-    """
+    if len(raw) < NDIC_HEADER_SIZE:
+        return []
+    count, = struct.unpack_from("<I", raw, NDIC_COUNT_OFFSET)
+    blocks, = struct.unpack_from("<I", raw, NDIC_BLOCKS_OFFSET)
+    pos = NDIC_HEADER_SIZE + blocks * NDIC_BLOCK_ENTRY_SIZE
+    lengths: list[int] = []
+    for _ in range(count):
+        if pos >= len(raw):
+            return []
+        try:
+            length, pos = _read_varint(raw, pos)
+        except ValueError:
+            return []
+        lengths.append(length)
+    if pos + sum(lengths) != len(raw):
+        return []
     values: list[str] = []
-    fields = _parse_proto(raw)
-    for fn, wt, v in fields:
-        if fn == 2 and wt == "bytes":
-            assert isinstance(v, bytes)
-            try:
-                values.append(v.decode("utf-8"))
-            except UnicodeDecodeError:
-                values.append("")
+    for length in lengths:
+        values.append(raw[pos : pos + length].decode("utf-8", errors="replace"))
+        pos += length
     return values
 
 
-def _extract_col(f5_items: list[bytes], col_name: str) -> list[bytes]:
-    """Return the list of per-row value cells for the named column."""
-    for item in f5_items:
-        sub = _parse_proto(item)
-        name_val = next(
-            (v for fn, wt, v in sub if fn == 1 and wt == "bytes"),
-            None,
-        )
-        if name_val is None:
-            continue
+def _decode_proto_dict(raw: bytes) -> list[str]:
+    """The protobuf dictionary served until early 2026: field 2 = value string, repeated."""
+    return [v.decode("utf-8", errors="replace") for fn, wt, v in _parse_proto(raw) if fn == 2 and wt == "bytes"]
+
+
+def _unpack_varints(packed: bytes) -> list[int]:
+    values: list[int] = []
+    pos = 0
+    while pos < len(packed):
         try:
-            if name_val.decode("utf-8") == col_name:
-                return [v for fn, wt, v in sub if fn == 2 and wt == "bytes"]
-        except UnicodeDecodeError:
+            value, pos = _read_varint(packed, pos)
+        except ValueError:
+            return []          # malformed: no values rather than shifted ones
+        values.append(value)
+    return values
+
+
+def _column(inner: list[tuple[int, str, object]], name: str) -> list[tuple[int, str, object]]:
+    """The parsed column message whose key (field 1) is `name`, or an empty list."""
+    for fn, wt, value in inner:
+        if fn != COLUMN_FIELD or wt != "bytes":
             continue
+        sub = _parse_proto(value)
+        key = next((v for f, w, v in sub if f == 1 and w == "bytes"), None)
+        if key == name.encode("utf-8"):
+            return sub
     return []
 
 
-def _cell_string(cell: bytes) -> Optional[str]:
-    """Extract UTF-8 string from sub-field 1 of a cell."""
-    sub = _parse_proto(cell)
-    for fn, wt, v in sub:
-        if fn == 1 and wt == "bytes":
-            assert isinstance(v, bytes)
-            try:
-                return v.decode("utf-8")
-            except UnicodeDecodeError:
-                return v.decode("utf-8", errors="replace")
-    return None
+def _column_strings(column: list[tuple[int, str, object]]) -> list[str]:
+    """String column: one UTF-8 cell per row."""
+    return [v.decode("utf-8", errors="replace") for f, w, v in column if f == STRING_CELL_FIELD and w == "bytes"]
 
 
-def _cell_int(cell: bytes, field_num: int = 2) -> Optional[int]:
-    """Extract varint from the given sub-field of a cell."""
-    sub = _parse_proto(cell)
-    for fn, wt, v in sub:
-        if fn == field_num and wt == "varint":
-            assert isinstance(v, int)
-            return v
-    return None
+def _column_ints(column: list[tuple[int, str, object]]) -> list[int]:
+    """Integer column: all rows packed into one field."""
+    packed = next((v for f, w, v in column if f == PACKED_INT_FIELD and w == "bytes"), b"")
+    return _unpack_varints(packed)
 
 
-def _cell_packed_indices(cell: bytes, dictionary: list[str]) -> list[str]:
-    """
-    Extract a list of strings by decoding packed varints from sub-field 3
-    as indices into the given dictionary.
-    """
-    sub = _parse_proto(cell)
-    packed = next(
-        (v for fn, wt, v in sub if fn == 3 and wt == "bytes"),
-        b"",
-    )
-    assert isinstance(packed, bytes)
-    indices: list[int] = []
-    p = 0
-    while p < len(packed):
-        idx, p = _read_varint(packed, p)
-        indices.append(idx)
-    result: list[str] = []
-    for idx in indices:
-        if idx < len(dictionary):
-            name = dictionary[idx]
-            if name:
-                result.append(name)
-    return result
+def _column_lists(column: list[tuple[int, str, object]], dictionary: list[str]) -> list[list[str]]:
+    """List column: per row, packed indices into the column's dictionary."""
+    rows: list[list[str]] = []
+    for f, w, cell in column:
+        if f != LIST_CELL_FIELD or w != "bytes":
+            continue
+        packed = next((v for sf, sw, v in _parse_proto(cell) if sf == 1 and sw == "bytes"), b"")
+        names = [dictionary[i] for i in _unpack_varints(packed) if i < len(dictionary)]
+        rows.append([name for name in names if name])
+    return rows
+
+
+def _column_dictionary(column: list[tuple[int, str, object]]) -> str | None:
+    """Name of the dictionary a column's indices refer to (field 11)."""
+    name = next((v for f, w, v in column if f == 11 and w == "bytes"), None)
+    return name.decode("utf-8", errors="replace") if name is not None else None
+
+
+def _aligned(values: list, rows: int, label: str) -> list:
+    """A column must have one value per row; otherwise every later row would get another
+    character's value, so the whole column is dropped."""
+    if values and len(values) != rows:
+        _warn(f"Search response: column {label} has {len(values)} values for {rows} rows; ignoring it")
+        return []
+    return values
+
+
+def _at(values: list, index: int):
+    return values[index] if index < len(values) else None
+
+
+def _main_skill(dps_index: int | None, gem_dict: list[str], skill_gems: list[str]) -> str | None:
+    """The skill the site computed DPS for, when the character really has it; else the first skill."""
+    if dps_index is not None and dps_index < len(gem_dict) and gem_dict[dps_index] in skill_gems:
+        return gem_dict[dps_index]
+    return skill_gems[0] if skill_gems else None
 
 
 # ---------------------------------------------------------------------------
@@ -303,92 +358,42 @@ def _parse_search_response(
 
     rank_offset: added to the 1-based position index for uniqueness tracking.
     """
-    # Outer wrapper: field 1 = nested message
     outer = _parse_proto(raw)
-    inner_bytes = next(
-        (v for fn, wt, v in outer if fn == 1 and wt == "bytes"),
-        None,
-    )
+    inner_bytes = next((v for fn, wt, v in outer if fn == 1 and wt == "bytes"), None)
     if inner_bytes is None:
         _warn("Search response: could not find inner message (field 1)")
         return []
-
-    assert isinstance(inner_bytes, bytes)
     inner = _parse_proto(inner_bytes)
 
-    # Field 5 = value-list columns
-    f5_items: list[bytes] = [v for fn, wt, v in inner if fn == 5 and wt == "bytes"]  # type: ignore[misc]
-
-    if not f5_items:
-        _warn("Search response: no field-5 columns found")
+    names = _column_strings(_column(inner, "name"))
+    if not names:
+        _warn(f"Search response: no name column in field {COLUMN_FIELD}; the response format may have changed")
         return []
-
-    # Extract columns
-    name_col = _extract_col(f5_items, "name")
-    account_col = _extract_col(f5_items, "account")
-    class_col = _extract_col(f5_items, "class")
-    level_col = _extract_col(f5_items, "level")
-    skills_col = _extract_col(f5_items, "skills")
-    kp_col = _extract_col(f5_items, "keypassives")
-
-    row_count = max(
-        len(name_col),
-        len(class_col),
-        len(level_col),
-    )
-    if row_count == 0:
-        _warn("Search response: no rows found")
-        return []
+    rows = len(names)
+    accounts = _aligned(_column_strings(_column(inner, "account")), rows, "account")
+    classes = _aligned(_column_ints(_column(inner, "class")), rows, "class")
+    levels = _aligned(_column_ints(_column(inner, "level")), rows, "level")
+    skills = _aligned(_column_lists(_column(inner, "skills"), gem_dict), rows, "skills")
+    keystones = _aligned(_column_lists(_column(inner, "keypassives"), kp_dict), rows, "keypassives")
+    dps_column = _column(inner, "dps.skill")
+    dps_skills = _aligned(_column_ints(dps_column), rows, "dps.skill") if _column_dictionary(dps_column) == "gem" else []
 
     records: list[dict] = []
-    for i in range(row_count):
-        # Character name
-        char_name: Optional[str] = None
-        if i < len(name_col):
-            char_name = _cell_string(name_col[i])
-
+    for i, char_name in enumerate(names):
         if not char_name:
             continue  # skip rows without a character name
-
-        # Account name
-        acct_name: Optional[str] = None
-        if i < len(account_col):
-            acct_name = _cell_string(account_col[i])
-
-        # Class (ascendancy) — field 2 = varint index; missing sub-fields = index 0
-        cls_name: Optional[str] = None
-        if i < len(class_col):
-            cell = class_col[i]
-            sub = _parse_proto(cell)
-            int_fields = [v for fn, wt, v in sub if fn == 2 and wt == "varint"]
-            cls_idx = int_fields[0] if int_fields else 0
-            if cls_idx < len(class_dict):
-                cls_name = class_dict[cls_idx]
-
-        # Level
-        level: Optional[int] = None
-        if i < len(level_col):
-            level = _cell_int(level_col[i], field_num=2)
-
-        # Skill gems
-        skill_gems: list[str] = []
-        if i < len(skills_col):
-            skill_gems = _cell_packed_indices(skills_col[i], gem_dict)
-
-        # Keystones
-        keystones: list[str] = []
-        if i < len(kp_col):
-            keystones = _cell_packed_indices(kp_col[i], kp_dict)
-
+        cls_idx = _at(classes, i)
+        skill_gems = _at(skills, i) or []
+        key_passives = _at(keystones, i) or []
         records.append(
             {
                 "character_name": char_name,
-                "account_name": acct_name,
-                "class": cls_name,
-                "level": level,
-                "main_skill": skill_gems[0] if skill_gems else None,
+                "account_name": _at(accounts, i),
+                "class": class_dict[cls_idx] if cls_idx is not None and cls_idx < len(class_dict) else None,
+                "level": _at(levels, i),
+                "main_skill": _main_skill(_at(dps_skills, i), gem_dict, skill_gems),
                 "skill_gems": skill_gems if skill_gems else None,
-                "keystones": keystones if keystones else None,
+                "keystones": key_passives if key_passives else None,
                 "league": league_name,
                 "rank": rank_offset + i + 1,
                 "sort_key": f"{sort_key}_{'asc' if sort_asc else 'desc'}",
@@ -396,7 +401,6 @@ def _parse_search_response(
                 "fetched_at": fetched_at,
             }
         )
-
     return records
 
 
@@ -404,47 +408,23 @@ def _parse_search_response(
 # DICTIONARY FETCHING
 # ---------------------------------------------------------------------------
 
-def _fetch_dictionaries(inner_bytes: bytes) -> dict[str, list[str]]:
+def _fetch_dictionaries(inner_bytes: bytes, get_binary=None) -> dict[str, list[str]]:
     """
-    Parse dictionary hashes from the search response inner message and
-    fetch each dictionary.
-
-    Returns mapping: dim_key -> list[str] (index = value).
+    Fetch the class, gem and keystone dictionaries named in the search response (field 6:
+    field 1 = dictionary key, field 2 = hex hash), each at most once. Other dictionaries the
+    response lists are not needed and not requested.
     """
-    inner = _parse_proto(inner_bytes)
-    # Field 6 = dictionary reference: field 1 = dim key, field 2 = hex hash
     dicts: dict[str, list[str]] = {}
-    for fn, wt, v in inner:
+    for fn, wt, value in _parse_proto(inner_bytes):
         if fn != 6 or wt != "bytes":
             continue
-        assert isinstance(v, bytes)
-        sub = _parse_proto(v)
-        dim_key: Optional[str] = None
-        hex_hash: Optional[str] = None
-        for sfn, swt, sv in sub:
-            if sfn == 1 and swt == "bytes":
-                assert isinstance(sv, bytes)
-                try:
-                    dim_key = sv.decode("utf-8")
-                except UnicodeDecodeError:
-                    pass
-            elif sfn == 2 and swt == "bytes":
-                assert isinstance(sv, bytes)
-                try:
-                    hex_hash = sv.decode("utf-8")
-                except UnicodeDecodeError:
-                    pass
-        if dim_key and hex_hash:
-            url = DICT_URL_TMPL.format(hash=hex_hash)
-            print(f"  fetching dict: {dim_key!r} ({hex_hash[:12]}…)")
-            try:
-                raw = _get_binary(url)
-                dicts[dim_key] = _decode_dict_blob(raw)
-                print(f"    {len(dicts[dim_key])} entries")
-            except requests.HTTPError as exc:
-                _warn(f"dict fetch failed: {dim_key}: HTTP {exc.response.status_code}")
-            except requests.RequestException as exc:
-                _warn(f"dict fetch failed: {dim_key}: {exc}")
+        ref = {sfn: sv.decode("utf-8", errors="replace") for sfn, swt, sv in _parse_proto(value) if swt == "bytes"}
+        key, hex_hash = ref.get(1), ref.get(2)
+        if key not in DICTIONARIES or key in dicts or not hex_hash or not HASH_PATTERN.fullmatch(hex_hash):
+            continue
+        print(f"  fetching dict: {key!r} ({hex_hash[:12]}…)")
+        dicts[key] = _decode_dict_blob((get_binary or _get_binary)(DICT_URL_TMPL.format(hash=hex_hash)))
+        print(f"    {len(dicts[key])} entries")
     return dicts
 
 
@@ -452,13 +432,13 @@ def _fetch_dictionaries(inner_bytes: bytes) -> dict[str, list[str]]:
 # MAIN COLLECTION LOGIC
 # ---------------------------------------------------------------------------
 
-def _get_league_info() -> tuple[str, str, str]:
+def _get_league_info(get_json=None) -> tuple[str, str, str]:
     """
     Fetch index-state and return (league_name, snapshot_version, snapshot_name)
     for the current active PoE2 league.
     """
     print(f"Fetching league info: {INDEX_STATE_URL}")
-    state = _get_json(INDEX_STATE_URL)
+    state = (get_json or _get_json)(INDEX_STATE_URL)
 
     build_leagues: list[dict] = state.get("buildLeagues", [])
     snapshot_versions: list[dict] = state.get("snapshotVersions", [])
@@ -498,6 +478,7 @@ def _fetch_one_page(
     snapshot_name: str,
     sort_key: str,
     sort_asc: bool,
+    get_binary=None,
 ) -> bytes:
     """Fetch one search response binary blob."""
     params: dict[str, str] = {
@@ -511,23 +492,23 @@ def _fetch_one_page(
     qs = "&".join(f"{k}={v}" for k, v in params.items())
     full_url = f"{url}?{qs}"
     print(f"  GET {full_url}")
-    raw = _get_binary(full_url)
+    raw = (get_binary or _get_binary)(full_url)
     print(f"    {len(raw)} bytes")
     return raw
 
 
-def collect_builds() -> list[dict]:
+def collect_builds(get_json=None, get_binary=None) -> list[dict]:
     """
     Main collection loop.  Cycles through sort keys, collecting up to
     MAX_RECORDS unique character records.
     """
     # Step 1: get league / version info
-    league_name, version, snapshot_name = _get_league_info()
+    league_name, version, snapshot_name = _get_league_info(get_json)
     print()
 
     # Step 2: fetch one search page to get dictionary hashes, then fetch dicts
     print("Fetching initial search page to discover dictionaries…")
-    first_raw = _fetch_one_page(version, snapshot_name, "dps", False)
+    first_raw = _fetch_one_page(version, snapshot_name, "dps", False, get_binary)
 
     # Unwrap outer message
     outer = _parse_proto(first_raw)
@@ -539,7 +520,7 @@ def collect_builds() -> list[dict]:
         raise RuntimeError("Could not parse search response (no inner message)")
 
     print("\nFetching dictionaries…")
-    dicts = _fetch_dictionaries(inner_bytes)
+    dicts = _fetch_dictionaries(inner_bytes, get_binary)
 
     class_dict = dicts.get("class", [])
     gem_dict = dicts.get("gem", [])
@@ -593,19 +574,15 @@ def collect_builds() -> list[dict]:
             break
         direction = "asc" if sort_asc else "desc"
         print(f"Pass {pass_num}/{1 + len(passes)}: {sort_key}_{direction}…")
-        try:
-            raw = _fetch_one_page(version, snapshot_name, sort_key, sort_asc)
-            records = _parse_search_response(
-                raw, class_dict, gem_dict, kp_dict,
-                league_name, sort_key, sort_asc,
-                len(all_records), fetched_at,
-            )
-            added = _add_records(records)
-            print(f"  +{added} unique records (total={len(all_records)})")
-        except requests.HTTPError as exc:
-            _warn(f"Sort pass {sort_key}/{direction}: HTTP {exc.response.status_code}")
-        except requests.RequestException as exc:
-            _warn(f"Sort pass {sort_key}/{direction}: {exc}")
+        # A failed pass raises: a snapshot built from fewer passes would be smaller and skewed.
+        raw = _fetch_one_page(version, snapshot_name, sort_key, sort_asc, get_binary)
+        records = _parse_search_response(
+            raw, class_dict, gem_dict, kp_dict,
+            league_name, sort_key, sort_asc,
+            len(all_records), fetched_at,
+        )
+        added = _add_records(records)
+        print(f"  +{added} unique records (total={len(all_records)})")
         pass_num += 1
 
     return all_records
@@ -634,11 +611,7 @@ def _public(record: dict) -> dict:
 
 
 def _write_jsonl(records: list[dict], path: Path) -> int:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as fh:
-        for r in records:
-            fh.write(json.dumps(_public(r), ensure_ascii=False) + "\n")
-    return len(records)
+    return write_jsonl(path, (_public(r) for r in records))   # atomic: an interrupted run keeps the old file
 
 
 def _print_summary(records: list[dict]) -> None:
@@ -670,12 +643,6 @@ def _print_summary(records: list[dict]) -> None:
     print(f"  main_skill  : {has_main}/{n}")
     print(f"  skill_gems  : {has_gems}/{n}")
     print(f"  keystones   : {has_ks}/{n}")
-
-    # Sample record
-    if records:
-        print("\nSample record (first):")
-        sample_json = json.dumps(_public(records[0]), ensure_ascii=True, indent=2)
-        sys.stdout.buffer.write((sample_json + "\n").encode("utf-8", errors="replace"))
 
     print("=" * 60)
 

@@ -1,9 +1,10 @@
-# poe2db-mcp
+# POBG — 給 AI 助理用的 Path of Exile 2 資料與流派工具
 
 [English](README.md) | **繁體中文**
 
-一個非官方的 [Model Context Protocol](https://modelcontextprotocol.io) server，讓 AI 助理查到正確的
-**Path of Exile 2（流亡黯道 2）** 資料、標明每項事實的出處並加以解釋，支援英文與繁體中文。
+POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) server 與 Claude Code plugin，
+讓 AI 助理查到正確的 **Path of Exile 2（流亡黯道 2）** 資料、標明每項事實的出處，並給出每顆寶石與每個天賦都
+經過資料比對的流派建議，支援英文與繁體中文。
 
 資料是 [poe2db.tw](https://poe2db.tw)（寶石、天賦樹、名詞解釋）、
 [PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 天賦樹，以及一份
@@ -29,18 +30,18 @@
 `uv.lock` 鎖定的版本建立 Python 環境：四個直接相依套件（`mcp`、`networkx`、`requests`、
 `beautifulsoup4`），連同它們的相依共約 40 個套件。
 
-**Claude Code**（plugin：MCP server 加上 `/poe2db:poe2-advisor` skill）
+**Claude Code**（plugin：MCP server 加上 `/pobg:poe2-advisor` skill）
 
 ```
-/plugin marketplace add GGaryyy/poe2db-mcp
-/plugin install poe2db@poe2db-mcp
+/plugin marketplace add GGaryyy/POBG
+/plugin install pobg@pobg
 ```
 
 **其他 MCP 用戶端**（Claude Desktop、Cursor、VS Code、Gemini CLI、Codex CLI 等）：先 clone 本 repo，
 再註冊一個執行下列指令的 stdio server：
 
 ```
-uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.tools.mcp_server
+uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
 
 多數用戶端的設定就是這段 JSON：
@@ -48,9 +49,9 @@ uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.
 ```json
 {
   "mcpServers": {
-    "poe2db": {
+    "pobg": {
       "command": "uv",
-      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/poe2db-mcp",
+      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG",
                "python", "-m", "src.tools.mcp_server"]
     }
   }
@@ -65,14 +66,14 @@ uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.
 ## 指令
 
 有兩個指令可以直接在 AI 用戶端裡維護資料。在 Claude Code 中它們是 plugin 的 skill；其他用戶端則是
-`poe2db` server 提供的 MCP prompt（Claude Desktop 的「+」選單、VS Code 的 `/poe2db.status`、
+`pobg` server 提供的 MCP prompt（Claude Desktop 的「+」選單、VS Code 的 `/pobg.status`、
 Gemini CLI 的斜線指令）。
 
 | 指令 | Claude Code | 做什麼 |
 |---|---|---|
-| status | `/poe2db:status` | 列出每類資料有幾筆、何時抓的、已經多久。需要時可再檢查線上網站（約 19 個請求）：頁面是否還能解析、天賦樹有沒有新版 |
-| update | `/poe2db:update <範圍> [名稱]` | 重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
-| advisor | `/poe2db:poe2-advisor` | 不是資料指令：它是 Claude Code 回答 PoE2 問題與撰寫有出處流派時遵循的說明，會自動套用 |
+| status | `/pobg:status` | 列出每類資料有幾筆、何時抓的、已經多久。需要時可再檢查線上網站（約 19 個請求）：頁面是否還能解析、天賦樹有沒有新版 |
+| update | `/pobg:update <範圍> [名稱]` | 重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
+| advisor | `/pobg:poe2-advisor` | 不是資料指令：它是 Claude Code 回答 PoE2 問題與撰寫有出處流派時遵循的說明，會自動套用 |
 
 `update` 一定要指定範圍，沒有「全部更新」：
 
@@ -80,8 +81,10 @@ Gemini CLI 的斜線指令）。
 |---|---|---|
 | `skill_gems`、`spirit_gems`、`support_gems` | 列表頁，然後只抓新增的、列表上有變動的、你指定名稱的、或超過 N 天沒更新的寶石 | 1 + 最多 20 顆（上限 40）；重複呼叫直到沒有剩餘 |
 | `passives` | PathOfBuilding-PoE2 的天賦樹、poe2db 的兩個天賦樹資料檔與四個列表頁；並重建屬性索引 | 7 |
+| `glossary` | 所有名詞解釋（英文與中文的 hover 片段），透過列表頁與少數寶石頁找到 | 每次呼叫最多 50 個（一分鐘內），總共約 750 個；重複呼叫直到完成，全部抓完才一次寫入 |
+| `ladder` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
 
-範例：`/poe2db:update skill_gems`、`/poe2db:update support_gems Fire Attunement, Brutality I`、
+範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、
 「更新超過 30 天的技能寶石」。
 
 注意事項：
@@ -93,7 +96,8 @@ Gemini CLI 的斜線指令）。
 - poe2db 的技能寶石列表也包含所有精神寶石。這類寶石只存一份，歸在精神寶石，所以要用 `spirit_gems` 更新。
 - 同一個資料夾一次只會有一個 update 在跑，兩個用戶端共用同一個資料夾時也一樣。本機還沒有檔案的資料類別，
   第一次要在終端機完整抓取。
-- 名詞解釋與天梯快照沒有指令可用（status 會說明原因）；完整重抓寶石與名詞解釋要在終端機執行，見「更新資料」。
+- 第一次完整抓取寶石要在終端機執行，見「更新資料」。
+- 名詞解釋的更新會把進度暫存在 `output/cache/` 30 分鐘，中斷後會接續而不是重來。抓不到的名詞保留原本的內容。
 - 天賦樹有新*版本*時 status 會回報，但 `update` 不會自動採用；那需要本專案釋出新版。
 - update 改的是 server 執行所在的那份 `data/`。以 plugin 安裝時，plugin 更新會把它取代。
 
@@ -112,7 +116,7 @@ Gemini CLI 的斜線指令）。
 | `build_workflow` | 有出處的流派回答流程，給不支援 MCP prompt 的用戶端使用 |
 | `refresh_gem` | 重新抓取 poe2db 上的一顆寶石頁面並取代本機紀錄 |
 | `data_status` | 本機資料有哪些、多舊；需要時可檢查線上網站 |
-| `update_data` | 重新抓取一類資料（必須指定範圍），每次呼叫的頁數有上限 |
+| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、天賦、名詞解釋、天梯），每次呼叫的請求數有上限 |
 
 Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指令）。只有 `refresh_gem` 與
 `update_data` 會變更資料；其餘十二個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
@@ -131,26 +135,25 @@ Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指�
 | poe2db hover 片段 | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}` (`lang` = `us` / `tw`) 與 `…/Poe_Data_GemEffects_hover/{hash}` | 名詞解釋（357 個名詞，英文與中文）；寶石 hover 只用來找中文的名詞連結 | 每個約 1.2 KB，間隔 0.3 秒，重建名詞解釋時才抓 |
 | poe2db 天賦樹資料 | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` 與 `data_tw.json`（版本號取自 `https://poe2db.tw/tw/passive-skill-tree/` 及其在 `cdn.poe2db.tw/js/` 的 script） | 每個天賦節點的中文名稱與屬性文字、職業與昇華名稱、點數上限 | 重建天賦樹時抓 2 個檔案；檢視頁與 script 只在 probe 檢查新版本時讀取 |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json`（probe 另會列出 `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`） | 天賦樹結構：所有節點、連線、名稱、屬性、keystone／notable 標記、職業起點、昇華、座標 | 重建天賦樹時抓 1 個檔案 |
-| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`、`https://poe.ninja/poe2/api/builds/{version}/search`、`https://poe.ninja/poe2/api/builds/dictionary/{hash}` | 天梯角色的職業、等級、主技能、寶石、keystone、聯盟、排名。角色名稱與帳號名稱在寫入前就丟棄 | 2026-03-04 抓的一份快照，共 588 個角色，聯盟為「Fate of the Vaal」（18 個請求，間隔 0.8 秒）。之後沒有再更新，原因見下 |
+| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`、`https://poe.ninja/poe2/api/builds/{version}/search`、`https://poe.ninja/poe2/api/builds/dictionary/{hash}` | 天梯角色的職業、等級、主技能、寶石、keystone、聯盟、排名。角色名稱與帳號名稱在寫入前就丟棄 | 每份快照約 600 個角色（數種排序各取前 100 名）：執行 `update ladder` 時最多 14 個請求，間隔 0.8 秒。本 repo 內的快照抓於 2026-11-11，聯盟為「Runes of Aldur」 |
 
 請求方式：
 
 - 對 poe2db 與 GitHub 的請求會以
-  `poe2db-mcp/0.7 (+https://github.com/GGaryyy/poe2db-mcp; research scraper)` 表明身分，每個頁面或檔案
+  `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
   請求前等待 0.8 秒（hover 片段 0.3 秒），最多嘗試三次。`refresh_gem` 同樣等待 0.8 秒，一次只發一個請求。
 - poe2db 的 `robots.txt` 只禁止 `/*/marked` 與 `/*/markdown_history`，兩者都不會被請求。單一天賦節點頁面
   （每頁 1.2 MB）刻意不抓。
-- poe.ninja 的抓取程式讀的是 poe.ninja 網站自己使用的 JSON／protobuf 端點，那不是有文件的公開 API。它送出同樣
-  表明身分的 `User-Agent`、間隔 0.8 秒，poe.ninja 在 2026-11-11 接受了這樣的請求。不過該站的回應格式已經改變，
-  抓取程式目前讀不到任何資料；在解析器更新之前，這份（來自較早聯盟的）快照無法更新。
-- 本 repo 內的快照：寶石與名詞解釋抓於 2026-11-10，天賦樹 `0_5`（poe2db 天賦樹資料 `4.5`），天梯
-  2026-03-04。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
+- poe.ninja 的抓取程式讀的是 poe.ninja 網站自己使用的端點（JSON、protobuf 與一種二進位字典格式）。那不是有文件的
+  公開 API，格式以前就改過，所以抓到的快照看起來不對時程式會拒絕寫入。它送出同樣表明身分的 `User-Agent`，
+  請求之間等待 0.8 秒。
+- 本 repo 內的快照：寶石抓於 2026-11-10，名詞解釋與天梯抓於 2026-11-11，天賦樹 `0_5`（poe2db 天賦樹資料 `4.5`）。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
 
 如果你是上述網站的維護者，希望本專案調整使用資料的方式，請開 issue。
 
 ## 更新資料
 
-平常請用上面的 `status` 與 `update` 指令。下面的終端機做法用於第一次完整抓取、名詞解釋，以及開發蒐集程式時。
+平常請用上面的 `status` 與 `update` 指令。下面的終端機做法用於第一次完整抓取，以及開發蒐集程式時。
 
 ```bash
 uv sync                                           # 只需一次：把 pytest 與 ruff 裝進 .venv
@@ -180,11 +183,11 @@ uv run ruff check .
 ## 限制
 
 - 資料是快照。平衡改版會改數字；請看 `fetched_at`（或執行 `status`），必要時用 `update`、`refresh_gem` 或蒐集程式。
-- 天梯快照來自較早的聯盟，目前無法更新。
 - `refresh_gem` 與 `update` 更新的是 server 執行所在的那份 `data/`。以 plugin 安裝時那是 plugin 自己的資料夾，plugin
   更新時會被取代；在 clone 下來的 repo 裡則會變成 git 中已修改的檔案。
 - `path_to` 給的是夠好的路線，不保證最短，也不計算武器組天賦點與珠寶。
 - `verify_build` 只檢查名稱是否存在並回傳其事實，不判斷流派強不強。
+- 天梯是抽樣（數種排行各取前段，共約 600 個角色），不是完整天梯。
 - 不包含裝備、傳奇物品、製作與終局內容。
 
 ## 授權

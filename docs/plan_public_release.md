@@ -1,4 +1,8 @@
-# Plan: Phase 15 — Public release as `poe2db-mcp` and client onboarding
+# Plan: Phase 15 — Public release and client onboarding
+
+> Naming note (2026-11-11): this plan first chose the name `poe2db-mcp` with a plugin called
+> `poe2db`. Before publishing, the owner went back to the project's original name: repository
+> `GGaryyy/POBG`, plugin and MCP server `pobg`. The names below are the final ones.
 
 Approved 2026-11-11. This repository was created from an earlier private project; that
 project's folder and repository are not modified by this plan.
@@ -14,7 +18,7 @@ Decisions (user answers, 2026-11-11):
 | Topic | Decision |
 |---|---|
 | Git history | A **new repo** with fresh history. The earlier private repository keeps the old history and is never made public |
-| Repo name | `GGaryyy/poe2db-mcp` |
+| Repo name | `GGaryyy/POBG` |
 | Local location | A new folder, fresh `git init` |
 | Contents | Only the MCP / plugin path. No LangGraph, Ollama, FastAPI, FAISS indexes, retrievers, legacy tests, notebook |
 | Author email | The GitHub noreply address (set in the new repo's local git config only) |
@@ -37,11 +41,11 @@ Facts found while exploring:
 
 | Thing | Name |
 |---|---|
-| GitHub repo / marketplace | `GGaryyy/poe2db-mcp` / `poe2db-mcp` |
-| Plugin and MCP server name | `poe2db` (descriptions say "unofficial") |
-| Skill | `/poe2db:poe2-advisor` |
-| Python project | `poe2db-mcp` 0.7.0 (continues from the private 0.6.0) |
-| Scraper User-Agent | `poe2db-mcp/0.7 (+https://github.com/GGaryyy/poe2db-mcp; research scraper)` |
+| GitHub repo / marketplace | `GGaryyy/POBG` / `pobg` |
+| Plugin and MCP server name | `pobg` (descriptions say "unofficial") |
+| Skill | `/pobg:poe2-advisor` |
+| Python project | `pobg` 0.7.0 (continues from the private 0.6.0) |
+| Scraper User-Agent | `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)` |
 
 ## Steps
 
@@ -107,12 +111,12 @@ tests that assert these strings.
   game data belongs to GGG and is not covered by MIT).
 
 ### 6. Claude Desktop test (the user, new session)
-- One entry `poe2db` is added to `claude_desktop_config.json` (backup copy first, existing
+- One entry for the server is added to `claude_desktop_config.json` (backup copy first, existing
   servers untouched): the Windows `uv.exe` with
   `run --frozen --no-dev --directory <repo folder> python -m src.tools.mcp_server`, and
   `UV_PROJECT_ENVIRONMENT` pointing outside the repo folder.
 - The user restarts Claude Desktop and runs the five check prompts (given in Chinese in my
-  report). If something fails I read `%APPDATA%\Claude\logs\mcp-server-poe2db.log` and fix it.
+  report). If something fails I read `%APPDATA%\Claude\logs\mcp-server-pobg.log` and fix it.
 
 ### 7. Before the first commit
 - Counts only: zero occurrences of `character_name`, `account_name`, the gmail address, and
@@ -123,8 +127,8 @@ tests that assert these strings.
   project memory copied to the new folder's Claude Code project.
 
 ### 8. Publish — only when the user says so
-First commit, `gh repo create GGaryyy/poe2db-mcp --public --source . --push`, repo description
-and topics. Then a real `/plugin marketplace add GGaryyy/poe2db-mcp` install from GitHub.
+First commit, `gh repo create GGaryyy/POBG --public --source . --push`, repo description
+and topics. Then a real `/plugin marketplace add GGaryyy/POBG` install from GitHub.
 Nothing is committed, pushed or created on GitHub before that instruction.
 
 ## Error handling
@@ -158,7 +162,7 @@ Inspector CLI; the user's Claude Desktop session; after publishing, install from
    annotations, and answers Chinese and English queries.
 4. `docs/clients.md` covers the listed clients with honest tested / untested labels.
 5. `README.md` and `README.zh-TW.md` describe only what the new repo contains.
-6. The user's Claude Desktop shows the `poe2db` server and answers the five check prompts
+6. The user's Claude Desktop shows the `pobg` server and answers the five check prompts
    with poe2db source links.
 7. No commit, push or GitHub repo creation until the user asks.
 

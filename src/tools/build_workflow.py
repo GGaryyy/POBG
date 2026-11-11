@@ -10,7 +10,7 @@ skills/update in the plugin) are the user-facing commands over data_status and u
 
 from __future__ import annotations
 
-from src.tools.maintenance import GEM_SCOPES, MAX_NAMES, NOT_UPDATABLE, UPDATE_SCOPES
+from src.tools.maintenance import GEM_SCOPES, GLOSSARY, GLOSSARY_BATCH, LADDER, MAX_NAMES, NOT_UPDATABLE, PASSIVES, UPDATE_SCOPES
 
 # ---------------------------------------------------------------------------
 # CONSTANTS
@@ -18,8 +18,8 @@ from src.tools.maintenance import GEM_SCOPES, MAX_NAMES, NOT_UPDATABLE, UPDATE_S
 
 MAX_REQUEST_LEN = 2000
 LANGUAGE_NAMES = {"en": "English", "zh-tw": "Traditional Chinese (繁體中文)"}
-INTRO = "Give Path of Exile 2 build advice for the request below, using the poe2db tools."
-INTRO_NO_REQUEST = "How to give Path of Exile 2 build advice with the poe2db tools:"
+INTRO = "Give Path of Exile 2 build advice for the request below, using the pobg tools."
+INTRO_NO_REQUEST = "How to give Path of Exile 2 build advice with the pobg tools:"
 
 WRITING_RULES = (
     "Use only the verified facts for numbers, costs, tags and effects. "
@@ -59,13 +59,14 @@ SERVER_INSTRUCTIONS = (
 SCOPE_LIST = ", ".join(UPDATE_SCOPES)
 CONFIRM_ABOVE = 60   # gems: ask before fetching more than this many pages in one command
 MAX_UPDATE_CALLS = 10
+MAX_GLOSSARY_CALLS = 20   # about 750 requests in all, GLOSSARY_BATCH per call
 
 STATUS_STEPS = f"""\
 Report the state of the local Path of Exile 2 data.
 
 1. Call data_status. For each data set show the number of records, when it was fetched, its age in
    days, and whether a command can update it (`update_scope`).
-2. Point out what is old, including the ladder snapshot and its league, and what `not_updatable` says.
+2. Point out what is old, including the ladder snapshot and its league.
 3. Ask whether to check the live sites. Only when the user agrees, call data_status with
    check_online=true (about 19 requests) and report `problems`: pages that no longer parse, or a newer
    passive tree version.
@@ -75,7 +76,7 @@ UPDATE_NEEDS_SCOPE = f"""\
 The update command needs exactly one scope. Do not call update_data.
 
 Tell the user to choose one of: {SCOPE_LIST} (for example: update skill_gems). There is no update for
-everything. The glossary and the ladder snapshot cannot be updated by command; data_status says why."""
+everything."""
 
 UPDATE_GEM_STEPS = f"""\
 1. Call update_data with the arguments above and dry_run=true. Tell the user what it found: `selected`,
@@ -88,11 +89,29 @@ UPDATE_GEM_STEPS = f"""\
 5. Report the totals (`updated`, `added`, `removed`) and anything in `skipped`.
 When a call returns an error, show the error and stop. Do not call update_data with another scope."""
 
-UPDATE_PASSIVE_STEPS = """\
+ON_ERROR = "When a call returns an error, show the error and stop. Do not call update_data with another scope."
+
+UPDATE_WHOLE_SET_STEPS = {
+    PASSIVES: f"""\
 1. Call update_data with scope="passives" and no other argument. It makes 7 requests: the
    PathOfBuilding-PoE2 tree, two poe2db tree data files and four listing pages.
 2. Report `records`, `changed`, `added`, `removed` and the tree versions.
-When the call returns an error, show the error and stop. Do not call update_data with another scope."""
+{ON_ERROR}""",
+    GLOSSARY: f"""\
+1. Call update_data with scope="glossary" and no other argument. One call makes at most {GLOSSARY_BATCH}
+   requests to poe2db.tw and keeps its progress; nothing is written until the whole glossary is fetched.
+2. While `done` is false, call it again, at most {MAX_GLOSSARY_CALLS} calls in total; give one line of
+   progress per call (`fetched`, `left`).
+3. When `done` is true, report `records`, `refreshed`, `changed`, `added` and `kept_without_refresh`.
+   When it is still false after {MAX_GLOSSARY_CALLS} calls, tell the user to run the command again within 30
+   minutes: it continues where it stopped.
+{ON_ERROR}""",
+    LADDER: f"""\
+1. Call update_data with scope="ladder" and no other argument. It makes at most 14 requests to poe.ninja
+   and replaces the ladder snapshot; character and account names are never stored.
+2. Report `records` and `league`, and `previous_league` when the league changed.
+{ON_ERROR}""",
+}
 
 # ---------------------------------------------------------------------------
 # FUNCTIONS
@@ -129,7 +148,7 @@ def update_prompt_text(scope: str = "", names: str = "") -> str:
         reason = f"\n\n{wanted} cannot be updated by command: {NOT_UPDATABLE[wanted]}" if wanted in NOT_UPDATABLE else ""
         return UPDATE_NEEDS_SCOPE + reason
     if wanted not in GEM_SCOPES:
-        return f"Update the local Path of Exile 2 data, scope {wanted}.\n\n{UPDATE_PASSIVE_STEPS}"
+        return f"Update the local Path of Exile 2 data, scope {wanted}.\n\n{UPDATE_WHOLE_SET_STEPS[wanted]}"
     picked = [name.strip()[:120] for name in str(names or "").split(",") if name.strip()][:MAX_NAMES]
     arguments = f'scope="{wanted}"' + (f", names={picked!r}" if picked else "")
     return (f"Update the local Path of Exile 2 data, scope {wanted}.\n\n"

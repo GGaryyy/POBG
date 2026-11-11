@@ -31,7 +31,7 @@ to choose a URL or a path: the slug comes from the local index, the URL from the
 | 6 | READMEs | Low | poe.ninja endpoints are JSON and protobuf | **Fixed** (wording) |
 | 7 | `src/fetch_poe_ninja_builds.py` | Medium (etiquette) | Browser-style User-Agent on an undocumented poe.ninja API, next to a "polite, identifiable client" claim | **Fixed** (owner's decision): the fetcher sends the project User-Agent. poe.ninja accepted it, but its response format has changed and the fetcher reads no rows (README, roadmap) |
 | 8 | `data/` | Medium (policy) | Redistribution terms of poe2db content were not checked | **Addressed**: poe2db's General disclaimer states CC BY-NC-SA 3.0; both READMEs now say the data follows those terms, not MIT. Publishing the data remains the owner's decision |
-| 9 | `.mcp.json` + plugin manifest | Medium (unverified) | A second server might start from the root `.mcp.json` in a plugin install | **Checked**: loading the plugin from an unrelated folder shows exactly one `poe2db` server, connected. To be confirmed again on the GitHub install |
+| 9 | `.mcp.json` + plugin manifest | Medium (unverified) | A second server might start from the root `.mcp.json` in a plugin install | **Checked**: loading the plugin from an unrelated folder shows exactly one `pobg` server, connected. To be confirmed again on the GitHub install |
 | 10 | `src/tools/lookup.py` `refresh_gem` | Medium (design) | Writes into the plugin's own folder; lost on plugin update | **Documented** in both READMEs (Limits). A separate data folder is not built |
 | 11 | `src/tools/lookup.py` | Low | Record written before the page cache; a cache failure left disk and memory out of step | **Fixed**: cache first; test added |
 | 12 | `src/tools/mcp_server.py` | Low | `refresh_gem` marked non-destructive; no rate limit | **Fixed**: `destructiveHint: true`; the default fetch waits the catalog delay inside the refresh lock |
@@ -115,3 +115,42 @@ Fixed (`_freshest_gem`), with tests.
 **State after the fixes:** 1,064 tests passed (1,069 after the owner's follow-up decisions: one copy per gem, rules file moved). Open notes: the fixes above have not had an
 independent review; files are written one after another; the terminal collectors ignore the
 lock file.
+
+---
+
+# Third review — `ladder` and `glossary` scopes, one copy per gem, the rename
+
+Reviewer: the `reviewer` subagent, on the changes after the first commit. Offline only; it
+reproduced finding 1 with the test fixtures. **Its verdict: Needs Revision** (one High, a
+data-loss bug). Dispositions by the main session; the fixes were not reviewed again.
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| 1 | **High** | A refreshed glossary term replaced the whole old entry; a hover missing in one language erased that language's name and text, and the update still reported success | **Fixed**: field-by-field merge; a crawl that keeps Chinese text for fewer than half of the terms that had it is refused; tests assert that no field is lost. A real update running with the old code was stopped before it wrote |
+| 2 | Medium | Hover network errors were swallowed and retried on every call; with the network down one call could take very long and never progress | **Fixed**: five failures in a row end the call (progress kept); a hover that failed is asked once per run; the result reports `failed_requests` |
+| 3 | Medium | Ladder columns were not checked for equal length, so a short column would shift every later row | **Fixed**: a column whose length differs from the name column is dropped; the gates then refuse the snapshot |
+| 4 | Medium | A ladder snapshot from only the first result page, or without keystones, passed the gates | **Fixed**: a failed result page stops the run; no keystones, or less than half the rows of the previous snapshot of the same league, is refused |
+| 5 | Medium | The number of dictionary requests was set by the response; hashes went into the URL unchecked | **Fixed**: only `class`, `gem`, `keypassive`, once each, hash must be hex |
+| 6 | Low | `dps.skill` was assumed to index the gem dictionary | **Fixed**: used only when the column names the gem dictionary |
+| 7 | Low | Varints had no length cap | **Fixed**: over 10 bytes or unterminated is malformed |
+| 8 | Low | `assert` on network data | **Removed** |
+| 9 | Low | No glossary baseline switched the 90 % gate off | **Fixed**: refused, sent to the terminal |
+| 10 | Low | The `left` estimate for the glossary is rough and there is no server-side call cap | **Not changed**: the cap is in the description, the prompt and the skill |
+| 11 | Low | The run expired 30 minutes after it started, not after its last use; a folder without marker was reused | **Fixed** |
+| 12 | Low | `--kind all` stored spirit gems twice in a fresh folder; a corrupt spirit file raised an unexplained error | **Fixed**: owners are collected first; the error is reported. A gem that moved to the spirit data still shows under `removed` |
+| 13 | Low | `AttributeError` from an unexpected index-state shape was not caught | **Fixed** |
+| 14 | Low | `MAX_RECORDS` is checked between passes (593 rows); `rank` overlaps between passes | **Not changed**; noted |
+| 15 | Low | Outdated "run the fetcher script" message | **Fixed** |
+| 16 | Low | The fetcher's terminal summary printed one full record | **Removed** |
+| 17 | Low | Hover host matched by substring | **Fixed** (`urlparse`) |
+| 18 | Low | Nothing said what to do when 12 glossary calls were not enough | **Fixed** in the prompt and the skill |
+| 19 | Low | Old plugin name in two skill headings and two plan lines | **Fixed** |
+| 20 | Low | A test depended on a line wrap | **Fixed** |
+
+Test gaps it named were closed with tests for: text kept per field, the Chinese gate, repeated
+and single hover failures, column misalignment, a failed result page, a smaller snapshot, no
+keystones, extra and invalid dictionary references, hostile varints and headers, long
+dictionary strings, a missing glossary baseline, run expiry by last use, a corrupt spirit file,
+and collection order. Still untested: names in the traceback of an unexpected ladder shape.
+
+**State after the fixes:** 1,135 tests pass.

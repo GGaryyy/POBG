@@ -5,19 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 
 ## [0.7.0] - 2026-11-11
 
-First public release, as `poe2db-mcp`. Earlier versions were developed privately under another
-name; this repository starts from that work with a new history.
+First public release. Earlier versions were developed privately; this repository starts from
+that work with a new history.
 
 ### Added
 - Data commands (`docs/plan_data_commands.md`): `status` and `update <scope>`, as Claude Code
-  plugin skills (`/poe2db:status`, `/poe2db:update`, the latter user-invoked only) and as MCP
+  plugin skills (`/pobg:status`, `/pobg:update`, the latter user-invoked only) and as MCP
   prompts for every other client.
 - MCP tool `data_status(check_online)`: record counts, fetch dates and ages per data set,
   passive tree versions, ladder snapshot date and league; optionally the catalog probe.
 - MCP tool `update_data(scope, names, older_than_days, max_gems, dry_run)`: re-fetches one data
-  set (`skill_gems`, `spirit_gems`, `support_gems`, `passives`). A scope is required, gem
+  set (`skill_gems`, `spirit_gems`, `support_gems`, `passives`, `glossary`, `ladder`). A scope is required, gem
   scopes fetch at most `max_gems` pages per call and report what is left, a dry run writes
   nothing, and the server reloads its data afterwards (`src/tools/maintenance.py`).
+- `glossary` scope: at most 50 requests per call, resumable for 30 minutes from a cache under
+  `output/cache/`, written once when the whole glossary is fetched and at least 90 % of the
+  known terms were reached. Terms are merged field by field, so a term never loses text the
+  crawl did not get; a crawl that finds Chinese text for fewer than half of the terms that
+  had it is refused; five hover failures in a row end the call with its progress kept.
+- `ladder` scope: a new poe.ninja snapshot (about 14 requests), refused when it has fewer than
+  100 characters, mostly lacks class or skill names, has no keystones, is much smaller than
+  the previous snapshot of the same league, or when any result page failed.
 - `collect_kind(max_targets, dry_run, skip_recent_seconds)`: capped and dry incremental gem
   runs; gems left for later (or whose page failed) keep their previous listing row; a gem
   fetched recently is not selected again by name or age; summaries gain `targets_total`,
@@ -36,9 +44,9 @@ name; this repository starts from that work with a new history.
 - `.gitattributes` (LF everywhere), a `dev` dependency group (`pytest`, `pytest-cov`, `ruff`).
 
 ### Changed
-- Names: repository and Python project `poe2db-mcp`, plugin and MCP server `poe2db`
-  (skill `/poe2db:poe2-advisor`), scraper User-Agent
-  `poe2db-mcp/0.7 (+https://github.com/GGaryyy/poe2db-mcp; research scraper)`.
+- Names: repository `GGaryyy/POBG`, Python project, plugin and MCP server `pobg`
+  (skill `/pobg:poe2-advisor`), scraper User-Agent
+  `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)`.
 - Launchers use `uv run --frozen --no-dev` (plugin manifest, `.mcp.json`, documentation), so
   the server environment never includes the test tools.
 - `passives_with_stat` returns at most 100 nodes per list (was 200): 200 rows with
@@ -63,6 +71,10 @@ name; this repository starts from that work with a new history.
   wrote CRLF).
 - The poe.ninja ladder fetcher identifies itself with the project User-Agent instead of a
   browser string, drops the `Referer` and waits 0.8 s before each request.
+- The ladder fetcher reads poe.ninja's current response layout (columns in protobuf field 12,
+  dictionaries in the binary "NDIC" container) and takes the main skill from the site's DPS
+  skill column instead of the first listed skill. The snapshot was refreshed: 593 characters
+  of the league "Runes of Aldur" (it was 588 of "Fate of the Vaal", 2026-03-04).
 
 ### Fixed
 - The ladder fetcher printed one raw record, including its character and account name, in its
@@ -70,11 +82,6 @@ name; this repository starts from that work with a new history.
 - Over-long `lang` and `kind` arguments are refused instead of being echoed in the error.
 - The ladder fetcher's output path no longer depends on the working directory.
 - The test suite also collects on Python 3.10 (`tomli` fallback).
-
-### Known issues
-- poe.ninja changed its response format: the ladder fetcher receives data but reads no rows,
-  so the ladder snapshot (2026-03-04, an earlier league) cannot be refreshed and has no
-  update scope.
 
 ### Removed
 - The local LangGraph / Ollama pipeline, the FastAPI service, the FAISS indexes and

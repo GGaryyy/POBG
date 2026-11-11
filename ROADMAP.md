@@ -17,21 +17,34 @@ client connects without friction.
 | Bilingual index | English and Traditional Chinese names for gems, every passive node, classes, ascendancies and stat families |
 | Knowledge graph | Stat index ("which passives give X"), supports ↔ skills, glossary mentions |
 | Tools | Fourteen MCP tools: cited lookups, `verify_build`, `path_to` (passive route and point cost), `build_workflow`, `data_status`, `update_data` |
-| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time from inside the AI client |
+| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time (three gem kinds, passives, glossary, ladder) from inside the AI client |
 | Packaging | stdio MCP server started with `uv run`; Claude Code plugin with the `poe2-advisor` skill |
 | Client readiness (0.7.0) | Tool annotations and titles, tool-only fallback for the workflow, portability tests, Windows launcher tested, client guide |
 
-## Next
+## Next (in this order, decided 2026-11-11)
+
+The data covers gems, the passive tree and the glossary. poe2db holds much more, and a build's
+damage and survival depend on gear. Nothing below has been collected yet.
+
+| # | Phase | What | Why |
+|---|---|---|---|
+| 1 | Gear and modifier data | Equipment bases (18 weapon classes, armour, off-hand, jewellery, belts), modifiers and their tiers (including desecrated modifiers), unique items, jewels, flasks and charms | Gear and its modifiers decide damage and defences; it changes every league |
+| 1 | Gem and ascendancy gaps (same phase) | Lineage supports, meta skill gems (check whether already covered), ascendancy class pages, socketables (runes, soul cores, augments) | Completes what a build can name |
+| 2 | Export to Path of Building | A tool that turns a verified build (class, ascendancy, passive route from `path_to`, skill groups) into a Path of Building import code | The advice can be opened, checked and continued in PoB. The passive node ids are already PoB's |
+| 3 | Crafting and currency | Crafting methods, currency, essences, catalysts, omens, liquid emotions | How to obtain the gear, after the gear itself is known |
+
+Also open:
 
 | Item | Why |
 |---|---|
+| Patch notes as an update signal | poe2db's version pages list the gems and uniques each patch changed; a plain `update` cannot see number-only changes |
 | Confirm more clients | Cursor, VS Code, Gemini CLI and Codex CLI configurations are written from their docs but not tested |
 | Remote transport | ChatGPT and other hosted clients only reach remote MCP servers. Needs a decision on hosting first |
-| Ladder snapshot | It dates from 2026-03-04 and an earlier league. poe.ninja changed its response format, so the fetcher reads no rows; repair the parser (then add a `ladder` update scope) or drop the snapshot |
-| Glossary by command | The glossary collector needs cached gem pages and about 700 requests; make it incremental so `update` can cover it |
-| New passive tree versions | `status` reports a newer version, but adopting it needs a catalog change and a release; decide whether `update passives` may move to it |
-| More data | Items, uniques and ascendancy details beyond the passive tree |
+| Ladder depth | The snapshot is about 600 characters from the top of several rankings; poe.ninja's layout is undocumented and has changed once already, so the fetcher needs watching |
+| New passive tree versions | `status` reports a newer version, but adopting it needs a catalog change and a release; the 1.0 release will add classes, weapons and acts |
 | One-click install for Claude Desktop | An `.mcpb` bundle, once its support for uv projects is verified |
+
+Out of scope for the data: endgame mechanics, monsters, quests, lore and cosmetics.
 
 ## Not planned
 

@@ -25,7 +25,7 @@ MARKET = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(enc
 PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 PROJECT_MCP = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
 SKILL = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
-REPO_URL = "https://github.com/GGaryyy/poe2db-mcp"
+REPO_URL = "https://github.com/GGaryyy/POBG"
 # The advisor skill is the workflow for Claude Code, so it does not need the tool that returns the
 # workflow; the data tools belong to the status and update skills.
 WORKFLOW_TOOL = "build_workflow"
@@ -51,17 +51,17 @@ def test_versions_agree():
 
 
 def test_names_agree():
-    assert PLUGIN["name"] == server.name == "poe2db"
-    assert MARKET["name"] == PYPROJECT["project"]["name"] == "poe2db-mcp"
-    assert [p["name"] for p in MARKET["plugins"]] == ["poe2db"] and MARKET["plugins"][0]["source"] == "./"
-    assert list(PLUGIN["mcpServers"]) == list(PROJECT_MCP["mcpServers"]) == ["poe2db"]
+    assert PLUGIN["name"] == server.name == "pobg"
+    assert MARKET["name"] == PYPROJECT["project"]["name"] == "pobg"
+    assert [p["name"] for p in MARKET["plugins"]] == ["pobg"] and MARKET["plugins"][0]["source"] == "./"
+    assert list(PLUGIN["mcpServers"]) == list(PROJECT_MCP["mcpServers"]) == ["pobg"]
     assert PLUGIN["repository"] == REPO_URL and REPO_URL in USER_AGENT
     assert MARKET["owner"]["name"] == PLUGIN["author"]["name"]
     assert MARKET["metadata"]["description"] and PLUGIN["description"]
 
 
 def test_plugin_launcher_is_portable():
-    launcher = PLUGIN["mcpServers"]["poe2db"]
+    launcher = PLUGIN["mcpServers"]["pobg"]
     assert launcher["command"] == "uv"
     assert launcher["args"] == ["run", "--frozen", "--no-dev", "--directory", "${CLAUDE_PLUGIN_ROOT}", "python",
                                 "-m", "src.tools.mcp_server"]
@@ -85,7 +85,7 @@ def test_runtime_dependencies_stay_lean_and_tests_live_in_the_dev_group():
 
 
 def test_project_mcp_file_starts_the_server_without_the_dev_group():
-    launcher = PROJECT_MCP["mcpServers"]["poe2db"]
+    launcher = PROJECT_MCP["mcpServers"]["pobg"]
     assert launcher == {"command": "uv", "args": ["run", "--frozen", "--no-dev", "python", "-m",
                                                   "src.tools.mcp_server"]}
 
@@ -155,10 +155,10 @@ def test_status_skill_only_reads():
 def test_update_skill_is_user_invoked_and_requires_a_scope():
     head = frontmatter(UPDATE_SKILL)
     assert head["name"] == "update" and head["disable-model-invocation"] == "true"
-    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives>")
+    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|glossary|ladder>")
     body = UPDATE_SKILL.split("---", 2)[2]
     assert "$ARGUMENTS" in body and "do not call `update_data`" in body
-    assert set(TOOL_LIKE.findall(body)) == DATA_TOOLS
+    assert set(TOOL_LIKE.findall(body)) == {"update_data"}
     assert body.index("dry_run: true") < body.index("dry_run: false")
 
 
@@ -171,6 +171,12 @@ def test_skills_and_prompts_list_the_same_scopes():
 def test_update_limits_in_the_texts_match_the_code():
     from src.tools.maintenance import MAX_GEMS
     assert f"more than {build_workflow.CONFIRM_ABOVE}" in UPDATE_SKILL and f"at most {build_workflow.MAX_UPDATE_CALLS} calls" in UPDATE_SKILL
+    from src.tools.maintenance import GLOSSARY_BATCH
+    skill = " ".join(UPDATE_SKILL.split())
+    assert f"at most {build_workflow.MAX_GLOSSARY_CALLS} calls" in skill and f"at most {GLOSSARY_BATCH} requests" in skill
+    assert f"after {build_workflow.MAX_GLOSSARY_CALLS} calls" in skill and "within 30 minutes" in skill
+    description = " ".join({t.name: t for t in asyncio.run(server.list_tools())}["update_data"].description.split())
+    assert f"at most {GLOSSARY_BATCH} per call" in description and f"at most {build_workflow.MAX_GLOSSARY_CALLS} calls" in description
     assert f"(1-{MAX_GEMS})" in {t.name: t for t in asyncio.run(server.list_tools())}["update_data"].description
 
 

@@ -10,14 +10,14 @@ and an exact-match entity index (`data/catalog/entity_index.jsonl`). Use them; d
 PoE2 numbers from memory and do not re-crawl the whole site to refresh one gem.
 
 This skill is for maintaining the data. To answer player questions or write build advice from
-it, use the `poe2-advisor` skill (`skills/poe2-advisor/SKILL.md`) and the `poe2db` MCP tools.
+it, use the `poe2-advisor` skill (`skills/poe2-advisor/SKILL.md`) and the `pobg` MCP tools.
 
 All commands run from the repo root; prefix them with `uv run` (after `uv sync`) or activate
 `.venv` first.
 
 ## 0. Prefer the MCP tools
 
-When the `poe2db` MCP server is connected (project `.mcp.json`), use its tools instead of the
+When the `pobg` MCP server is connected (project `.mcp.json`), use its tools instead of the
 commands below: `lookup_entity`, `get_gem`, `get_passive`, `passives_with_stat`,
 `explain_keyword`, `gems_by`, `supports_for`, `path_to`, `refresh_gem`. They return records
 with source URLs.

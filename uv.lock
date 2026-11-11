@@ -958,7 +958,7 @@ wheels = [
 ]
 
 [[package]]
-name = "poe2db-mcp"
+name = "pobg"
 version = "0.7.0"
 source = { virtual = "." }
 dependencies = [

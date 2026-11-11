@@ -1,20 +1,19 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems or passives); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives> [gem names, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, glossary or ladder); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|glossary|ladder> [gem names, comma-separated]
 disable-model-invocation: true
 ---
 
-# poe2db data update
+# POBG data update
 
 Arguments: `$ARGUMENTS`
 
 The first word is the scope; anything after it is a comma-separated list of gem names.
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`:** do not call `update_data`. Tell the user to pick one scope, for example
-`/poe2db:update skill_gems`. The glossary and the ladder snapshot cannot be updated by command
-(`data_status` says why).
+`passives`, `glossary`, `ladder`:** do not call `update_data`. Tell the user to pick one scope,
+for example `/pobg:update skill_gems`.
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
 
@@ -33,6 +32,24 @@ The first word is the scope; anything after it is a comma-separated list of gem 
 1. Call `update_data` with `scope: "passives"` and no other argument. It makes 7 requests: the
    PathOfBuilding-PoE2 tree, two poe2db tree data files and four listing pages.
 2. Report `records`, `changed`, `added`, `removed` and the tree versions.
+
+## `glossary`
+
+1. Call `update_data` with `scope: "glossary"` and no other argument. One call makes at most
+   50 requests to poe2db.tw and keeps its progress; nothing is written until the whole
+   glossary is fetched.
+2. While `done` is false, call it again, at most 20 calls in total; give one line of progress
+   per call (`fetched`, `left`).
+3. When `done` is true, report `records`, `refreshed`, `changed`, `added` and
+   `kept_without_refresh`. When it is still false after 20 calls, tell the user to run the
+   command again within 30 minutes: it continues where it stopped.
+
+## `ladder`
+
+1. Call `update_data` with `scope: "ladder"` and no other argument. It makes at most 14
+   requests to poe.ninja and replaces the ladder snapshot; character and account names are
+   never stored.
+2. Report `records` and `league`, and `previous_league` when the league changed.
 
 ## Always
 

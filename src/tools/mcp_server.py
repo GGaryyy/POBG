@@ -1,10 +1,10 @@
 """
-mcp_server.py — MCP server exposing the poe2db lookup and build tools over stdio.
+mcp_server.py — the POBG MCP server: Path of Exile 2 lookup, build and data tools over stdio.
 
     python -m src.tools.mcp_server
 
 Any MCP client can start it (docs/clients.md); the Claude Code plugin manifest and the project
-.mcp.json register it as "poe2db". The lookup and build tools answer from local data and return
+.mcp.json register it as "pobg". The lookup and build tools answer from local data and return
 poe2db source URLs. Three tools can reach the network: `refresh_gem` (one gem page),
 `update_data` (one data set, a bounded number of pages) and `data_status` when asked to check
 the live sites.
@@ -37,7 +37,7 @@ from src.tools.maintenance import DEFAULT_MAX_GEMS, DataMaintenance
 # CONSTANTS
 # ---------------------------------------------------------------------------
 
-SERVER_NAME = "poe2db"
+SERVER_NAME = "pobg"
 INSTRUCTIONS = SERVER_INSTRUCTIONS
 # Hints for clients: refresh_gem and update_data fetch from the sources and replace stored records
 # (a destructive update in MCP terms); data_status only reads, but can probe the live sites.
@@ -254,14 +254,15 @@ def data_status(check_online: bool = False) -> dict:
 def update_data(scope: str, names: list[str] | None = None, older_than_days: int | None = None,
                 max_gems: int = DEFAULT_MAX_GEMS, dry_run: bool = False) -> dict:
     """Re-fetch one data set from its source and replace the local records. Call it only when the
-    user asks for an update. scope is required: skill_gems, spirit_gems, support_gems or passives
-    (one per call; there is no update for everything). Gem scopes fetch the listing, then the gems
-    that are new, changed on the listing, stored broken, named in `names`, or older than
-    `older_than_days`, at most max_gems (1-40) per call: `left` says how many remain, so call
-    again while it is above 0, at most 10 calls. A gem fetched in the last 15 minutes is not
-    fetched again for `names` or `older_than_days` (`recently_updated`). dry_run reports what
-    would be fetched and writes nothing. passives re-fetches the whole tree (7 requests) and
-    takes no other argument. A page that no longer parses aborts the update with nothing written."""
+    user asks for an update. scope is required, one per call (there is no update for everything):
+    skill_gems, spirit_gems, support_gems, passives, glossary or ladder. Gem scopes fetch the
+    listing, then the gems that are new, changed, broken, named in `names` or older than
+    `older_than_days`, at most max_gems (1-40) per call; repeat while `left` is above 0, at most
+    10 calls. A gem fetched in the last 15 minutes is not fetched again for `names` or
+    `older_than_days`. dry_run reports what would be fetched and writes nothing. The other scopes
+    take no other argument: passives (7 requests), ladder (at most 14, poe.ninja), glossary (at most
+    50 per call; repeat while `done` is false, at most 20 calls). A source that no longer parses
+    aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
     if not dry_run:

@@ -157,7 +157,7 @@ def test_ladder_source_and_renderer(tools):
 
 def test_missing_file(svc, tmp_path):
     tools = BuildTools(svc, builds_path=tmp_path / "absent.jsonl")
-    with pytest.raises(ServiceUnavailable, match="fetch_poe_ninja_builds"):
+    with pytest.raises(ServiceUnavailable, match="scope ladder"):
         tools.reference_builds()
 
 

@@ -18,6 +18,8 @@ from src.tools import maintenance as mnt
 from src.tools.lookup import DATA_LOCK, BadArgument, LookupService, ServiceUnavailable
 from tests.kg_support import FETCHED, GRAPH_REL, build_full_environment
 from tests.support import fixture_text, html, lowered_spec
+from tests.ninja_support import LEAGUE, FakeNinja, characters
+from tests.unit.test_collect_glossary import hover, link
 from tests.unit.test_probe import make_fake
 
 pytestmark = pytest.mark.integration
@@ -124,16 +126,16 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     assert isinstance(sets["skill_gems"]["oldest_age_days"], int) and sets["skill_gems"]["oldest_age_days"] >= 0
     assert (sets["spirit_gems"]["records"], sets["support_gems"]["records"]) == (1, 2)
     assert sets["passives"]["records"] == len(read_jsonl(base / NODES)) and sets["passives"]["update_scope"] == "passives"
-    assert sets["glossary"]["update_scope"] is None and "terminal only" in sets["glossary"]["note"]
-    assert sets["ladder"] == {"name": "ladder", "update_scope": None, "note": mnt.NOT_UPDATABLE["ladder"],
-                              "league": None, "records": 0, "oldest_fetched_at": None, "newest_fetched_at": None,
-                              "oldest_age_days": None}
+    assert sets["glossary"]["update_scope"] == "glossary" and sets["glossary"]["records"] == 7
+    assert sets["ladder"] == {"name": "ladder", "update_scope": "ladder", "league": None, "records": 0,
+                              "oldest_fetched_at": None, "newest_fetched_at": None, "oldest_age_days": None}
     assert sets["entity_index"]["records"] == len(read_jsonl(base / INDEX)) and sets["entity_index"]["newest_built_at"]
     assert status["version"] == __version__ and status["writable"] is True and status["data_dir"] == str(base / "data")
     assert status["catalog"] == {"spec_version": tool.spec.raw["spec_version"], "verified_at": tool.spec.raw["verified_at"],
                                  "pob2_tree_version": "0_5", "tree_data_version": "4.5"}
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives"]
-    assert set(status["not_updatable"]) == {"glossary", "ladder"}
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "glossary", "ladder"]
+    assert status["not_updatable"] == {}
+    assert {d["name"] for d in status["datasets"] if d["update_scope"]} == set(status["update_scopes"])
 
 
 def test_status_of_an_empty_folder_is_zeros_not_an_error(tmp_path):
@@ -278,13 +280,13 @@ def test_scope_ignores_case_and_spaces(tool, scope):
 
 
 @pytest.mark.parametrize("scope, message", [
-    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives"),
+    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, glossary, ladder"),
     (None, "scope is required"),
     ("all", "there is no update for everything"),
     ("gems", "scope is required"),
     ("x" * 5000, "scope is required"),
-    ("glossary", "glossary cannot be updated by command: terminal only"),
-    ("ladder", "ladder cannot be updated by command"),
+    ("items", "scope is required"),
+    ("entity_index", "scope is required"),
 ])
 def test_missing_or_unknown_scope_is_refused_without_a_request(tool, base, scope, message):
     web, before = Web(), snapshot(base)
@@ -432,12 +434,13 @@ def test_passives_update_replaces_the_tree_and_the_stat_index(tool, base, lenien
     assert passives["records"] == len(nodes) and passives["tree_data_version"] == "4.5"
 
 
+@pytest.mark.parametrize("scope", ["passives", "glossary", "ladder"])
 @pytest.mark.parametrize("options", [{"names": ["Blood Magic"]}, {"older_than_days": 3}, {"dry_run": True},
                                      {"max_gems": 5}])
-def test_passives_takes_no_gem_options(tool, options):
+def test_whole_set_scopes_take_no_gem_options(tool, scope, options):
     web = Web()
-    with pytest.raises(BadArgument, match="only apply to the gem scopes"):
-        tool.update("passives", fetch=web, **options)
+    with pytest.raises(BadArgument, match=f"only apply to the gem scopes; a {scope} update always"):
+        tool.update(scope, fetch=web, **options)
     assert web.calls == []
 
 
@@ -612,3 +615,372 @@ def test_status_without_the_classes_file_still_counts_the_nodes(tool, base):
     (base / "data" / "passive_tree" / "classes.json").unlink()
     passives = next(d for d in tool.status()["datasets"] if d["name"] == "passives")
     assert passives["records"] > 0 and passives["tree_data_version"] is None and passives["oldest_age_days"] is None
+
+
+# -- update: ladder ----------------------------------------------------------------------------
+
+LADDER = "data/community_builds/poe_ninja_builds.jsonl"
+
+
+@pytest.fixture
+def ninja(monkeypatch):
+    """poe.ninja as the ladder fetcher sees it; 120 synthetic characters with secret-looking names."""
+    site = FakeNinja()
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    return site
+
+
+def test_ladder_update_writes_a_snapshot_without_names(tool, base, ninja):
+    result = tool.update("ladder")
+    assert result == {"scope": "ladder", "dry_run": False, "records": 120, "league": LEAGUE, "previous_records": 0,
+                      "previous_league": None, "requests": len(ninja.calls)}
+    assert result["requests"] == 14                                # index, 10 result pages, 3 dictionaries
+    rows = read_jsonl(base / LADDER)
+    assert len(rows) == 120 and "Secret" not in (base / LADDER).read_text(encoding="utf-8")
+    assert sorted(rows[0]) == ["class", "fetched_at", "keystones", "league", "level", "main_skill", "rank",
+                               "skill_gems", "source"]
+    ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ladder")
+    assert ladder["records"] == 120 and ladder["league"] == LEAGUE and ladder["oldest_age_days"] == 0
+    assert not (base / "data" / DATA_LOCK_FILE).exists()
+
+
+def test_ladder_update_reports_the_league_it_replaced(tool, base, ninja):
+    (base / LADDER).parent.mkdir(parents=True)
+    (base / LADDER).write_text(fixture_text("jsonl", "poe_ninja_builds.jsonl"), encoding="utf-8")
+    old = read_jsonl(base / LADDER)
+    result = tool.update("ladder")
+    assert result["previous_records"] == len(old) and result["previous_league"] == old[0]["league"] != LEAGUE
+
+
+def test_ladder_update_prints_nothing_to_stdout_and_no_names_anywhere(tool, ninja, capsys):
+    tool.update("ladder")
+    out, err = capsys.readouterr()
+    assert out == "" and "Secret" not in err
+
+
+def test_small_ladder_answer_keeps_the_old_snapshot(tool, base, monkeypatch):
+    site = FakeNinja(characters(40))
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    before = snapshot(base)
+    with pytest.raises(ServiceUnavailable, match=r"returned 40 characters.*format has probably changed. The old snapshot is kept"):
+        tool.update("ladder")
+    assert snapshot(base) == before and mnt.MIN_LADDER_ROWS == 100
+
+
+def test_ladder_answer_without_class_names_keeps_the_old_snapshot(tool, base, monkeypatch):
+    site = FakeNinja(dictionaries={"gem": ["Arc", "Comet", "Fireball", "Leap Slam", "Spark"]})     # class dictionary empty
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    before = snapshot(base)
+    with pytest.raises(ServiceUnavailable, match="120 characters, 0 with a class"):
+        tool.update("ladder")
+    assert snapshot(base) == before
+
+
+def test_ladder_network_error_keeps_the_old_snapshot(tool, base, monkeypatch):
+    def down(url):
+        raise requests.ConnectionError("poe.ninja unreachable")
+
+    monkeypatch.setattr(mnt.ladder, "_get_json", down)
+    before = snapshot(base)
+    with pytest.raises(ServiceUnavailable, match="network error: poe.ninja unreachable. Nothing was written"):
+        tool.update("ladder")
+    assert snapshot(base) == before
+
+
+def test_ladder_answer_in_an_unexpected_shape_keeps_the_old_snapshot(tool, base, monkeypatch):
+    site = FakeNinja(index_state={"buildLeagues": [], "snapshotVersions": []})
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    before = snapshot(base)
+    with pytest.raises(ServiceUnavailable, match=r"unexpected shape \(RuntimeError: No build leagues"):
+        tool.update("ladder")
+    assert snapshot(base) == before
+
+
+# -- update: glossary --------------------------------------------------------------------------
+
+KEYWORDS = "data/kg/keywords.jsonl"
+HOVER = "https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}"
+HOVERS = {
+    ("us", "b1"): hover("Chaos_Damage", "Chaos Damage", "Chaos bypasses shields. " + link("us", "Wither", "e7", "Wither")),
+    ("us", "b2"): hover("Armour", "Armour", "Armour lowers physical hits."),
+    ("us", "f1"): hover("Cold_Damage", "Cold Damage", "Cold chills."),
+    ("us", "aa03"): hover("Stun", "Stun", "A stunned enemy stops. " + link("us", "Freeze", "c9", "Freeze")),
+    ("us", "aa04"): hover("Critical_Hits", "Critical Hit", "A lucky hit."),
+    ("us", "c9"): hover("Freeze", "Freeze", "Frozen solid."),
+    ("us", "e7"): hover("Wither", "Wither", "Withered enemies take more Chaos Damage."),
+    ("tw", "d1"): hover("Chaos_Damage", "混沌傷害", "混沌傷害無視護盾。"),
+    ("tw", "d2"): hover("Armour", "護甲", "護甲降低物理傷害。"),
+    ("tw", "9a"): hover("Cold_Damage", "冰冷傷害", "冰冷會冰緩。"),
+}
+CARD_PAGES = {"https://poe2db.tw/us/Keystone": "passive_keystone_cards_en.html",
+              "https://poe2db.tw/tw/Keystone": "passive_keystone_cards_zh.html",
+              "https://poe2db.tw/us/Notable": "passive_notable_cards_en.html",
+              "https://poe2db.tw/tw/Notable": "passive_notable_cards_zh.html"}
+GEM_LISTINGS = [f"https://poe2db.tw/{lang}/{page}" for lang in ("us", "tw") for page in ("Skill_Gems", "Spirit_Gems", "Support_Gems")]
+GEM_PAGES = ["https://poe2db.tw/us/Leap_Slam", "https://poe2db.tw/us/Unearth"]         # mention Stun / Critical_Hits / Minions
+FULL_GLOSSARY_REQUESTS = len(CARD_PAGES) + len(GEM_LISTINGS) + len(GEM_PAGES) + len(HOVERS)
+
+
+class GlossarySite:
+    def __init__(self, hovers=None):
+        self.calls: list[str] = []
+        self.hovers = HOVERS if hovers is None else hovers
+
+    def __call__(self, url: str) -> str:
+        self.calls.append(url)
+        if url in CARD_PAGES:
+            return fixture_text("html", CARD_PAGES[url])
+        if url in GEM_LISTINGS:
+            return '<div class="tab-pane" id="x"><p>' + "no glossary links here, only padding " * 3 + "</p></div>"
+        if url in GEM_PAGES:
+            return html("detail_skill_keywords.html")
+        for (lang, hash_), body in self.hovers.items():
+            if url == HOVER.format(lang=lang, hash=hash_):
+                return body
+        raise requests.ConnectionError(f"no fixture for {url}")
+
+
+@pytest.fixture
+def lenient_glossary(monkeypatch):
+    """Six of the seven fixture terms are reachable; the real 90 % rule is tested on its own."""
+    monkeypatch.setattr(mnt, "MIN_GLOSSARY_KEPT_RATIO", 0.8)
+
+
+def test_glossary_update_refreshes_reachable_terms_and_keeps_the_rest(tool, base, lenient_glossary):
+    old = {e["slug"]: e for e in read_jsonl(base / KEYWORDS)}
+    site = GlossarySite()
+    result = tool.update("glossary", fetch=site)
+    assert result == {"scope": "glossary", "dry_run": False, "done": True, "left": 0, "records": 8, "refreshed": 7,
+                      "changed": 6, "added": ["Wither"], "kept_without_refresh": 1, "failed_requests": 0,
+                      "index_entities": result["index_entities"], "requests": FULL_GLOSSARY_REQUESTS}
+    assert sorted(site.calls) == sorted([*CARD_PAGES, *GEM_LISTINGS, *GEM_PAGES,
+                                         *(HOVER.format(lang=lang, hash=h) for lang, h in HOVERS)])
+    new = {e["slug"]: e for e in read_jsonl(base / KEYWORDS)}
+    assert list(new) == sorted(new) and set(new) == set(old) | {"Wither"}
+    assert new["Chaos_Damage"]["text_en"].startswith("Chaos bypasses shields.") and new["Chaos_Damage"]["text_zh_tw"] == "混沌傷害無視護盾。"
+    assert new["Chaos_Damage"]["see_also"] == ["Wither"] and new["Stun"]["see_also"] == ["Freeze"]
+    assert new["Freeze"]["text_en"] == "Frozen solid." and new["Freeze"]["fetched_at"] > FETCHED     # found through Stun
+    assert new["Minions"] == old["Minions"]                                    # not reachable: kept as it was
+    # the fixture site has no Chinese hover for Stun or Critical Hit: their old Chinese text must survive
+    assert new["Stun"]["text_zh_tw"] == old["Stun"]["text_zh_tw"] and new["Stun"]["name_zh_tw"] == "暈眩"
+    assert new["Critical_Hits"]["text_zh_tw"] == old["Critical_Hits"]["text_zh_tw"]
+    assert new["Stun"]["text_en"].startswith("A stunned enemy stops.") and new["Freeze"]["name_zh_tw"] == "冰凍"
+    for field in ("name_en", "name_zh_tw", "text_en", "text_zh_tw"):
+        assert not [slug for slug in old if old[slug].get(field) and not new[slug].get(field)], field
+    assert index_names(base).get("Wither", "missing") is None                  # indexed, no Chinese name yet
+    assert not (base / "output" / "cache" / "glossary_update").exists()        # the run cache is gone
+
+
+def test_glossary_update_in_small_batches_fetches_every_page_exactly_once(tool, base, lenient_glossary, monkeypatch):
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+    before = snapshot(base)
+    calls, lefts = [], []
+    for _ in range(12):
+        site = GlossarySite()
+        result = tool.update("glossary", fetch=site)
+        calls += site.calls
+        lefts.append(result["left"])
+        if result["done"]:
+            break
+        assert result == {"scope": "glossary", "dry_run": False, "done": False, "left": result["left"], "fetched": 6,
+                          "note": result["note"], "requests": 6}
+        assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == \
+               {k: v for k, v in before.items() if k.startswith("data/")}          # nothing written until done
+    assert result["done"] is True and result["records"] == 8
+    assert len(calls) == FULL_GLOSSARY_REQUESTS == len(set(calls))             # resumed, never fetched twice
+    assert all(left > 0 for left in lefts[:-1]) and lefts[-1] == 0 and len(lefts) == 4
+
+
+def test_glossary_run_cache_that_is_too_old_is_started_again(tool, base, lenient_glossary, monkeypatch):
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+    first = GlossarySite()
+    assert tool.update("glossary", fetch=first)["done"] is False
+    run = base / "output" / "cache" / "glossary_update"
+    old = time.time() - mnt.GLOSSARY_RUN_SECONDS - 60
+    for path in run.rglob("*"):
+        if path.is_file():
+            os.utime(path, (old, old))
+    second = GlossarySite()
+    tool.update("glossary", fetch=second)
+    assert second.calls == first.calls                                         # the same first six pages again
+
+
+def test_glossary_that_reaches_too_few_known_terms_is_not_written(tool, base):
+    before = {k: v for k, v in snapshot(base).items() if k.startswith("data/")}
+    with pytest.raises(ServiceUnavailable, match=r"reached 6 of 7 known terms.*Nothing was written"):
+        tool.update("glossary", fetch=GlossarySite())
+    assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == before
+    assert not (base / "output" / "cache" / "glossary_update").exists() and mnt.MIN_GLOSSARY_KEPT_RATIO == 0.9
+
+
+def test_glossary_with_unreadable_hovers_is_not_written(tool, base, lenient_glossary):
+    broken = {key: "<div>maintenance page, please come back later, nothing to see here at all</div>" for key in HOVERS}
+    before = {k: v for k, v in snapshot(base).items() if k.startswith("data/")}
+    with pytest.raises(ServiceUnavailable, match="reached 0 of 7 known terms"):
+        tool.update("glossary", fetch=GlossarySite(broken))
+    assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == before
+
+
+def test_glossary_hovers_wait_the_shorter_hover_delay(tool, monkeypatch):
+    waits = []
+    monkeypatch.setattr(mnt, "fetch_html", lambda url, delay=0.0: waits.append((url, delay)) or "x")
+    tool._polite_fetch("https://cdn.poe2db.tw/cache2/us/Poe_Data_KeywordPopups_hover/b1")
+    tool._polite_fetch("https://poe2db.tw/us/Keystone")
+    robots = tool.spec.raw["robots"]
+    assert [delay for _, delay in waits] == [robots["hover_delay_seconds"], robots["polite_delay_seconds"]]
+
+
+def test_glossary_listing_page_that_fails_is_a_network_error_and_the_run_can_continue(tool, base, lenient_glossary):
+    class Flaky(GlossarySite):
+        down = True
+
+        def __call__(self, url):
+            if self.down and url == "https://poe2db.tw/us/Skill_Gems":
+                self.calls.append(url)
+                raise requests.HTTPError("500 for " + url)
+            return super().__call__(url)
+
+    site = Flaky()
+    before = {k: v for k, v in snapshot(base).items() if k.startswith("data/")}
+    with pytest.raises(ServiceUnavailable, match=r"network error: 500 for https://poe2db.tw/us/Skill_Gems. Nothing was written"):
+        tool.update("glossary", fetch=site)
+    assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == before
+    fetched_before_the_failure = len(site.calls) - 1
+    site.down = False
+    again = Flaky()
+    again.down = False
+    result = tool.update("glossary", fetch=again)
+    assert result["done"] is True and result["requests"] == FULL_GLOSSARY_REQUESTS - fetched_before_the_failure
+
+
+def test_glossary_run_is_resumed_while_it_was_active_recently(tool, base, lenient_glossary, monkeypatch):
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+    first = GlossarySite()
+    tool.update("glossary", fetch=first)
+    run = base / "output" / "cache" / "glossary_update"
+    old = time.time() - mnt.GLOSSARY_RUN_SECONDS - 60
+    os.utime(run / "started", (old, old))                       # started long ago, but worked on a moment ago
+    second = GlossarySite()
+    tool.update("glossary", fetch=second)
+    assert not set(second.calls) & set(first.calls)
+
+
+def test_glossary_run_folder_without_its_marker_is_not_trusted(tool, base, lenient_glossary, monkeypatch):
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+    first = GlossarySite()
+    tool.update("glossary", fetch=first)
+    (base / "output" / "cache" / "glossary_update" / "started").unlink()
+    second = GlossarySite()
+    tool.update("glossary", fetch=second)
+    assert second.calls == first.calls
+
+
+def test_glossary_that_loses_most_chinese_text_is_not_written(tool, base, lenient_glossary):
+    english_only = {key: body for key, body in HOVERS.items() if key[0] == "us"}
+    before = {k: v for k, v in snapshot(base).items() if k.startswith("data/")}
+    with pytest.raises(ServiceUnavailable, match=r"0 of 4 kept their Chinese text. Nothing was written"):
+        tool.update("glossary", fetch=GlossarySite(english_only))
+    assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == before
+    assert mnt.MIN_GLOSSARY_ZH_RATIO == 0.5
+
+
+def test_merged_term_keeps_every_field_the_crawl_did_not_get():
+    old = {"slug": "Stun", "name_en": "Stun", "name_zh_tw": "暈眩", "text_en": "old", "text_zh_tw": "舊", "see_also": ["A"],
+           "fetched_at": "2026-01-01"}
+    fresh = {"slug": "Stun", "name_en": "Stun", "name_zh_tw": None, "text_en": "new", "text_zh_tw": None, "see_also": [],
+             "fetched_at": "2026-02-02"}
+    assert mnt._merge_term(old, fresh) == {**old, "text_en": "new", "fetched_at": "2026-02-02"}
+    assert mnt._merge_term(None, fresh) is fresh and mnt._merge_term(old, None) is old
+
+
+def test_glossary_call_gives_up_after_several_hover_failures_in_a_row_and_keeps_its_progress(tool, base, lenient_glossary):
+    class HoversDown(GlossarySite):
+        def __call__(self, url):
+            if "Poe_Data_KeywordPopups_hover" in url:
+                self.calls.append(url)
+                raise requests.ConnectionError("cdn unreachable")
+            return super().__call__(url)
+
+    site = HoversDown()
+    before = {k: v for k, v in snapshot(base).items() if k.startswith("data/")}
+    with pytest.raises(ServiceUnavailable, match=r"5 requests in a row failed.*calling again later continues"):
+        tool.update("glossary", fetch=site)
+    assert sum("hover" in u for u in site.calls) == mnt.MAX_CONSECUTIVE_FAILURES == 5
+    assert {k: v for k, v in snapshot(base).items() if k.startswith("data/")} == before
+    assert (base / "output" / "cache" / "glossary_update" / "pages").exists()
+
+
+def test_hover_that_failed_is_asked_once_per_run_and_counted(tool, base, monkeypatch):
+    monkeypatch.setattr(mnt, "MIN_GLOSSARY_KEPT_RATIO", 0.7)        # five of the seven fixture terms are reached here
+    class OneDead(GlossarySite):
+        def __call__(self, url):
+            if url.endswith("/aa04"):
+                self.calls.append(url)
+                raise requests.ConnectionError("404")
+            return super().__call__(url)
+
+    site = OneDead()
+    result = tool.update("glossary", fetch=site)
+    assert sum(u.endswith("/aa04") for u in site.calls) == 1
+    assert result["done"] is True and result["failed_requests"] == 1 and result["kept_without_refresh"] == 2
+    new = {e["slug"]: e for e in read_jsonl(base / KEYWORDS)}
+    assert new["Critical_Hits"]["text_en"] == "A Critical Hit deals extra damage."      # its old text
+
+
+def test_glossary_without_a_local_file_is_sent_to_the_terminal(tool, base):
+    (base / KEYWORDS).unlink()
+    site = GlossarySite()
+    with pytest.raises(ServiceUnavailable, match="no local glossary to update; a first crawl is done in a terminal"):
+        tool.update("glossary", fetch=site)
+    assert site.calls == []
+
+
+def test_ladder_snapshot_much_smaller_than_the_last_one_of_the_same_league_is_refused(tool, base, ninja, monkeypatch):
+    tool.update("ladder")                                        # 120 rows
+    small = FakeNinja(characters(100)[:55] + characters(100, "Other")[:45])
+    assert len(small.rows) == 100
+    monkeypatch.setattr(mnt, "MIN_LADDER_SHARE_OF_PREVIOUS", 0.9)
+    monkeypatch.setattr(mnt.ladder, "_get_json", small.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", small.get_binary)
+    before = (base / LADDER).read_bytes()
+    with pytest.raises(ServiceUnavailable, match=r"returned 100 characters.*previous snapshot has 120"):
+        tool.update("ladder")
+    assert (base / LADDER).read_bytes() == before and "Secret" not in str(before)
+
+
+def test_ladder_without_any_keystone_is_refused(tool, base, monkeypatch):
+    site = FakeNinja(dictionaries={"class": ["Blood Mage", "Deadeye", "Titan"], "gem": ["Arc", "Comet", "Fireball", "Leap Slam", "Spark"]})
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
+    with pytest.raises(ServiceUnavailable, match="0 with keystones"):
+        tool.update("ladder")
+    assert not (base / LADDER).exists()
+
+
+def test_ladder_result_page_that_fails_keeps_the_old_snapshot(tool, base, monkeypatch):
+    site = FakeNinja()
+    pages = []
+
+    def flaky(url):
+        if "/search" in url:
+            pages.append(url)
+            if len(pages) == 3:
+                raise requests.HTTPError("429 Too Many Requests")
+        return site.get_binary(url)
+
+    monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
+    monkeypatch.setattr(mnt.ladder, "_get_binary", flaky)
+    with pytest.raises(ServiceUnavailable, match="network error: 429 Too Many Requests. Nothing was written"):
+        tool.update("ladder")
+    assert not (base / LADDER).exists() and len(pages) == 3
+
+
+def test_unreadable_spirit_gem_file_stops_a_skill_gem_update(tool, base):
+    (base / "data" / "spirit_gems" / "Spirit_Gems_Detail.jsonl").write_text("{broken\n", encoding="utf-8")
+    with pytest.raises(ServiceUnavailable, match="a local gem file is unreadable"):
+        tool.update("skill_gems", fetch=Web())
+    assert slugs(base) == ["Contagion", "Leap_Slam", "Unearth"]

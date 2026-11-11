@@ -459,7 +459,7 @@ class BuildTools:
             if self._builds is None:
                 if not self.builds_path.exists():
                     raise ServiceUnavailable(
-                        "community builds missing; run python src/fetch_poe_ninja_builds.py")
+                        "community builds missing; update the ladder data (update_data with scope ladder)")
                 try:
                     builds = _read_builds(self.builds_path)
                     modified = self.builds_path.stat().st_mtime

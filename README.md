@@ -1,10 +1,11 @@
-# poe2db-mcp
+# POBG — Path of Exile 2 data and build tools for AI assistants
 
 **English** | [繁體中文](README.zh-TW.md)
 
-An unofficial [Model Context Protocol](https://modelcontextprotocol.io) server that lets an AI
-assistant look up accurate **Path of Exile 2** data, cite where each fact came from, and explain
-it — in English or Traditional Chinese.
+POBG is an unofficial [Model Context Protocol](https://modelcontextprotocol.io) server and
+Claude Code plugin. It lets an AI assistant look up accurate **Path of Exile 2** data, cite where
+each fact came from, and give build advice in which every gem and passive has been checked
+against that data — in English or Traditional Chinese.
 
 The data is a local copy of [poe2db.tw](https://poe2db.tw) (gems, passive tree, glossary), the
 [PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) passive
@@ -32,18 +33,18 @@ first start creates a Python environment from the versions pinned in `uv.lock`: 
 dependencies (`mcp`, `networkx`, `requests`, `beautifulsoup4`), about 40 packages with
 their own dependencies.
 
-**Claude Code** (plugin: the MCP server plus the `/poe2db:poe2-advisor` skill)
+**Claude Code** (plugin: the MCP server plus the `/pobg:poe2-advisor` skill)
 
 ```
-/plugin marketplace add GGaryyy/poe2db-mcp
-/plugin install poe2db@poe2db-mcp
+/plugin marketplace add GGaryyy/POBG
+/plugin install pobg@pobg
 ```
 
 **Any other MCP client** (Claude Desktop, Cursor, VS Code, Gemini CLI, Codex CLI, …): clone the
 repo, then register a stdio server that runs
 
 ```
-uv run --frozen --no-dev --directory /absolute/path/to/poe2db-mcp python -m src.tools.mcp_server
+uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
 
 For most clients that is this JSON:
@@ -51,9 +52,9 @@ For most clients that is this JSON:
 ```json
 {
   "mcpServers": {
-    "poe2db": {
+    "pobg": {
       "command": "uv",
-      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/poe2db-mcp",
+      "args": ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG",
                "python", "-m", "src.tools.mcp_server"]
     }
   }
@@ -69,14 +70,14 @@ locally over stdio.
 ## Commands
 
 Two commands look after the data from inside the AI client. In Claude Code they are plugin
-skills; every other client gets them as MCP prompts of the `poe2db` server (the "+" menu in
-Claude Desktop, `/poe2db.status` in VS Code, slash commands in Gemini CLI).
+skills; every other client gets them as MCP prompts of the `pobg` server (the "+" menu in
+Claude Desktop, `/pobg.status` in VS Code, slash commands in Gemini CLI).
 
 | Command | Claude Code | What it does |
 |---|---|---|
-| status | `/poe2db:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. On request it also checks the live sites (about 19 requests): do the pages still parse, is there a newer passive tree |
-| update | `/poe2db:update <scope> [names]` | Re-fetches **one** data set. Shows what would be fetched first, then updates it |
-| advisor | `/poe2db:poe2-advisor` | Not a data command: the instructions Claude Code follows to answer PoE2 questions and write cited builds. It is applied automatically |
+| status | `/pobg:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. On request it also checks the live sites (about 19 requests): do the pages still parse, is there a newer passive tree |
+| update | `/pobg:update <scope> [names]` | Re-fetches **one** data set. Shows what would be fetched first, then updates it |
+| advisor | `/pobg:poe2-advisor` | Not a data command: the instructions Claude Code follows to answer PoE2 questions and write cited builds. It is applied automatically |
 
 `update` always needs a scope; there is no "update everything":
 
@@ -84,8 +85,10 @@ Claude Desktop, `/poe2db.status` in VS Code, slash commands in Gemini CLI).
 |---|---|---|
 | `skill_gems`, `spirit_gems`, `support_gems` | The listing page, then only gems that are new, changed on the listing, named by you, or older than N days | 1 + at most 20 gems (40 at most); repeated until nothing is left |
 | `passives` | The PathOfBuilding-PoE2 tree, poe2db's two tree data files and four listing pages; the stat index is rebuilt | 7 |
+| `glossary` | Every glossary term (English and Chinese hover snippets), found through the listing pages and a few gem pages | At most 50 per call (under a minute), about 750 in all; repeated until done, and written only when the whole glossary has been fetched |
+| `ladder` | A new poe.ninja snapshot of the current league: class, level, skills, keystones. No character or account names are kept | At most 14 |
 
-Examples: `/poe2db:update skill_gems`, `/poe2db:update support_gems Fire Attunement, Brutality I`,
+Examples: `/pobg:update skill_gems`, `/pobg:update support_gems Fire Attunement, Brutality I`,
 "update the skill gems older than 30 days".
 
 Good to know:
@@ -100,8 +103,9 @@ Good to know:
   spirit gem, so it is updated by `spirit_gems`.
 - Only one update runs on a data folder at a time, also across two clients using the same
   folder. A data set that has no local file yet needs a first crawl from a terminal.
-- The glossary and the ladder snapshot have no command (status says why); a full gem crawl and
-  the glossary are done from a terminal, see "Updating the data".
+- A first full gem crawl is done from a terminal, see "Updating the data".
+- A glossary update keeps its progress under `output/cache/` for 30 minutes, so an interrupted
+  one continues instead of starting over. Terms it cannot reach keep their previous text.
 - A newer passive tree *version* is reported by status but not adopted by `update`; that needs
   a new release of this project.
 - The update changes the copy of `data/` the server runs from. In a plugin install a plugin
@@ -122,7 +126,7 @@ Good to know:
 | `build_workflow` | the step-by-step workflow for a cited build answer, for clients that cannot use MCP prompts |
 | `refresh_gem` | re-fetches one gem page from poe2db and replaces the local record |
 | `data_status` | what the local data holds and how old it is; on request, a check of the live sites |
-| `update_data` | re-fetches one data set (a scope is required), a bounded number of pages per call |
+| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, glossary, ladder), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the commands above). Only
 `refresh_gem` and `update_data` change anything; the other twelve tools are marked read-only,
@@ -143,23 +147,22 @@ normally after a game patch. A running server makes no network request unless `r
 | poe2db hover snippets | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}` (`lang` = `us` / `tw`) and `…/Poe_Data_GemEffects_hover/{hash}` | Glossary explanations (357 terms, English + Chinese); gem hovers only to find the Chinese glossary links | About 1.2 KB each, 0.3 s apart, when the glossary is rebuilt |
 | poe2db passive tree data | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` and `data_tw.json` (version read from `https://poe2db.tw/tw/passive-skill-tree/` and its script on `cdn.poe2db.tw/js/`) | Chinese name and stat lines of every passive node, class and ascendancy names, point limits | 2 files when the passive tree is rebuilt; the viewer page and script only when the probe checks for a new version |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json` (the probe also lists `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`) | Passive tree structure: every node, connections, names, stats, keystone / notable flags, class starts, ascendancies, positions | 1 file when the passive tree is rebuilt |
-| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`, `https://poe.ninja/poe2/api/builds/{version}/search`, `https://poe.ninja/poe2/api/builds/dictionary/{hash}` | Ladder characters: class, level, main skill, gems, keystones, league, rank. Character and account names are discarded before anything is written | One snapshot of 588 characters taken on 2026-03-04, league "Fate of the Vaal" (18 requests, 0.8 s apart). Not refreshed since; see below |
+| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`, `https://poe.ninja/poe2/api/builds/{version}/search`, `https://poe.ninja/poe2/api/builds/dictionary/{hash}` | Ladder characters: class, level, main skill, gems, keystones, league, rank. Character and account names are discarded before anything is written | About 600 characters per snapshot (the top 100 of several sort orders): at most 14 requests, 0.8 s apart, when `update ladder` is run. The snapshot in this repo is from 2026-11-11, league "Runes of Aldur" |
 
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `poe2db-mcp/0.7 (+https://github.com/GGaryyy/poe2db-mcp; research scraper)`, wait 0.8 s
+  `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
   requested. Individual passive node pages (1.2 MB each) are deliberately not crawled.
-- The poe.ninja fetcher reads the JSON / protobuf endpoints the poe.ninja site itself uses; they
-  are not a documented public API. It sends the same identifying `User-Agent` and 0.8 s delay,
-  which poe.ninja accepted on 2026-11-11. The site has since changed its response format, so the
-  fetcher currently reads no rows and the snapshot (from an earlier league) cannot be refreshed
-  until the parser is updated.
-- Snapshot in this repo: gems and glossary fetched 2026-11-10, passive tree `0_5` (poe2db tree
-  data `4.5`), ladder 2026-03-04. Every record returned by a tool states its own `fetched_at`.
+- The poe.ninja fetcher reads the endpoints the poe.ninja site itself uses (JSON, protobuf and a
+  binary dictionary format). They are not a documented public API and their layout has changed
+  before, so the fetcher refuses to write a snapshot that looks wrong. It sends the same
+  identifying `User-Agent` and waits 0.8 s between requests.
+- Snapshot in this repo: gems fetched 2026-11-10, glossary and ladder 2026-11-11, passive tree
+  `0_5` (poe2db tree data `4.5`). Every record returned by a tool states its own `fetched_at`.
 
 If you maintain one of these sites and want the project to change how it uses your data,
 please open an issue.
@@ -167,7 +170,7 @@ please open an issue.
 ## Updating the data
 
 Day to day, use the `status` and `update` commands above. The terminal route below is for a
-first full crawl, for the glossary, and for work on the collectors.
+first full crawl and for work on the collectors.
 
 ```bash
 uv sync                                           # once: adds pytest and ruff to .venv
@@ -198,7 +201,6 @@ data), `docs/` (client guide, flow diagrams, changelog). See `ROADMAP.md` for wh
 
 - The data is a snapshot. Balance patches change numbers; check `fetched_at` (or run `status`)
   and use `update`, `refresh_gem` or the collectors.
-- The ladder snapshot is from an earlier league and cannot be refreshed at the moment.
 - `refresh_gem` and `update` change the copy of `data/` the server runs from. In a plugin install that is
   the plugin's own folder, which a plugin update replaces; in a clone it shows up as a
   modified file in git.
@@ -206,6 +208,8 @@ data), `docs/` (client guide, flow diagrams, changelog). See `ROADMAP.md` for wh
   passive points or jewels.
 - `verify_build` checks that names exist and returns their facts. It does not judge whether a
   build is strong.
+- The ladder is a sample (about 600 characters near the top of several rankings), not the
+  whole ladder.
 - Items, uniques, crafting and endgame content are not covered.
 
 ## License

@@ -42,7 +42,8 @@ def test_summary_prints_no_names(capfdbinary):
     fetcher._print_summary([RECORD, {**RECORD, "rank": 2}])
     out, err = capfdbinary.readouterr()
     assert b"Secret" not in out + err
-    assert b"Titan" in out and b"Leap Slam" in out
+    assert b"Titan" in out and b"main_skill  : 2/2" in out
+    assert b"Leap Slam" not in out                         # counts only, no record is printed
 
 
 def test_output_path_does_not_depend_on_the_working_directory():
@@ -53,5 +54,5 @@ def test_output_path_does_not_depend_on_the_working_directory():
 def test_requests_identify_the_project_and_do_not_pose_as_a_browser():
     from src.scrapers.common import USER_AGENT
     assert fetcher.HEADERS == {"User-Agent": USER_AGENT, "Accept": "*/*"}
-    assert "poe2db-mcp" in USER_AGENT and "Mozilla" not in USER_AGENT and "Chrome" not in USER_AGENT
+    assert USER_AGENT.startswith("POBG/") and "Mozilla" not in USER_AGENT and "Chrome" not in USER_AGENT
     assert fetcher.REQUEST_DELAY >= 0.8
