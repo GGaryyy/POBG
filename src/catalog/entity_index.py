@@ -121,7 +121,8 @@ def build_entity_index(
     built_at = now_iso()
     entities = _gem_entities(spec, data_dir, zh_names, built_at)
     entities += _passive_entities(spec, nodes, zh_names, passive_slugs or {}, built_at)
-    entities += _keyword_entities(data_dir, built_at)
+    entities += _keyword_entities(spec, data_dir, built_at)
+    entities += _item_entities(spec, data_dir, built_at)
     _check_unique(entities)
     return entities
 
@@ -190,18 +191,39 @@ def _node_slug(node: dict, node_id: str, name: str, passive_slugs: dict[str, str
     return node_id if not node_id.isdigit() else _passive_slug(name, passive_slugs, known)
 
 
-def _keyword_entities(data_dir: Path, built_at: str) -> list[Entity]:
+def _item_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity]:
+    """Gear bases and unique items, when the item data exists."""
+    source = spec.raw["sources"].get("item_pages")
+    out: list[Entity] = []
+    for kind, key in (("item_base", "bases_file"), ("item_unique", "uniques_file")):
+        rel = Path(source[key]) if source else None
+        path = data_dir / rel.relative_to("data") if rel else None
+        if path is None or not path.exists():
+            continue
+        for rec in read_jsonl(path):
+            out.append(Entity(
+                slug=rec["slug"], kind=kind, name_en=rec["name"], name_zh_tw=rec.get("name_zh_tw"),
+                url_en=rec.get("url_en"), url_zh_tw=rec.get("url_zh_tw"),
+                record_file=rel.as_posix(), record_key={"slug": rec["slug"]},
+                aliases=make_aliases(rec["name"], rec.get("name_zh_tw")), built_at=built_at,
+            ))
+    return out
+
+
+def _keyword_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity]:
     path = data_dir / "kg" / "keywords.jsonl"
     if not path.exists():
         return []
     out = []
+    subterms = spec.subterms()
     for kw in read_jsonl(path):
         name = kw.get("name_en") or kw["slug"].replace("_", " ")
+        kinds = [n for term in subterms.get(kw["slug"], []) for n in (term["en"], term["en"] + "s", term.get("zh_tw"))]
         out.append(Entity(
             slug=kw["slug"], kind="keyword", name_en=name, name_zh_tw=kw.get("name_zh_tw"),
             url_en=kw.get("url_en"), url_zh_tw=kw.get("url_zh_tw"),
             record_file="data/kg/keywords.jsonl", record_key={"slug": kw["slug"]},
-            aliases=make_aliases(name, kw.get("name_zh_tw")), built_at=built_at,
+            aliases=make_aliases(name, kw.get("name_zh_tw"), *kinds), built_at=built_at,
         ))
     return out
 

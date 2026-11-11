@@ -18,8 +18,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src.catalog.entity_index import PASSIVE_TYPE_TO_KIND, make_aliases
-from src.catalog.spec import GEM_KINDS
+from src.catalog.spec import GEM_KINDS, ITEM_KINDS
 from src.scrapers.common import clean_text
+from src.tools.items import ITEM_KIND_NAMES, AmbiguousItem, ItemLookup, item_fact_lines
 from src.tools.pathing import PassivePathfinder
 from src.tools.lookup import (
     BadArgument,
@@ -42,8 +43,14 @@ from src.tools.lookup import (
 # ---------------------------------------------------------------------------
 
 MAX_NAMES = 40
+DETAIL_LEVELS = ("full", "brief")
+# brief: enough to know what passed and how to cite it, for a caller that already holds the records
+BRIEF_KEYS = ("input", "slug", "id", "kind", "type", "name", "name_zh_tw", "item_class", "affix", "family", "cite")
+MAX_AFFIXES = 60     # ten gear slots (two rings) with 3 prefixes + 3 suffixes each, in one call
 MAX_NAME_LEN = 120
 MAX_SUGGESTIONS = 3
+MAX_PER_AFFIX = 3    # a rare item holds at most 3 prefixes and 3 suffixes
+AFFIX_SEPARATOR = re.compile(r"\s*[:：]\s*")
 MAX_ECHO_LEN = 80
 COMMON_TOP = 10
 MAX_STAT_LINES = 6     # stat lines of a gem kept in a verified fact
@@ -103,18 +110,24 @@ class BuildTools:
         self._builds_date: str | None = None   # date of the snapshot file, read with the rows
         self._builds_lock = threading.Lock()
         self._finder: PassivePathfinder | None = None
+        self.items = ItemLookup(lookup)
         self._stats_by_node: dict[str, list[dict]] | None = None
 
     # -- verification ---------------------------------------------------------
 
     def verify_build(self, gems: list[str] | None = None, passives: list[str] | None = None,
-                     lang: str | None = None) -> dict:
+                     lang: str | None = None, items: list[str] | None = None,
+                     affixes: list[str] | None = None, detail: str = "full") -> dict:
         """Facts and sources for every name that matches local data exactly; the rest is
-        reported in `unverified` with close names as suggestions."""
+        reported in `unverified` with close names as suggestions. `affixes` are "item: modifier"
+        strings, checked against what that item class can roll."""
+        if detail not in DETAIL_LEVELS:
+            raise BadArgument(f"detail must be one of {DETAIL_LEVELS}")
         gems, passives = _names(gems, "gems"), _names(passives, "passives")
-        if not gems and not passives:
-            raise BadArgument("give at least one gem or passive name")
-        lang = _lang(lang) or ("zh-tw" if any(is_cjk(n) for n in gems + passives) else "en")
+        items, affixes = _names(items, "items"), _names(affixes, "affixes", MAX_AFFIXES)
+        if not (gems or passives or items or affixes):
+            raise BadArgument("give at least one gem, passive, item or affix")
+        lang = _lang(lang) or ("zh-tw" if any(is_cjk(n) for n in gems + passives + items + affixes) else "en")
         verified_gems, verified_passives, unverified, seen = [], [], [], set()
         for name in gems:
             fact = self.gem_fact(name)
@@ -136,14 +149,97 @@ class BuildTools:
                 unverified.append(self.unverified_entry(name, "passive"))
             else:
                 verified_passives.append(fact)
-        sources = number_sources(verified_gems + verified_passives)
+        verified_items, verified_affixes = self._verify_gear(items, affixes, unverified, seen)
+        sources = number_sources(verified_gems + verified_passives + verified_items + verified_affixes)
+        verified_affixes = [_compact_affix(fact, lang) for fact in verified_affixes]
+        verified = {"gems": verified_gems, "passives": verified_passives}
+        if items or affixes:
+            verified.update(items=verified_items, affixes=verified_affixes)
+        verified = {kind: [_returned_fact(fact, detail) for fact in facts] for kind, facts in verified.items()}
         return {
             "lang": lang,
-            "verified": {"gems": verified_gems, "passives": verified_passives},
+            "verified": verified,
             "unverified": unverified,
             "sources": sources,
             "sources_markdown": render_sources(sources, unverified, lang),
         }
+
+    def _verify_gear(self, items: list[str], affixes: list[str], unverified: list[dict], seen: set) -> tuple[list, list]:
+        verified_items, verified_affixes = [], []
+        for name in items:
+            try:
+                fact = self.item_fact(name)
+            except AmbiguousItem as exc:
+                unverified.append({"input": name, "expected": "item", "reason": str(exc),
+                                   "suggestions": [{"slug": option} for option in exc.options]})
+                continue
+            key = ("item", fact["slug"]) if fact else ("unknown item", _name_key(name))
+            if key in seen:
+                continue
+            seen.add(key)
+            if fact is None:
+                unverified.append(self._unknown_item(name))
+            else:
+                verified_items.append(fact)
+        for entry in affixes:
+            fact = self.affix_fact(entry)
+            if fact.get("expected") == "affix":
+                unverified.append(fact)
+            else:
+                problem = _affix_conflict(fact, verified_affixes)
+                if problem:
+                    unverified.append({"input": entry, "expected": "affix", "reason": problem, "suggestions": []})
+                elif not any(_same_modifier(fact, kept) for kept in verified_affixes):
+                    verified_affixes.append(fact)
+        return verified_items, verified_affixes
+
+    def _unknown_item(self, name: str) -> dict:
+        """An item name with no match; an item class given as an item gets the reason spelled out."""
+        entry = self.unverified_entry(name, "item")
+        try:
+            self.items.resolve_page(name)
+        except (NotFound, BadArgument):
+            return entry
+        return {**entry, "reason": "this is an item class, not an item: `items` takes base or unique names; "
+                                   "a class goes before the colon in `affixes`"}
+
+    def item_fact(self, name: str) -> dict | None:
+        """Trimmed record of one base or unique item, or None when the name has no local match."""
+        try:
+            kind, record = self.items._resolve(name)
+        except NotFound:
+            return None
+        return {"input": name, "slug": record["slug"], "kind": ITEM_KIND_NAMES[kind], "name": record["name"],
+                "name_zh_tw": record.get("name_zh_tw"), "item_class": record.get("item_class"),
+                "base": record.get("base"), "requires_level": record.get("requires_level"),
+                "lines": item_fact_lines(kind, record),
+                "sources": _sources(record.get("url_en"), record.get("url_zh_tw"), record.get("fetched_at"))}
+
+    def affix_fact(self, entry: str) -> dict:
+        """A verified target modifier for an item class, or an `unverified` entry (expected: affix)."""
+        parts = AFFIX_SEPARATOR.split(entry, maxsplit=1)
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise BadArgument(f"an affix must be written as 'item: modifier', e.g. 'Rings: +#% to Fire Resistance'; got {entry!r}")
+        item, text = parts
+        try:
+            check = self.items.check_affix(item, text)
+        except AmbiguousItem as exc:
+            return {"input": entry, "expected": "affix", "reason": str(exc),
+                    "suggestions": [{"item": option} for option in exc.options]}
+        except NotFound as exc:
+            return {"input": entry, "expected": "affix", "reason": str(exc), "suggestions": []}
+        if not check["matched"]:
+            return {"input": entry, "expected": "affix", "reason": check["reason"], "suggestions": check["suggestions"]}
+        family, page = check["family"], check["item_class"]
+        best, lowest = family["tiers"][0], family["tiers"][-1]
+        return {"input": entry, "item": clean_text(item), "item_class": page["slug"], "family": family["family"],
+                "group": family["group"], "affix": family["affix"], "modifier": family["template"],
+                "tiers": len(family["tiers"]),
+                "best": {k: best[k] for k in ("text", "text_zh_tw", "level")},
+                "lowest": {k: lowest[k] for k in ("text", "text_zh_tw", "level")},
+                "name": f"{page['label']} modifiers",
+                "name_zh_tw": f"{page['label_zh_tw']}詞綴" if page.get("label_zh_tw") else None,
+                "sources": check["sources"]}
 
     def gem_fact(self, name_or_slug: str) -> dict | None:
         """Trimmed record of one gem, or None when the name has no exact local match."""
@@ -175,7 +271,7 @@ class BuildTools:
         }
 
     def unverified_entry(self, name: str, expected: str) -> dict:
-        kinds = GEM_KINDS if expected == "gem" else PASSIVE_KINDS
+        kinds = {"gem": GEM_KINDS, "passive": PASSIVE_KINDS, "item": ITEM_KINDS}[expected]
         hits = self.lookup.index.find(clean_text(name), limit=20)
         other = next((h for h in hits if h["match_type"] == "exact" and h["kind"] not in kinds), None)
         reason = (f"this name is a {other['kind']}, not a {expected}" if other
@@ -570,13 +666,13 @@ def _md_url(url: str) -> str:
     return str(url).replace(" ", "%20").replace("(", "%28").replace(")", "%29").replace("<", "%3C").replace(">", "%3E")
 
 
-def _names(values: list[str] | None, label: str) -> list[str]:
+def _names(values: list[str] | None, label: str, limit: int = MAX_NAMES) -> list[str]:
     if values is None:
         return []
     if isinstance(values, str) or not isinstance(values, (list, tuple)):
         raise BadArgument(f"{label} must be a list of names")
-    if len(values) > MAX_NAMES:
-        raise BadArgument(f"{label} has {len(values)} names; the limit is {MAX_NAMES}")
+    if len(values) > limit:
+        raise BadArgument(f"{label} has {len(values)} names; the limit is {limit}")
     out = []
     for value in values:
         if not isinstance(value, str) or not value.strip():
@@ -642,3 +738,42 @@ def _name_key(name: str) -> str:
     """Folded spelling of a name, so 'Mega Slam' and 'mega slam' are reported once."""
     aliases = make_aliases(name)
     return aliases[-1] if aliases else name.casefold()
+
+
+def _same_modifier(fact: dict, kept: dict) -> bool:
+    return (fact["item"].casefold(), fact["family"], fact["group"], fact["modifier"]) == \
+        (kept["item"].casefold(), kept["family"], kept["group"], kept["modifier"])
+
+
+def _affix_conflict(fact: dict, kept: list[dict]) -> str | None:
+    """Why this modifier cannot join the ones already verified for the same item, or None.
+    Counted per item as written (two rings are two items); a rare item holds at most
+    MAX_PER_AFFIX prefixes and MAX_PER_AFFIX suffixes, and one modifier per family."""
+    same_item = [k for k in kept if k["item"].casefold() == fact["item"].casefold()]
+    for other in same_item:
+        if (other["family"], other["group"]) == (fact["family"], fact["group"]) and other["modifier"] != fact["modifier"]:
+            return f"same modifier family as {other['input']!r}; an item cannot have both"
+    if any(_same_modifier(fact, other) for other in same_item):
+        return None
+    if fact["affix"] and sum(1 for k in same_item if k["affix"] == fact["affix"]) >= MAX_PER_AFFIX:
+        return (f"{fact['item']} already has {MAX_PER_AFFIX} {fact['affix']}es in this list; an item holds at most "
+                f"{MAX_PER_AFFIX} prefixes and {MAX_PER_AFFIX} suffixes")
+    return None
+
+
+def _compact_affix(fact: dict, lang: str) -> dict:
+    """An affix fact as returned: its page is in the numbered sources (`cite`), and the tier texts
+    are given in the answer language only, so a full set of gear fits in one response."""
+    key = "text_zh_tw" if lang == "zh-tw" else "text"
+    out = {k: v for k, v in fact.items() if k not in ("sources", "name", "name_zh_tw", "best", "lowest")}
+    for tier in ("best", "lowest"):
+        out[tier] = {"text": fact[tier].get(key) or fact[tier]["text"], "level": fact[tier]["level"]}
+    return out
+
+
+def _returned_fact(fact: dict, detail: str) -> dict:
+    """A fact as verify_build returns it. Its page is in the numbered source list (`cite`), so the
+    links are not repeated on every fact; `brief` keeps only what names and cites it."""
+    if detail == "brief":
+        return {k: fact[k] for k in BRIEF_KEYS if k in fact}
+    return {k: v for k, v in fact.items() if k != "sources"}

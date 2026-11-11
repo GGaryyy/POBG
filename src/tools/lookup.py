@@ -17,7 +17,7 @@ from pathlib import Path
 import networkx as nx
 
 from src.catalog.entity_index import PASSIVE_TYPE_TO_KIND, EntityIndex
-from src.catalog.spec import GEM_KINDS, Spec, load_spec
+from src.catalog.spec import GEM_KINDS, ITEM_KINDS, Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, load_graph
 from src.scrapers.collect_gems import BROKEN_WARNINGS, DETAIL_CACHE_DIR
 from src.scrapers.collect_passives import ZH_FROM_TREE_DATA
@@ -48,7 +48,7 @@ TREE_DATA_LABEL = "Passive tree data on poe2db"
 LANGS = ("en", "zh-tw")
 LISTING_FIELDS = ("tag_slugs", "attribute_colour", "summary")
 NEGATIVE_KINDS = {"reduced", "less", "slower", "lose"}
-ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword")
+ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword", *ITEM_KINDS)
 _CJK_RE = re.compile(r"[㐀-鿿]")
 DATA_LOCK = threading.Lock()
 
@@ -241,18 +241,38 @@ class LookupService:
             raise BadArgument("give at least one filter: tag, tier, class_name, weapon, kind or text")
         kind = _kind(kind, GEM_KINDS)
         class_gems = self._gems_for_class(class_name) if class_name else None
+        searched = self._english_term(text) if text else None
         hits = []
         for gem_kind in GEM_KINDS:
             if kind and gem_kind != kind:
                 continue
             for rec in self.gems[gem_kind].values():
-                if _gem_matches(rec, tag, tier, weapon, text) and (class_gems is None or rec["slug"] in class_gems):
+                if _gem_matches(rec, tag, tier, weapon, searched) and (class_gems is None or rec["slug"] in class_gems):
                     hits.append({"slug": rec["slug"], "kind": gem_kind, "name": rec["name"], "tier": rec.get("tier"),
                                  "tags": rec.get("tags"), "url_en": rec.get("source_url"), "url_zh_tw": rec.get("url_zh_tw"),
                                  **({"gemcutting": class_gems[rec["slug"]]} if class_gems else {})})
-        return {"filters": {"tag": tag, "tier": tier, "class_name": class_name, "weapon": weapon, "kind": kind,
-                            "text": text},
-                "total": len(hits), "gems": hits[:_limit(limit)]}
+        result = {"filters": {"tag": tag, "tier": tier, "class_name": class_name, "weapon": weapon, "kind": kind,
+                              "text": text},
+                  "total": len(hits), "gems": hits[:_limit(limit)]}
+        if text and searched != text:
+            result["text_searched"] = searched
+        elif text and is_cjk(text) and not hits:
+            result["note"] = "gem descriptions are stored in English; search with the English term (explain_keyword gives both names)"
+        return result
+
+    def _english_term(self, text: str) -> str:
+        """Gem descriptions are English only: a Chinese glossary name, or a named kind of one
+        (狂怒球), is searched by its English name."""
+        if not is_cjk(text):
+            return text
+        for terms in self.spec.subterms().values():
+            for term in terms:
+                if term.get("zh_tw") == text:
+                    return term["en"]
+        for entry in self.keywords.values():
+            if entry.get("name_zh_tw") == text and entry.get("name_en"):
+                return entry["name_en"]
+        return text
 
     # -- refresh (network) -------------------------------------------------------
 
@@ -348,6 +368,10 @@ class LookupService:
         if query in self.keywords:
             return self.keywords[query]
         q = query.lower()
+        for slug, terms in self.spec.subterms().items():      # "Frenzy Charge" / 狂怒球 → the Charges entry
+            names = {n.lower() for term in terms for n in (term["en"], term["en"] + "s", term.get("zh_tw") or "")}
+            if q in names and slug in self.keywords:
+                return self.keywords[slug]
         for field in ("name_en", "name_zh_tw", "slug"):
             for entry in self.keywords.values():
                 if (entry.get(field) or "").lower() == q:

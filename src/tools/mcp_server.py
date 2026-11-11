@@ -194,14 +194,23 @@ def reference_builds(class_name: str | None = None, main_skill: str | None = Non
 @server.tool(title="Verify a draft build", annotations=READ_ONLY)
 @_user_errors
 def verify_build(gems: list[str] | None = None, passives: list[str] | None = None,
-                 lang: str | None = None) -> dict:
-    """Check every gem and passive name of a draft build against local poe2db data. Names that
-    match exactly (English, 繁體中文, slug or tree id) come back under `verified` with their real
-    facts and a `cite` number; the others are listed in `unverified` with close names as
-    suggestions. `sources_markdown` is the finished Sources section in the answer language
-    (lang: en or zh-tw): end the build answer with it, unchanged. At most 40 names per list,
-    120 characters per name."""
-    return build_tools().verify_build(gems=gems, passives=passives, lang=lang)
+                 lang: str | None = None, items: list[str] | None = None,
+                 affixes: list[str] | None = None, detail: str = "full") -> dict:
+    """Check every gem, passive and item name of a draft build against local poe2db data. Exact
+    matches (English, 繁體中文, slug or tree id) come back under `verified` with their facts and
+    a `cite` number; the rest under `unverified` with suggestions. `affixes` are target
+    modifiers, "item: modifier" with the whole modifier as modifiers_for shows it, numbers
+    optional ("Rings: +#% to Fire Resistance"); item is a class, base or unique. A part of a
+    modifier is not verified: its candidates come back as suggestions. Per item at most 3
+    prefixes and 3 suffixes, one modifier per family; armour classes need a base or an
+    attribute page (Helmets_str). End the answer with `sources_markdown` (lang: en or zh-tw),
+    unchanged. At most 40 entries per list (60 affixes), 120 characters each; check the whole
+    build in one call. detail "brief" returns names and cite numbers only: use it when you
+    already hold the records (a build with gear, a repeat check)."""
+    result = build_tools().verify_build(gems=gems, passives=passives, lang=lang, items=items, affixes=affixes,
+                                        detail=detail)
+    result.pop("sources", None)        # the same rows as sources_markdown; kept out of the tool output for size
+    return result
 
 
 @server.tool(title="Passive tree route and point cost", annotations=READ_ONLY)
@@ -214,6 +223,43 @@ def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, 
     route, per-target `points_alone` / `added_points`, plus `unverified` and `unreachable`
     targets. The route is a good approximation, not a guaranteed minimum."""
     return build_tools().path_to(class_name, targets, ascendancy=ascendancy, lang=lang)
+
+
+@server.tool(title="Item base or unique", annotations=READ_ONLY)
+@_user_errors
+def get_item(name: str) -> dict:
+    """One gear base or unique item by name (English or 繁體中文) or slug: base properties and
+    requirements, or a unique's base, requirements and modifier lines with their value ranges,
+    plus the item class whose modifiers it can roll and poe2db sources."""
+    return build_tools().items.get_item(name)
+
+
+@server.tool(title="Filter gear", annotations=READ_ONLY)
+@_user_errors
+def items_by(item_class: str | None = None, kind: str | None = None, text: str | None = None,
+             max_level: int | None = None, limit: int = 30, with_lines: bool = False) -> dict:
+    """Gear bases and unique items (also flasks, charms, jewels) filtered by item_class (e.g.
+    "Bows", "Body Armours", 護符), kind (base or unique), text found in their lines (English or
+    繁體中文, e.g. "attack speed") and max_level (required level). At least one filter is
+    required. with_lines adds every item's own lines (properties, effects, implicits or unique
+    modifiers, both languages): use it for "which items of this class exist and what do they
+    do" instead of one get_item call per item."""
+    return build_tools().items.items_by(item_class=item_class, kind=kind, text=text, max_level=max_level,
+                                        limit=limit, with_lines=with_lines)
+
+
+@server.tool(title="Modifiers an item class can roll", annotations=READ_ONLY)
+@_user_errors
+def modifiers_for(item: str, group: str = "normal", affix: str | None = None, text: str | None = None,
+                  max_level: int | None = None, limit: int = 20) -> dict:
+    """The modifiers an item class can roll: item is a class page (e.g. "Bows",
+    "Body_Armours_str_dex"), a base or a unique. One entry per modifier with its tiers (1 =
+    best) and required item levels. group: normal, desecrated, corrupted, essence,
+    perfect_essence or socketable (runes, soul cores); affix: prefix or suffix; text filters
+    the wording. A rare item holds at most 3 prefixes and 3 suffixes, and modifiers are random:
+    recommend targets in order of importance, not as certain."""
+    return build_tools().items.modifiers_for(item, group=group, affix=affix, text=text, max_level=max_level,
+                                             limit=limit)
 
 
 @server.tool(title="Re-fetch one gem page", annotations=NETWORK_WRITE)
@@ -255,13 +301,13 @@ def update_data(scope: str, names: list[str] | None = None, older_than_days: int
                 max_gems: int = DEFAULT_MAX_GEMS, dry_run: bool = False) -> dict:
     """Re-fetch one data set from its source and replace the local records. Call it only when the
     user asks for an update. scope is required, one per call (there is no update for everything):
-    skill_gems, spirit_gems, support_gems, passives, glossary or ladder. Gem scopes fetch the
-    listing, then the gems that are new, changed, broken, named in `names` or older than
-    `older_than_days`, at most max_gems (1-40) per call; repeat while `left` is above 0, at most
-    10 calls. A gem fetched in the last 15 minutes is not fetched again for `names` or
-    `older_than_days`. dry_run reports what would be fetched and writes nothing. The other scopes
-    take no other argument: passives (7 requests), ladder (at most 14, poe.ninja), glossary (at most
-    50 per call; repeat while `done` is false, at most 20 calls). A source that no longer parses
+    skill_gems, spirit_gems, support_gems, passives, items, glossary or ladder. Gem scopes fetch
+    the listing, then gems that are new, changed, broken, named in `names` or older than
+    `older_than_days` (not again within 15 minutes), at most max_gems (1-40) per call; repeat while
+    `left` is above 0, at most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional `names`
+    (item classes, e.g. Bows) and makes at most 20 requests per call; glossary at most 50 requests
+    per call: repeat both while `done` is false (items at most 8 calls, glossary 20). passives (7
+    requests) and ladder (at most 14) take no other argument. A source that no longer parses
     aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
@@ -291,7 +337,7 @@ def status() -> str:
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
     """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
-    passives, glossary or ladder. names: optional gem names, comma-separated."""
+    passives, items, glossary or ladder. names: optional gem names or item classes, comma-separated."""
     return update_prompt_text(scope, names)
 
 

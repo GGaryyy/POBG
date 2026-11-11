@@ -33,7 +33,7 @@ STATUS_SKILL = (ROOT / "skills" / "status" / "SKILL.md").read_text(encoding="utf
 UPDATE_SKILL = (ROOT / "skills" / "update" / "SKILL.md").read_text(encoding="utf-8")
 HEAVY_MODULES = ("faiss", "torch", "langchain", "langchain_core", "langgraph", "sentence_transformers", "fastapi")
 TOOL_LIKE = re.compile(r"\b(?:lookup_entity|get_\w+|explain_\w+|passives_\w+|gems_\w+|supports_\w+|"
-                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|build_workflow|data_status|update_data)\b")
+                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|build_workflow|data_status|update_data|items_by|modifiers_for)\b")
 
 
 def tool_names() -> set[str]:
@@ -153,7 +153,7 @@ def test_status_skill_only_reads():
 def test_update_skill_is_user_invoked_and_requires_a_scope():
     head = frontmatter(UPDATE_SKILL)
     assert head["name"] == "update" and head["disable-model-invocation"] == "true"
-    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|glossary|ladder>")
+    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ladder>")
     body = UPDATE_SKILL.split("---", 2)[2]
     assert "$ARGUMENTS" in body and "do not call `update_data`" in body
     assert set(TOOL_LIKE.findall(body)) == {"update_data"}
@@ -174,7 +174,11 @@ def test_update_limits_in_the_texts_match_the_code():
     assert f"at most {build_workflow.MAX_GLOSSARY_CALLS} calls" in skill and f"at most {GLOSSARY_BATCH} requests" in skill
     assert f"after {build_workflow.MAX_GLOSSARY_CALLS} calls" in skill and "within 30 minutes" in skill
     description = " ".join({t.name: t for t in asyncio.run(server.list_tools())}["update_data"].description.split())
-    assert f"at most {GLOSSARY_BATCH} per call" in description and f"at most {build_workflow.MAX_GLOSSARY_CALLS} calls" in description
+    from src.tools.maintenance import ITEMS_BATCH
+    assert f"glossary at most {GLOSSARY_BATCH} requests per call" in description
+    assert f"items at most {build_workflow.MAX_ITEMS_CALLS} calls, glossary {build_workflow.MAX_GLOSSARY_CALLS}" in description
+    assert f"at most {ITEMS_BATCH} requests per call" in description
+    assert f"at most {ITEMS_BATCH} requests (10 class pages" in skill and f"at most {build_workflow.MAX_ITEMS_CALLS} calls" in skill
     assert f"(1-{MAX_GEMS})" in {t.name: t for t in asyncio.run(server.list_tools())}["update_data"].description
 
 
@@ -182,3 +186,14 @@ def test_project_rules_live_under_dot_claude_not_at_the_plugin_root():
     # a CLAUDE.md at the plugin root is not loaded by plugin users and fails strict validation
     assert not (ROOT / "CLAUDE.md").exists()
     assert (ROOT / ".claude" / "CLAUDE.md").read_text(encoding="utf-8").startswith("# Project Rules")
+
+
+def test_the_ladder_is_for_comparison_not_for_choosing():
+    from src.tools.build_workflow import BUILD_WORKFLOW, SERVER_INSTRUCTIONS
+    skill = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
+    for text in (BUILD_WORKFLOW, skill):
+        flat = " ".join(text.split())
+        assert "Generate the build from the data, not from the ladder" in flat
+        assert flat.index("verify_build") < flat.index("Compare with the ladder") < flat.index("sources_markdown")
+        assert "Optional" not in flat.split("Compare with the ladder")[0].split("Generate the build")[1]
+    assert "differs from what ladder characters run" in SERVER_INSTRUCTIONS

@@ -14,9 +14,9 @@ pytestmark = pytest.mark.integration
 
 POB2_ROW_LABEL = "PathOfBuilding-PoE2 tree 0_5"
 GEM_KEYS = {"input", "slug", "kind", "name", "tier", "tags", "cost", "main_stat", "requires_weapons",
-            "description", "quality_effects", "stats", "name_zh_tw", "sources", "cite"}
+            "description", "quality_effects", "stats", "name_zh_tw", "cite"}
 PASSIVE_KEYS = {"input", "id", "slug", "name", "name_zh_tw", "type", "ascendancy", "stats", "stats_zh_tw",
-                "sources", "cite"}
+                "cite"}
 
 
 @pytest.fixture(scope="module")
@@ -58,7 +58,7 @@ def test_cite_matches_the_source_row_with_url(tools):
     facts = result["verified"]["gems"] + result["verified"]["passives"]
     for fact in facts:
         row = source_for(result, fact)
-        assert row["url"] == fact["sources"][0]["url"] and row["url"].startswith("https://")
+        assert row["url"].startswith("https://") and fact["slug"] in row["url"] and "sources" not in fact
     assert [f["cite"] for f in facts] == [1, 2, 3]
     assert [r["n"] for r in result["sources"]] == [1, 2, 3]
 
@@ -78,7 +78,7 @@ def test_nodes_without_a_page_share_one_pob2_row(tools):
     result = tools.verify_build(passives=["4", "5", "Heart of Ice"])
     small = [p for p in result["verified"]["passives"] if p["slug"] is None]
     assert [p["id"] for p in small] == ["4", "5"]
-    assert all(p["sources"][0]["label"] == POB2_ROW_LABEL for p in small)
+    assert all(source_for(result, p)["label"] == POB2_ROW_LABEL for p in small)
     assert small[0]["cite"] == small[1]["cite"]
     pob2_rows = [r for r in result["sources"] if r["label"] == POB2_ROW_LABEL]
     assert len(pob2_rows) == 1 and pob2_rows[0]["name"] is None
@@ -144,8 +144,8 @@ def test_mixed_input_splits_into_verified_and_unverified(tools):
 # -- bad arguments -------------------------------------------------------------------------
 
 @pytest.mark.parametrize("kwargs, message", [
-    ({}, "at least one gem or passive"),
-    ({"gems": [], "passives": []}, "at least one gem or passive"),
+    ({}, "at least one gem, passive, item or affix"),
+    ({"gems": [], "passives": []}, "at least one gem, passive, item or affix"),
     ({"gems": ["Leap Slam"] * (MAX_NAMES + 1)}, "limit is 40"),
     ({"passives": ["x"] * (MAX_NAMES + 1)}, "passives has 41"),
     ({"gems": ["x" * (MAX_NAME_LEN + 1)]}, "longer than 120"),
@@ -321,11 +321,12 @@ TREE_DATA_URL = "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json"
 
 
 def test_small_node_fact_carries_chinese_name_and_stats(tools):
-    fact = tools.verify_build(passives=["5"])["verified"]["passives"][0]
+    result = tools.verify_build(passives=["5"])
+    fact = result["verified"]["passives"][0]
     assert fact["name"] == "Attack Speed" and fact["name_zh_tw"] == "攻擊速度"
     assert fact["stats_zh_tw"] == ["增加 12% 攻擊速度"]
-    assert [s["label"] for s in fact["sources"]] == [POB2_ROW_LABEL, TREE_DATA_LABEL]
-    assert fact["sources"][1]["url"] == TREE_DATA_URL and fact["cite"] == 1
+    assert [r["label"] for r in result["sources"]] == [POB2_ROW_LABEL, TREE_DATA_LABEL]
+    assert result["sources"][1]["url"] == TREE_DATA_URL and fact["cite"] == 1
 
 
 @pytest.mark.parametrize("lang, note", [("en", "Traditional Chinese names and stat lines of those nodes, fetched 2026-01-01"),
@@ -351,3 +352,20 @@ def test_page_less_passive_row_without_a_date_shows_only_what_it_is(tools):
         assert lines[1].endswith("— passive nodes without a poe2db page")
     finally:
         node["fetched_at"] = saved
+
+
+# -- response size: detail levels ---------------------------------------------------------------
+
+def test_brief_detail_returns_names_and_cites_only(tools):
+    full = tools.verify_build(gems=["Leap Slam", "Not A Gem"], passives=["Heart of Ice"], lang="zh-tw")
+    brief = tools.verify_build(gems=["Leap Slam", "Not A Gem"], passives=["Heart of Ice"], lang="zh-tw", detail="brief")
+    gem = brief["verified"]["gems"][0]
+    assert gem == {"input": "Leap Slam", "slug": "Leap_Slam", "kind": "skill_gem", "name": "Leap Slam",
+                   "name_zh_tw": full["verified"]["gems"][0]["name_zh_tw"], "cite": 1}
+    assert set(brief["verified"]["passives"][0]) == {"input", "slug", "id", "type", "name", "name_zh_tw", "cite"}
+    assert brief["sources_markdown"] == full["sources_markdown"] and brief["unverified"] == full["unverified"]
+
+
+def test_unknown_detail_level_is_refused(tools):
+    with pytest.raises(BadArgument, match="detail must be one of"):
+        tools.verify_build(gems=["Leap Slam"], detail="tiny")

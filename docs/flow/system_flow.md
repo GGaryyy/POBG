@@ -1,6 +1,6 @@
 # System Flow
 
-Updated 2026-11-11 (0.7.0: first public release; the MCP server and the plugin are the only application layer).
+Updated 2026-11-11 (0.8.0: gear bases, uniques and modifiers; 0.7.0 was the first public release).
 
 ## System flow
 
@@ -25,12 +25,14 @@ flowchart LR
         PT[collect_passives.py]
         GL[collect_glossary.py]
         PN[fetch_poe_ninja_builds.py]
+        CI[collect_items.py]
     end
 
     subgraph Data["data/"]
         GEM[(gem *_Detail / *_Listing / gemcutting)]
         PAS[(passive_nodes / passive_edges / classes.json)]
         COM[(poe_ninja_builds)]
+        ITM[(items/bases, uniques, modifiers, classes.json)]
         IDX[(catalog/entity_index.jsonl)]
         KW[(kg/keywords.jsonl)]
         ST[(kg/passive_stats.jsonl)]
@@ -41,10 +43,10 @@ flowchart LR
     end
 
     subgraph App["src/tools"]
-        LK[lookup.py]
+        LK[lookup.py + items.py]
         BT[build_tools.py + pathing.py]
         MT[maintenance.py: status + scoped update]
-        MCP[MCP server pobg: 14 tools + build_guide / status / update prompts]
+        MCP[MCP server pobg: 17 tools + build_guide / status / update prompts]
     end
 
     subgraph Clients
@@ -63,6 +65,9 @@ flowchart LR
     H --> GL --> KW
     PAS --> SS[kg/stats.py] --> ST
     N --> PN --> COM
+    P -->|57 item class pages en + zh-TW, embedded ModsView JSON| CI --> ITM
+    ITM --> EI
+    ITM --> LK
     GEM --> EI
     PAS --> EI
     P -->|/tw/ listing names| EI
@@ -196,7 +201,12 @@ flowchart TD
     V -->|glossary| GL1[listing pages, a few gem pages, then hover snippets: at most 100 requests per call, kept in a run cache]
     GL1 -->|not finished| U
     GL1 -->|all fetched and at least 90 % of the known terms reached| GLW[merge with the old entries and write]
-    V -->|ladder| LD[poe.ninja: index, result pages, dictionaries, about 18 requests]
+    V -->|items| IT1[item class pages, all or the named classes: at most 20 per call, kept in a run cache]
+    IT1 -->|not finished| U
+    IT1 --> IG{every page parsed, counts and Chinese names ok?}
+    IG -->|no| A
+    IG -->|yes| IW[write bases, uniques, modifiers; named classes are merged into the stored data]
+    V -->|ladder| LD[poe.ninja: index, result pages, dictionaries, at most 14 requests]
     LD --> LG{at least 100 characters, most with class and skill?}
     LG -->|no| A
     LG -->|yes| LW[write the snapshot without names]
@@ -214,6 +224,7 @@ flowchart TD
     W --> I[rebuild entity index, Chinese names reused; rebuild graph file if present]
     PW --> I
     GLW --> I
+    IW --> I
     LW --> RL
     I --> RL[server reloads its data; result says how many gems are left]
     RL -->|left > 0| U

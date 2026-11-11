@@ -363,6 +363,550 @@
         "nodes": 4500,
         "zh_name_ratio": 0.99
       }
+    },
+    "item_pages": {
+      "kind": "item",
+      "pages": [
+        {
+          "slug": "Claws",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Daggers",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Wands",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "One_Hand_Swords",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "One_Hand_Axes",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "One_Hand_Maces",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Sceptres",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Spears",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Flails",
+          "group": "one_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Bows",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Staves",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Two_Hand_Swords",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Two_Hand_Axes",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Two_Hand_Maces",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Quarterstaves",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Crossbows",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Traps",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Talismans",
+          "group": "two_hand_weapon",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Quivers",
+          "group": "off_hand",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Bucklers",
+          "group": "off_hand",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Foci",
+          "group": "off_hand",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Shields",
+          "group": "off_hand",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Shields_str",
+          "group": "off_hand",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Shields_str_dex",
+          "group": "off_hand",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Shields_str_int",
+          "group": "off_hand",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours",
+          "group": "armour",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Body_Armours_str",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_str_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_str_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_dex_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Body_Armours_str_dex_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots",
+          "group": "armour",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Boots_str",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots_str_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots_str_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Boots_dex_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves",
+          "group": "armour",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Gloves_str",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves_str_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves_str_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Gloves_dex_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets",
+          "group": "armour",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Helmets_str",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets_str_dex",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets_str_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Helmets_dex_int",
+          "group": "armour",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Amulets",
+          "group": "jewellery",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Rings",
+          "group": "jewellery",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Belts",
+          "group": "belt",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Life_Flasks",
+          "group": "flask",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Mana_Flasks",
+          "group": "flask",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Charms",
+          "group": "charm",
+          "roles": [
+            "items",
+            "mods"
+          ]
+        },
+        {
+          "slug": "Jewels",
+          "group": "jewel",
+          "roles": [
+            "items"
+          ]
+        },
+        {
+          "slug": "Ruby",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Emerald",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Sapphire",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Diamond",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Time-Lost_Ruby",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Time-Lost_Emerald",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Time-Lost_Sapphire",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        },
+        {
+          "slug": "Time-Lost_Diamond",
+          "group": "jewel",
+          "roles": [
+            "mods"
+          ]
+        }
+      ],
+      "bases_file": "data/items/bases.jsonl",
+      "uniques_file": "data/items/uniques.jsonl",
+      "modifiers_file": "data/items/modifiers.jsonl",
+      "classes_file": "data/items/classes.json",
+      "mod_object_pattern": "new ModsView\\((\\{.*?\\})\\);",
+      "mod_groups": [
+        "normal",
+        "desecrated",
+        "corrupted",
+        "essence",
+        "perfect_essence",
+        "socketable"
+      ],
+      "expect_min": {
+        "pages": 69,
+        "bases": 500,
+        "uniques": 250,
+        "modifiers": 8000,
+        "zh_ratio": 0.9
+      },
+      "notes": "One class page per item class (e.g. /us/Bows). Pages with role 'items' list every base (card: a.whiteitem name, .property lines, .requirements, .implicitMod) and every unique (span.uniqueName, span.uniqueTypeLine, .requirements, .implicitMod, .explicitMod) in tab panes whose ids are language-specific; the tab link text ends with '/N', the item count. Pages with role 'mods' embed `new ModsView({...})`: groups of modifiers (normal, desecrated, corrupted, essence, socketable, ...) with Name, Level (required item level), ModGenerationTypeID (gen: 1 Prefix, 2 Suffix), ModFamilyList, str (HTML text) and mod_no tag badges. The English and Chinese objects list the same modifiers in the same order. Armour modifiers are split by attribute type (Body_Armours_str_dex ...); those pages also list the bases that use them. Weights are not in the game files and are not stored. Jewel modifiers live on each jewel base's own page (Ruby, Time-Lost_Ruby ...), which is a 'mods' page whose slug is the base; Timeless Jewel has none.",
+      "probe_sample": {
+        "slug": "Bows",
+        "expect_min": {
+          "bases": 30,
+          "uniques": 5,
+          "modifiers": 100
+        }
+      }
     }
   },
   "fields": {
@@ -581,6 +1125,18 @@
       "type": "{passive: int, ascendancy: int}",
       "source": "poe2db passive tree data points.totalPoints / points.ascendancyPoints",
       "reliability": "ok"
+    },
+    "item.base": {
+      "meaning": "A base type: properties (damage, defences, attack speed ...), requirements and implicit lines as shown by poe2db, en + zh-TW. `mod_page` names the modifier page whose modifiers this base can roll.",
+      "reliability": "ok"
+    },
+    "item.unique": {
+      "meaning": "A unique item: base type, requirements, implicit and explicit modifier lines with their value ranges, en + zh-TW.",
+      "reliability": "ok"
+    },
+    "item.modifier": {
+      "meaning": "A modifier an item class can roll: group (normal, desecrated, corrupted, essence, perfect_essence, socketable), affix (prefix / suffix), required item level, family and tier (1 = highest within the family and group), text with value ranges, en + zh-TW. Whether a given item has it is random; weights are unknown.",
+      "reliability": "ok"
     }
   },
   "traps": [
@@ -606,5 +1162,22 @@
     "PoB2 node['group'] is 1-based: the group is tree['groups'][group - 1].",
     "Several tree nodes can share a notable name with different stats; the poe2db card is joined to the best stat match only.",
     "poe2db passive tree data: stat lines carry keyword markup ([Key|text] or [text]) that must be stripped, and the classes list also holds classes with no start node on the PoE2 tree (Marauder, Duelist, Shadow, Templar); keep only classes that start on our tree."
-  ]
+  ],
+  "keyword_subterms": {
+    "_note": "Named kinds of one glossary term that have no glossary entry of their own. The names are the ones the game uses in that term's own text (both languages); they resolve to the parent term and translate text searches.",
+    "Charges": [
+      {
+        "en": "Frenzy Charge",
+        "zh_tw": "狂怒球"
+      },
+      {
+        "en": "Endurance Charge",
+        "zh_tw": "耐力球"
+      },
+      {
+        "en": "Power Charge",
+        "zh_tw": "暴擊球"
+      }
+    ]
+  }
 }

@@ -23,6 +23,7 @@ from typing import Callable
 import requests
 
 from src.catalog.spec import Spec, load_spec
+from src.scrapers.collect_items import ItemCollectionError, parse_class_page
 from src.scrapers.common import fetch_html, find_section, make_soup
 from src.scrapers.gem_detail import parse_detail
 from src.scrapers.gem_listing import parse_gemcutting, parse_listing
@@ -59,6 +60,7 @@ def run_probe(spec: Spec, langs: list[str], fetcher: Fetcher | None = None) -> d
     checks.append(_probe_keyword_hover(spec, fetch))
     checks.append(_probe_pob2_version(spec, fetch))
     checks.extend(_probe_tree_data(spec, fetch))
+    checks.extend(_probe_items(spec, fetch))
     return {
         "run_id": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S"),
         "stage": "catalog_probe",
@@ -196,6 +198,22 @@ def _probe_tree_data_file(spec: Spec, source: dict, fetch: Fetcher) -> dict:
     except (json.JSONDecodeError, AttributeError, TypeError) as exc:
         return _check("passive_tree_data", "nodes", "zh-tw", url, 0, expect, f"unexpected data file: {exc}", elapsed)
     return _check("passive_tree_data", "nodes", "zh-tw", url, count, expect, None, elapsed)
+
+
+def _probe_items(spec: Spec, fetch: Fetcher) -> list[dict]:
+    """One item class page still lists its bases and uniques and embeds its modifier object."""
+    sample = spec.source("item_pages")["probe_sample"]
+    url = spec.resolve_url(sample["slug"], "en")
+    expect = sample["expect_min"]
+    html, error, elapsed = _timed_fetch(url, fetch)
+    if html is None:
+        return [_check("item_pages", section, "en", url, 0, expect[section], error, elapsed) for section in expect]
+    try:
+        page = parse_class_page(html, spec, sample["slug"])
+    except ItemCollectionError as exc:
+        return [_check("item_pages", section, "en", url, 0, expect[section], str(exc), elapsed) for section in expect]
+    found = {"bases": len(page.bases), "uniques": len(page.uniques), "modifiers": len(page.mods.get("normal", []))}
+    return [_check("item_pages", section, "en", url, found[section], expect[section], None, elapsed) for section in expect]
 
 
 # ---------------------------------------------------------------------------

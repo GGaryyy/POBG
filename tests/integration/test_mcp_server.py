@@ -19,7 +19,8 @@ from tests.support import html
 pytestmark = pytest.mark.integration
 
 TOOLS = ["lookup_entity", "get_gem", "get_passive", "passives_with_stat", "explain_keyword", "gems_by",
-         "supports_for", "reference_builds", "verify_build", "path_to", "refresh_gem", "build_workflow",
+         "supports_for", "reference_builds", "verify_build", "path_to", "get_item", "items_by", "modifiers_for",
+         "refresh_gem", "build_workflow",
          "data_status", "update_data"]
 LADDER = Path(__file__).resolve().parents[1] / "fixtures" / "jsonl" / "poe_ninja_builds.jsonl"
 
@@ -45,7 +46,7 @@ def payload(result):
     return json.loads(result.content[0].text)
 
 
-def test_lists_the_fourteen_tools():
+def test_lists_the_seventeen_tools():
     tools = asyncio.run(mcp_server.server.list_tools())
     assert [t.name for t in tools] == TOOLS
     assert all(t.description for t in tools)
@@ -159,7 +160,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.7.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.8.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
@@ -217,7 +218,7 @@ def test_gems_by_text_through_the_server(svc):
 
 
 @pytest.mark.parametrize("tool, args, message", [
-    ("verify_build", {}, "give at least one gem or passive name"),
+    ("verify_build", {}, "give at least one gem, passive, item or affix"),
     ("verify_build", {"gems": ["x"], "lang": "fr"}, "lang must be one of"),
     ("supports_for", {"skill": "Added Fire Damage"}, "use get_gem"),
     ("supports_for", {"skill": "Not A Skill"}, "matches 'Not A Skill'"),
@@ -279,8 +280,10 @@ def test_tools_named_in_workflow_text_exist_on_the_server(text):
 
 def test_verify_build_description_states_the_limits():
     tools = {t.name: t for t in asyncio.run(mcp_server.server.list_tools())}
-    assert "At most 40 names per list" in tools["verify_build"].description
-    assert "120 characters per name" in tools["verify_build"].description
+    description = " ".join(tools["verify_build"].description.split())
+    assert "At most 40 entries per list (60 affixes), 120 characters each" in description
+    assert "Per item at most 3 prefixes and 3 suffixes, one modifier per family" in description
+    assert "A part of a modifier is not verified" in description
 
 
 # -- path_to ------------------------------------------------------------------------------------------
@@ -403,7 +406,7 @@ def test_data_status_through_the_server_uses_the_loaded_folder_and_no_network(fr
     status = payload(call("data_status", {}))
     assert status["data_dir"] == str(service.base_dir / "data") and "online" not in status
     assert {d["name"]: d["records"] for d in status["datasets"]}["skill_gems"] == 3
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "glossary", "ladder"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder"]
     assert calls == []
 
 
@@ -436,7 +439,7 @@ def test_reload_failure_after_an_update_says_the_data_was_updated(fresh, monkeyp
 
 def test_update_data_description_caps_the_repeat_calls():
     description = " ".join({t.name: t for t in asyncio.run(mcp_server.server.list_tools())}["update_data"].description.split())
-    assert "at most 10 calls" in description and "last 15 minutes" in description
+    assert "at most 10 calls" in description and "not again within 15 minutes" in description
     assert mnt.RECENT_SECONDS == 15 * 60
 
 
@@ -476,9 +479,10 @@ def test_update_data_respects_max_gems_and_reports_what_is_left(fresh):
 
 
 @pytest.mark.parametrize("args, message", [
-    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, glossary, ladder"),
+    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ladder"),
     ({"scope": "all"}, "there is no update for everything"),
-    ({"scope": "items"}, "scope is required"),
+    ({"scope": "weapons"}, "scope is required"),
+    ({"scope": "items", "dry_run": True}, "an items update re-fetches whole item class pages"),
     ({"scope": "ladder", "names": ["x"]}, "only apply to the gem scopes"),
     ({"scope": "skill_gems", "max_gems": 100}, "max_gems must be between 1 and 40"),
     ({"scope": "skill_gems", "names": ["Nope"]}, "not a skill_gem in the local data"),

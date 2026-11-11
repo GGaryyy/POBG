@@ -10,7 +10,18 @@ skills/update in the plugin) are the user-facing commands over data_status and u
 
 from __future__ import annotations
 
-from src.tools.maintenance import GEM_SCOPES, GLOSSARY, GLOSSARY_BATCH, LADDER, MAX_NAMES, NOT_UPDATABLE, PASSIVES, UPDATE_SCOPES
+from src.tools.maintenance import (
+    GEM_SCOPES,
+    GLOSSARY,
+    GLOSSARY_BATCH,
+    ITEMS,
+    ITEMS_BATCH,
+    LADDER,
+    MAX_NAMES,
+    NOT_UPDATABLE,
+    PASSIVES,
+    UPDATE_SCOPES,
+)
 
 # ---------------------------------------------------------------------------
 # CONSTANTS
@@ -29,27 +40,42 @@ WRITING_RULES = (
 
 BUILD_WORKFLOW = """\
 1. Read the request and answer in the user's language.
-2. Optional: call reference_builds (class and/or main skill) to see what ladder characters run.
-3. Gather candidates with lookup_entity, gems_by, supports_for, passives_with_stat, get_gem and get_passive.
-4. Call verify_build with every gem and passive name the draft build uses.
-5. For each entry in `unverified`: drop the name, or replace it from its `suggestions` or a new search.
+2. Generate the build from the data, not from the ladder: gather candidates with lookup_entity, gems_by, supports_for, passives_with_stat, get_gem and get_passive.
+   For gear, pick bases or uniques with items_by and get_item, and for each slot the target modifiers
+   with modifiers_for, at most 3 prefixes and 3 suffixes, in order of importance (written
+   "item: modifier", the whole modifier as modifiers_for shows it; for armour name the base).
+   Every choice needs a reason from these records (what the gem, passive or item does), never
+   "ladder characters use it".
+3. Call verify_build once with every gem, passive, item and target modifier the draft build uses
+   (lists take 40 entries, affixes 60). With a whole set of gear, or on a repeat check, pass
+   detail="brief": you already hold the records from the lookups, and the answer is much smaller.
+4. For each entry in `unverified`: drop the name, or replace it from its `suggestions` or a new search.
    Call verify_build again with the final list. Do this at most twice; after that, drop what is still unverified.
-6. Call path_to with the class (or ascendancy) and the verified passives. State the points it reports
+5. Call path_to with the class (or ascendancy) and the verified passives. State the points it reports
    against the limits; when `over` is true, drop the passives with the largest `added_points` and call it again.
-7. Write the build from the `verified` facts. """ + WRITING_RULES + """
+6. Compare with the ladder: call reference_builds (class and/or main skill) now, after the build is
+   drafted. Use it only to say how the build differs from what ladder characters run: what is the same,
+   what this build uses that they do not, what they use that it does not, with counts. When the user
+   asks what is popular, reference_builds is the answer itself.
+7. Write the build from the `verified` facts, with a short "compared with the ladder" section. """ + WRITING_RULES + """ Modifiers are random: present the
+   target modifiers as goals to look for, not as what the item will have, and say that damage is not calculated.
 8. End the answer with `sources_markdown` from the last verify_build call, unchanged. It already lists
-   the names that were not found. Add `source_markdown` from reference_builds when step 2 was used."""
+   the names that were not found. Add `source_markdown` from reference_builds below it."""
 
 SERVER_INSTRUCTIONS = (
     "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary), English and Traditional "
     "Chinese. Resolve names with lookup_entity first, then use get_gem / get_passive / "
-    "explain_keyword / passives_with_stat / gems_by / supports_for. Quote the returned records and "
+    "explain_keyword / passives_with_stat / gems_by / supports_for, and for gear get_item / items_by / "
+    "modifiers_for. Quote the returned records and "
     "cite the returned source URLs; do not answer numbers from memory. Use refresh_gem only when a "
     "record looks outdated (check fetched_at). "
-    "For build advice: gather candidates with the tools above (reference_builds shows what ladder "
-    "characters run), then call verify_build with every gem and passive the build names. Drop or "
+    "For build advice: generate the build from these records, with a reason from the data for every "
+    "choice (not \"ladder characters use it\"), then call verify_build with every gem, passive, item and target modifier "
+    "(at most 3 prefixes and 3 suffixes per slot; modifiers are random, so present them as targets) "
+    "the build names. Drop or "
     "replace each name it reports as unverified, call path_to with the class and the verified "
-    "passives to get the point cost and allocation order, write only from the verified facts, and "
+    "passives to get the point cost and allocation order, call reference_builds to say how the "
+    "draft differs from what ladder characters run, write only from the verified facts, and "
     "end the answer with the returned sources_markdown unchanged. "
     "The build_workflow tool returns these steps in full. "
     "data_status reports what the local data holds and how old it is. update_data changes it: "
@@ -59,6 +85,7 @@ SERVER_INSTRUCTIONS = (
 SCOPE_LIST = ", ".join(UPDATE_SCOPES)
 CONFIRM_ABOVE = 60   # gems: ask before fetching more than this many pages in one command
 MAX_UPDATE_CALLS = 10
+MAX_ITEMS_CALLS = 8      # 138 requests (69 pages in two languages), ITEMS_BATCH per call
 MAX_GLOSSARY_CALLS = 20   # about 750 requests in all, GLOSSARY_BATCH per call
 
 STATUS_STEPS = f"""\
@@ -106,6 +133,15 @@ UPDATE_WHOLE_SET_STEPS = {
    When it is still false after {MAX_GLOSSARY_CALLS} calls, tell the user to run the command again within 30
    minutes: it continues where it stopped.
 {ON_ERROR}""",
+    ITEMS: f"""\
+1. Call update_data with scope="items"; to refresh only some item classes, pass their names (e.g.
+   names=["Bows"] or ["Body Armours"]). One call makes at most {ITEMS_BATCH} requests (a page in two languages is two) and keeps its progress
+   for 30 minutes;
+   nothing is written until every page is fetched and checked.
+2. While `done` is false, call it again with the same arguments, at most {MAX_ITEMS_CALLS} calls in total; give one
+   line of progress per call (`fetched`, `left`).
+3. When `done` is true, report `bases`, `uniques` and `modifiers`.
+{ON_ERROR}""",
     LADDER: f"""\
 1. Call update_data with scope="ladder" and no other argument. It makes at most 14 requests to poe.ninja
    and replaces the ladder snapshot; character and account names are never stored.
@@ -147,9 +183,12 @@ def update_prompt_text(scope: str = "", names: str = "") -> str:
     if wanted not in UPDATE_SCOPES:
         reason = f"\n\n{wanted} cannot be updated by command: {NOT_UPDATABLE[wanted]}" if wanted in NOT_UPDATABLE else ""
         return UPDATE_NEEDS_SCOPE + reason
+    picked = [name.strip()[:120] for name in str(names or "").split(",") if name.strip()][:MAX_NAMES]
+    if wanted == ITEMS and picked:
+        return (f"Update the local Path of Exile 2 data, scope {wanted}, item classes {picked!r}.\n\n"
+                f"Arguments: scope=\"{wanted}\", names={picked!r}.\n\n{UPDATE_WHOLE_SET_STEPS[wanted]}")
     if wanted not in GEM_SCOPES:
         return f"Update the local Path of Exile 2 data, scope {wanted}.\n\n{UPDATE_WHOLE_SET_STEPS[wanted]}"
-    picked = [name.strip()[:120] for name in str(names or "").split(",") if name.strip()][:MAX_NAMES]
     arguments = f'scope="{wanted}"' + (f", names={picked!r}" if picked else "")
     return (f"Update the local Path of Exile 2 data, scope {wanted}.\n\n"
             f"Arguments: {arguments}. When the user asked for gems older than N days, add older_than_days=N.\n\n"

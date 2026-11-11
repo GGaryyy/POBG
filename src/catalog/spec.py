@@ -17,6 +17,7 @@ REQUIRED_TOP_LEVEL = ("spec_version", "verified_at", "base_url", "languages", "u
                       "shared_selectors", "sources", "fields", "traps")
 GEM_KINDS = ("skill_gem", "spirit_gem", "support_gem")
 PASSIVE_KINDS = ("passive_keystone", "passive_notable", "passive_ascendancy")
+ITEM_KINDS = ("item_base", "item_unique")
 
 # ---------------------------------------------------------------------------
 # SPEC
@@ -44,6 +45,10 @@ class Spec:
         return self.raw["url_patterns"]["page"].format(
             base=self.raw["base_url"], lang_path=self.lang_path(lang), slug=slug
         )
+
+    def subterms(self) -> dict[str, list[dict]]:
+        """{glossary slug: [{en, zh_tw}]}: named kinds of a glossary term (Frenzy Charge under Charges)."""
+        return {slug: terms for slug, terms in self.raw.get("keyword_subterms", {}).items() if not slug.startswith("_")}
 
     # -- sources / sections ----------------------------------------------
     def source(self, name: str) -> dict:

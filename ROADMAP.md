@@ -13,23 +13,23 @@ client connects without friction.
 | Area | What exists |
 |---|---|
 | Source catalog | `src/catalog/poe2db_sources.json` describes every page, selector and field; `probe.py` detects drift before a crawl |
-| Collectors | Gems (listing + detail, incremental updates), passive tree (PathOfBuilding-PoE2 structure + poe2db text), glossary (hover snippets), ladder snapshot (poe.ninja, no names) |
+| Collectors | Gems (listing + detail, incremental updates), passive tree (PathOfBuilding-PoE2 structure + poe2db text), glossary (hover snippets), ladder snapshot (poe.ninja, no names), gear, flasks, charms and jewels (0.8.0: 1,762 bases, 434 uniques, 17,719 modifiers from 69 item class pages) |
 | Bilingual index | English and Traditional Chinese names for gems, every passive node, classes, ascendancies and stat families |
 | Knowledge graph | Stat index ("which passives give X"), supports ↔ skills, glossary mentions |
-| Tools | Fourteen MCP tools: cited lookups, `verify_build`, `path_to` (passive route and point cost), `build_workflow`, `data_status`, `update_data` |
-| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time (three gem kinds, passives, glossary, ladder) from inside the AI client |
+| Tools | Seventeen MCP tools: cited lookups, gear (`get_item`, `items_by`, `modifiers_for`), `verify_build` (gems, passives, items, target modifiers), `path_to` (passive route and point cost), `build_workflow`, `data_status`, `update_data` |
+| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time (three gem kinds, passives, items, glossary, ladder) from inside the AI client |
 | Packaging | stdio MCP server started with `uv run`; Claude Code plugin with the `poe2-advisor` skill |
 | Client readiness (0.7.0) | Tool annotations and titles, tool-only fallback for the workflow, portability tests, Windows launcher tested, client guide |
 
 ## Next (in this order, decided 2026-11-11)
 
-The data covers gems, the passive tree and the glossary. poe2db holds much more, and a build's
-damage and survival depend on gear. Nothing below has been collected yet.
+The data covers gems, the passive tree, the glossary and (0.8.0) gear, flask, charm and jewel
+bases, uniques and modifiers. Phase 1 is done; export to Path of Building is next.
 
 | # | Phase | What | Why |
 |---|---|---|---|
-| 1 | Gear and modifier data | Equipment bases (18 weapon classes, armour, off-hand, jewellery, belts), modifiers and their tiers (including desecrated modifiers), unique items, jewels, flasks and charms | Gear and its modifiers decide damage and defences; it changes every league |
-| 1 | Gem and ascendancy gaps (same phase) | Lineage supports, meta skill gems (check whether already covered), ascendancy class pages, socketables (runes, soul cores, augments) | Completes what a build can name |
+| 1 | Gear and modifier data (done in 0.8.0) | Equipment bases, modifiers and tiers (incl. desecrated, essence, corrupted, socketable effects), unique items, jewels, flasks and charms | Gear and its modifiers decide damage and defences; it changes every league |
+| 1 | Gem and ascendancy gaps (checked in 0.8.0) | Lineage supports were already covered (77 of 77); socketables came with the modifiers; ascendancy pages add nothing the tree data lacks; 13 gems on the meta gem page are on no gem listing and were left out | Completes what a build can name |
 | 2 | Export to Path of Building | A tool that turns a verified build (class, ascendancy, passive route from `path_to`, skill groups) into a Path of Building import code | The advice can be opened, checked and continued in PoB. The passive node ids are already PoB's |
 | 3 | Crafting and currency | Crafting methods, currency, essences, catalysts, omens, liquid emotions | How to obtain the gear, after the gear itself is known |
 

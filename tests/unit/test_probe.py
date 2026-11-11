@@ -34,8 +34,17 @@ SCRIPT_OK = 'new PassiveSkillTree({poe1version:"3.29",poe2version:"4.5",debug:!1
 DATA_OK = fixture_text("poe2db_tree", "data_tw_mini.json")
 
 
-def make_fake(api_body=API_OK, viewer=VIEWER_OK, script=SCRIPT_OK, data=DATA_OK):
-    extra = {API_URL: api_body, VIEWER_URL: viewer, SCRIPT_URL: script, DATA_URL: data}
+BOWS_URL = "https://poe2db.tw/us/Bows"
+
+
+def bows_page():
+    from tests.item_support import BOW_BASES, BOW_MODS, BOW_UNIQUES, class_page
+    return class_page("en", bases=BOW_BASES, uniques=BOW_UNIQUES, mods=BOW_MODS)
+
+
+def make_fake(api_body=API_OK, viewer=VIEWER_OK, script=SCRIPT_OK, data=DATA_OK, bows=None):
+    extra = {API_URL: api_body, VIEWER_URL: viewer, SCRIPT_URL: script, DATA_URL: data,
+             BOWS_URL: bows if bows is not None else bows_page()}
 
     def fetch(url):
         return extra[url] if url in extra else html(PAGES[url])
@@ -230,3 +239,33 @@ def test_probe_tree_data_fetch_error():
     doc = run_probe(lowered_spec(0), ["en"], fetcher=broken)
     assert "ConnectionError" in find(doc, "passive_tree_data", "version")["error"]
     assert "ConnectionError" in find(doc, "passive_tree_data", "nodes")["error"]
+
+
+def test_probe_checks_one_item_class_page():
+    doc = run_probe(lowered_spec(1), ["en"], fetcher=fake)
+    assert {c["section"]: c["count"] for c in doc["checks"] if c["source"] == "item_pages"} == {
+        "bases": 2, "uniques": 1, "modifiers": 6}
+    assert all(c["ok"] for c in doc["checks"] if c["source"] == "item_pages")
+
+
+def test_probe_reports_an_item_page_that_lost_its_lists():
+    doc = run_probe(lowered_spec(1), ["en"], fetcher=make_fake(bows="<html><body>maintenance</body></html>"))
+    items = [c for c in doc["checks"] if c["source"] == "item_pages"]
+    assert len(items) == 3 and not any(c["ok"] for c in items) and doc["ok"] is False
+
+
+def test_probe_reports_a_markup_change_on_the_item_page():
+    from tests.item_support import BOW_BASES, class_page
+    doc = run_probe(lowered_spec(1), ["en"], fetcher=make_fake(bows=class_page("en", bases=BOW_BASES, base_count=9)))
+    errors = {c["error"] for c in doc["checks"] if c["source"] == "item_pages"}
+    assert len(errors) == 1 and "lists 9 items but 2 cards parsed" in errors.pop()
+
+
+def test_probe_reports_an_unreachable_item_page():
+    def fetch(url):
+        if url == BOWS_URL:
+            raise requests.ConnectionError("down")
+        return fake(url)
+
+    doc = run_probe(lowered_spec(1), ["en"], fetcher=fetch)
+    assert all("down" in c["error"] for c in doc["checks"] if c["source"] == "item_pages")

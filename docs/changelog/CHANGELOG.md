@@ -3,6 +3,74 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-11-11
+
+Gear data (Phase 16a, `docs/plan_gear_data.md`).
+
+### Added
+- Collector `src/scrapers/collect_items.py`: 69 poe2db item class pages (English and
+  Chinese, 138 requests, 0.8 s apart): weapons, armour, jewellery, belts, flasks, charms and
+  jewels. Writes `data/items/bases.jsonl` (1,762 bases: properties, requirements, implicits),
+  `uniques.jsonl` (434 uniques and their modifier text; other versions of the same unique,
+  such as the three Grand Spectrum jewels, are kept as `variants`), `modifiers.jsonl` (17,719
+  modifiers from the page's embedded modifier data: group, prefix / suffix, name, level,
+  family, text, tags, tier) and `classes.json` (63 modifier pages). Jewel modifiers come from
+  each jewel's own page; class names come from the page title where the page has no modifier
+  data. What a charm grants when used (`effects`, e.g. "+25% to Fire Resistance") is collected
+  with its base. Lineage supports were already covered (77 of 77); ascendancy pages add nothing the
+  passive tree data lacks. Chinese
+  names join by slug, modifiers by family, level and affix; a page whose tab count and parsed
+  cards differ, or that has no modifier data, stops the collection. Spawn weights are not stored.
+- MCP tools `get_item`, `items_by` and `modifiers_for` (`src/tools/items.py`), seventeen tools in
+  all. Bases and uniques are in the bilingual name index (`item_base`, `item_unique`).
+- `verify_build(items, affixes)`: item names are checked like gems and passives;
+  each affix ("Bows: #% increased Attack Speed", 「戒指：+#%火焰抗性」) is checked against what that item
+  class can roll and returns its family, prefix / suffix, tier count and the best and lowest
+  tier. Only the whole modifier verifies (every word, in either language; numbers optional, but
+  not above the best tier); a partial wording is unverified and returns the candidate
+  modifiers. Per item at most 3 prefixes and 3 suffixes (the most a rare item holds) and one
+  modifier per family; an entry over that, an armour class with several attribute pages, or a
+  Chinese name poe2db gives to two items is reported as unverified instead of failing the call.
+  Item class pages appear in the source list. `affixes` takes 60 entries (ten slots × 6) so a
+  whole build is checked in one call with one source list; a modifier fact gives its tier texts
+  in the answer language and cites its page by number instead of repeating the links.
+- `update_data` scope `items`: at most 20 requests (10 class pages) per call, resumable for 30
+  minutes from a cache under `output/cache/items_update/` (one folder per set of pages,
+  abandoned ones removed), written once when every page is fetched and validates. Every page
+  must still yield items or modifiers, and at least 90 % of modifiers must have Chinese text.
+  `names` limits it to some classes (`Body Armours` or `胸甲` covers its attribute pages, a page
+  slug only that page) and merges them into the stored data by the page each item came from
+  (`item_page`), so a partial update writes what a full run would. `data_status` lists the
+  items data set; the online check parses one item class page.
+- Build workflow, server instructions and the `poe2-advisor` skill gain a gear step: pick bases
+  or uniques, then per slot the target modifiers in order of importance, presented as targets
+  because modifiers are random; damage is not calculated.
+
+- Frenzy, Endurance and Power Charges (狂怒球、耐力球、暴擊球) resolve to the Charges glossary
+  entry in `lookup_entity` and `explain_keyword` (`keyword_subterms` in the catalog), and
+  `gems_by(text)` searches a Chinese glossary name or charge name by its English name
+  (`text_searched`), since gem descriptions are stored in English; a Chinese text with no
+  known term says so instead of returning nothing silently.
+
+- `verify_build(detail)`: `brief` returns names and cite numbers only, for a caller that
+  already holds the records (a build with a whole set of gear, a repeat check): 22,000
+  characters for 18 gems, 22 passives, 9 items and 54 modifiers, against 46,000 in full.
+- `items_by(with_lines)`: each item with its own lines in both languages, so "which charms
+  exist and what do they do" is one call instead of one `get_item` per item.
+
+### Changed
+- `verify_build` facts no longer repeat their source links (the numbered source list and
+  `cite` carry them), and the MCP tool no longer returns the structured `sources` rows next
+  to `sources_markdown`, which holds the same rows. A measured build answer had taken 8
+  minutes because the 55,000-character response was saved to a file and parsed by the client.
+- Build workflow: the build is generated from the poe2db records, with a reason from the data
+  for every choice; `reference_builds` is called after the draft, only to state how the build
+  differs from what ladder characters run (it used to be an optional first step, and answers
+  chose a skill "because the ladder uses it").
+- Version 0.8.0; the scrapers' User-Agent says `POBG/0.8`.
+- READMEs, client guide, ROADMAP and flow diagrams describe the gear data, the new tools, the
+  `items` scope and the item class pages as a data source.
+
 ## [0.7.0] - 2026-11-11
 
 First public release. Earlier versions were developed privately; this repository starts from

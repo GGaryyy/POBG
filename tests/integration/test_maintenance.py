@@ -129,7 +129,7 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     monkeypatch.setattr(mnt, "fetch_html", lambda *a, **k: pytest.fail("status must not use the network"))
     status = tool.status()
     sets = {d["name"]: d for d in status["datasets"]}
-    assert list(sets) == ["skill_gems", "spirit_gems", "support_gems", "passives", "glossary", "ladder", "entity_index"]
+    assert list(sets) == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder", "entity_index"]
     assert sets["skill_gems"] == {"name": "skill_gems", "update_scope": "skill_gems", "records": 3,
                                   "oldest_fetched_at": FETCHED, "newest_fetched_at": FETCHED,
                                   "oldest_age_days": sets["skill_gems"]["oldest_age_days"]}
@@ -143,7 +143,7 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     assert status["version"] == __version__ and status["writable"] is True and status["data_dir"] == str(base / "data")
     assert status["catalog"] == {"spec_version": tool.spec.raw["spec_version"], "verified_at": tool.spec.raw["verified_at"],
                                  "pob2_tree_version": "0_5", "tree_data_version": "4.5"}
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "glossary", "ladder"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder"]
     assert status["not_updatable"] == {}
     assert {d["name"] for d in status["datasets"] if d["update_scope"]} == set(status["update_scopes"])
 
@@ -290,12 +290,12 @@ def test_scope_ignores_case_and_spaces(tool, scope):
 
 
 @pytest.mark.parametrize("scope, message", [
-    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, glossary, ladder"),
+    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ladder"),
     (None, "scope is required"),
     ("all", "there is no update for everything"),
     ("gems", "scope is required"),
     ("x" * 5000, "scope is required"),
-    ("items", "scope is required"),
+    ("weapons", "scope is required"),
     ("entity_index", "scope is required"),
 ])
 def test_missing_or_unknown_scope_is_refused_without_a_request(tool, base, scope, message):
@@ -813,7 +813,7 @@ def test_glossary_run_cache_that_is_too_old_is_started_again(tool, base, lenient
     first = GlossarySite()
     assert tool.update("glossary", fetch=first)["done"] is False
     run = base / "output" / "cache" / "glossary_update"
-    old = time.time() - mnt.GLOSSARY_RUN_SECONDS - 60
+    old = time.time() - mnt.RUN_CACHE_SECONDS - 60
     for path in run.rglob("*"):
         if path.is_file():
             os.utime(path, (old, old))
@@ -875,7 +875,7 @@ def test_glossary_run_is_resumed_while_it_was_active_recently(tool, base, lenien
     first = GlossarySite()
     tool.update("glossary", fetch=first)
     run = base / "output" / "cache" / "glossary_update"
-    old = time.time() - mnt.GLOSSARY_RUN_SECONDS - 60
+    old = time.time() - mnt.RUN_CACHE_SECONDS - 60
     os.utime(run / "started", (old, old))                       # started long ago, but worked on a moment ago
     second = GlossarySite()
     tool.update("glossary", fetch=second)

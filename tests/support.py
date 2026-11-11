@@ -24,6 +24,8 @@ def lowered_spec(value: int = 0) -> Spec:
             if isinstance(sec, dict) and "expect_min" in sec:
                 sec["expect_min"] = value
     raw["sources"]["passive_tree_data"]["expect_min"]["nodes"] = value
+    sample = raw["sources"]["item_pages"]["probe_sample"]["expect_min"]
+    sample.update({key: value for key in sample})
     return Spec(raw)
 
 

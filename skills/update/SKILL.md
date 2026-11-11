@@ -1,7 +1,7 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, glossary or ladder); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives|glossary|ladder> [gem names, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary or ladder); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ladder> [gem names or item classes, comma-separated]
 disable-model-invocation: true
 ---
 
@@ -9,10 +9,11 @@ disable-model-invocation: true
 
 Arguments: `$ARGUMENTS`
 
-The first word is the scope; anything after it is a comma-separated list of gem names.
+The first word is the scope; anything after it is a comma-separated list of gem names (gem
+scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`, `glossary`, `ladder`:** do not call `update_data`. Tell the user to pick one scope,
+`passives`, `items`, `glossary`, `ladder`:** do not call `update_data`. Tell the user to pick one scope,
 for example `/pobg:update skill_gems`.
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
@@ -32,6 +33,16 @@ for example `/pobg:update skill_gems`.
 1. Call `update_data` with `scope: "passives"` and no other argument. It makes 7 requests: the
    PathOfBuilding-PoE2 tree, two poe2db tree data files and four listing pages.
 2. Report `records`, `changed`, `added`, `removed` and the tree versions.
+
+## `items`
+
+1. Call `update_data` with `scope: "items"`, plus `names` when the user named item classes
+   (e.g. `["Bows"]`; `"Body Armours"` or `"胸甲"` also covers its attribute pages, `"Helmets_str"`
+   is that page only). One call makes at most 20 requests (10 class pages in both languages) and
+   keeps its progress for 30 minutes; nothing is written until every page is fetched and checked.
+2. While `done` is false, call it again with the same arguments, at most 8 calls in total; give
+   one line of progress per call (`fetched`, `left`).
+3. When `done` is true, report `bases`, `uniques` and `modifiers`.
 
 ## `glossary`
 

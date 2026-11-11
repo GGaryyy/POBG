@@ -137,8 +137,8 @@ folder as the working directory.
 
 | Feature | Detail |
 |---|---|
-| Tools | Fourteen. Names use only letters, digits and `_`; descriptions are under 1,024 characters; input schemas are flat objects (strings, integers, booleans, string lists) |
-| Annotations | Eleven tools are `readOnlyHint: true`, `openWorldHint: false`. `data_status` is read-only but `openWorldHint: true` (its optional online check). `refresh_gem` and `update_data` are `readOnlyHint: false`, `destructiveHint: true`, `openWorldHint: true`: they fetch from the sources and replace local records, so clients should ask before running them |
+| Tools | Seventeen. Names use only letters, digits and `_`; descriptions are under 1,024 characters; input schemas are flat objects (strings, integers, booleans, string lists) |
+| Annotations | Fourteen tools are `readOnlyHint: true`, `openWorldHint: false`. `data_status` is read-only but `openWorldHint: true` (its optional online check). `refresh_gem` and `update_data` are `readOnlyHint: false`, `destructiveHint: true`, `openWorldHint: true`: they fetch from the sources and replace local records, so clients should ask before running them |
 | Prompts | `build_guide(request, lang)`, `status()`, `update(scope, names)`. Clients without prompt support call the `build_workflow` tool for the build steps, and can call `data_status` / `update_data` directly |
 | Server instructions | A short "how to use these tools" text sent at initialisation; some clients ignore it, which is why `build_workflow` exists |
 | Languages | Queries and answers in English and Traditional Chinese; `lang` is `en` or `zh-tw` |
@@ -152,11 +152,14 @@ Largest responses measured on the bundled data (characters of JSON):
 | `passives_with_stat` | 20,000 (default `limit` 50) | 72,700 (`limit` 100 with `include_without_page`) |
 | `gems_by`, `supports_for` | 11,000 – 12,500 (default `limit` 50) | 45,700 (`limit` 200) |
 | `reference_builds` | 2,900 (default `limit` 5) | 14,700 (`limit` 50) |
-| `verify_build` | about 1,000 per name | 89,800 (40 gems + 40 passives) |
+| `get_item` | 1,000 (median) | 1,500 |
+| `items_by` | 7,700 (one class); 12,000 with `with_lines` (25 charms) | 26,800 (`limit` 100) |
+| `modifiers_for` | 25,600 (default `limit` 20 families) | 37,200 (`limit` 100) |
+| `verify_build` | about 600 per gem, 340 per passive, 320 per modifier (`detail` "brief": about 150 each) | a full build with gear (18 gems, 22 passives, 9 items, 54 modifiers): 46,000, or 22,000 with `detail` "brief" |
 | `path_to` | 11,000 (three keystones) | 72,900 (40 targets) |
 | `data_status`, `update_data` | 2,700 / under 1,000 | a few thousand |
 
-Durations measured on 2026-11-11: `data_status` 0.4 s locally and 38 s with the online check (18
+Durations measured on 2026-11-11: `data_status` 0.4 s locally and 39 s with the online check (19
 requests); `update_data` dry run 2–3 s; three named gems 10 s (4 requests); `passives` 17 s (7
 requests). A gem update of 20 pages takes roughly a minute, so clients with a short tool
 timeout should pass a smaller `max_gems`. `requests` counts pages; a page that answers with a

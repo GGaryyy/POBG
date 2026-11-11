@@ -21,7 +21,9 @@ POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) s
 - 「哪些天賦有攻擊速度？」
 - 「解釋暴擊」
 - 「女巫要點到 Blood Magic 和 Resolute Technique 需要幾點天賦？」
-- 「給我一個火系泰坦的流派」：回答裡的每顆寶石與每個天賦都會與資料比對，不存在的名稱會被移除，
+- 「弓能出哪些詞綴？攻擊速度有哪幾階？」
+- 「驟雨之弦有什麼詞綴？」
+- 「給我一個火系泰坦的流派」：回答裡的每顆寶石、天賦、裝備與目標詞綴都會與資料比對，不存在的名稱會被移除，
   回答結尾附上來源清單。
 
 ## 安裝
@@ -81,10 +83,11 @@ Gemini CLI 的斜線指令）。
 |---|---|---|
 | `skill_gems`、`spirit_gems`、`support_gems` | 列表頁，然後只抓新增的、列表上有變動的、你指定名稱的、或超過 N 天沒更新的寶石 | 1 + 最多 20 顆（上限 40）；重複呼叫直到沒有剩餘 |
 | `passives` | PathOfBuilding-PoE2 的天賦樹、poe2db 的兩個天賦樹資料檔與四個列表頁；並重建屬性索引 | 7 |
+| `items` | 69 個裝備類別頁（中英；裝備、藥劑、護符、珠寶）上的基底、傳奇與詞綴；加上類別名稱（`Bows`、`Body Armours`）就只更新那幾類 | 每次呼叫最多 20 個請求（即 10 個類別頁的中英兩版，每頁約 600 KB），總共 138 個請求；重複呼叫直到完成，全部抓完並通過檢查才一次寫入 |
 | `glossary` | 所有名詞解釋（英文與中文的 hover 片段），透過列表頁與少數寶石頁找到 | 每次呼叫最多 50 個（一分鐘內），總共約 750 個；重複呼叫直到完成，全部抓完才一次寫入 |
 | `ladder` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
 
-範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、
+範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、`/pobg:update items Bows`、
 「更新超過 30 天的技能寶石」。
 
 注意事項：
@@ -97,7 +100,7 @@ Gemini CLI 的斜線指令）。
 - 同一個資料夾一次只會有一個 update 在跑，兩個用戶端共用同一個資料夾時也一樣。本機還沒有檔案的資料類別，
   第一次要在終端機完整抓取。
 - 第一次完整抓取寶石要在終端機執行，見「更新資料」。
-- 名詞解釋的更新會把進度暫存在 `output/cache/` 30 分鐘，中斷後會接續而不是重來。抓不到的名詞保留原本的內容。
+- 名詞解釋與裝備的更新會把進度暫存在 `output/cache/` 30 分鐘，中斷後會接續而不是重來。抓不到的名詞保留原本的內容。
 - 天賦樹有新*版本*時 status 會回報，但 `update` 不會自動採用；那需要本專案釋出新版。
 - update 改的是 server 執行所在的那份 `data/`。以 plugin 安裝時，plugin 更新會把它取代。
 
@@ -110,16 +113,19 @@ Gemini CLI 的斜線指令）。
 | `passives_with_stat` | 哪些天賦提供某個屬性 |
 | `gems_by` | 依標籤、階級、職業、武器、種類或關鍵字篩選寶石 |
 | `supports_for` | 可以輔助某技能的所有輔助寶石 |
-| `reference_builds` | 天梯角色在用什麼（職業、主技能、排名、寶石、keystone；不含角色名稱） |
-| `verify_build` | 檢查流派草稿裡的名稱；回傳事實、被移除的名稱與排好的來源清單 |
+| `reference_builds` | 天梯角色在用什麼（職業、主技能、排名、寶石、keystone；不含角色名稱）；流派回答用它說明生成的流派與天梯主流差在哪，而不是用它來決定流派 |
+| `verify_build` | 檢查流派草稿裡的寶石、天賦、裝備與目標詞綴（「戒指：+#%火焰抗性」，要寫完整詞綴；每件裝備最多 3 條前綴、3 條後綴；只寫部分的詞綴會回傳候選）；回傳事實、被移除的名稱與排好的來源清單 |
 | `path_to` | 從職業起點點到目標天賦要依序點哪些節點；對照 123 / 8 點上限，並加總整條路線的屬性（近似路線） |
+| `get_item` | 一件裝備基底（數值、需求、固定詞綴）或傳奇（其詞綴），附來源 |
+| `items_by` | 依裝備類別、種類、需求等級或文字篩選基底與傳奇 |
+| `modifiers_for` | 某類裝備（或某基底、傳奇所屬類別）能出哪些詞綴：依族群分組，列出每一階的等級與數值範圍、前綴或後綴；也包含褻瀆、精髓、腐化與鑲嵌物的效果 |
 | `build_workflow` | 有出處的流派回答流程，給不支援 MCP prompt 的用戶端使用 |
 | `refresh_gem` | 重新抓取 poe2db 上的一顆寶石頁面並取代本機紀錄 |
 | `data_status` | 本機資料有哪些、多舊；需要時可檢查線上網站 |
-| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、天賦、名詞解釋、天梯），每次呼叫的請求數有上限 |
+| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、天賦、裝備、名詞解釋、天梯），每次呼叫的請求數有上限 |
 
 Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指令）。只有 `refresh_gem` 與
-`update_data` 會變更資料；其餘十二個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
+`update_data` 會變更資料；其餘十五個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
 
 ## 資料來源與使用範圍
 
@@ -132,6 +138,7 @@ Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指�
 |---|---|---|---|
 | poe2db.tw 英文頁面 | `https://poe2db.tw/us/{slug}`：列表頁 `Skill_Gems`、`Spirit_Gems`、`Support_Gems`、`Keystone`、`Notable`，以及每顆寶石各一頁 | 寶石名稱、階級、標籤、消耗、需求、各等級數值表、品質、隱藏屬性、可搭配的輔助；keystone／notable 卡片（屬性文字、名詞連結） | 完整抓取時 5 個列表頁加 1,012 個寶石頁（技能 347、精神 53、輔助 612），每頁間隔 0.8 秒。更新時只抓 3 個寶石列表與有變動的寶石。`refresh_gem` 依要求抓 1 頁 |
 | poe2db.tw 中文頁面 | `https://poe2db.tw/tw/{slug}`：同樣五個列表頁 | 寶石、keystone、notable 的繁體中文名稱 | 5 頁，存在本機快取；刪除快取後才會重抓 |
+| poe2db 裝備類別頁 | `https://poe2db.tw/us/{slug}` 與 `https://poe2db.tw/tw/{slug}`，即 `item_pages` 列出的 69 個類別頁（武器、副手、依屬性類型細分的防具如 `Body_Armours_str_dex`、飾品、腰帶、生命與魔力藥劑、護符、珠寶，以及 8 個存放珠寶詞綴的珠寶頁） | 裝備基底（數值、需求、固定詞綴）、傳奇（詞綴文字），以及頁面內嵌的詞綴資料：該類能出的每條詞綴的名稱、等級、前綴／後綴、族群與文字，另含褻瀆、精髓、腐化與鑲嵌物效果。不儲存出現權重 | 執行 `update items` 時抓 138 頁（每頁約 600 KB），間隔 0.8 秒 |
 | poe2db hover 片段 | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}` (`lang` = `us` / `tw`) 與 `…/Poe_Data_GemEffects_hover/{hash}` | 名詞解釋（357 個名詞，英文與中文）；寶石 hover 只用來找中文的名詞連結 | 每個約 1.2 KB，間隔 0.3 秒，重建名詞解釋時才抓 |
 | poe2db 天賦樹資料 | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` 與 `data_tw.json`（版本號取自 `https://poe2db.tw/tw/passive-skill-tree/` 及其在 `cdn.poe2db.tw/js/` 的 script） | 每個天賦節點的中文名稱與屬性文字、職業與昇華名稱、點數上限 | 重建天賦樹時抓 2 個檔案；檢視頁與 script 只在 probe 檢查新版本時讀取 |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json`（probe 另會列出 `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`） | 天賦樹結構：所有節點、連線、名稱、屬性、keystone／notable 標記、職業起點、昇華、座標 | 重建天賦樹時抓 1 個檔案 |
@@ -140,14 +147,14 @@ Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指�
 請求方式：
 
 - 對 poe2db 與 GitHub 的請求會以
-  `POBG/0.7 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
+  `POBG/0.8 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
   請求前等待 0.8 秒（hover 片段 0.3 秒），最多嘗試三次。`refresh_gem` 同樣等待 0.8 秒，一次只發一個請求。
 - poe2db 的 `robots.txt` 只禁止 `/*/marked` 與 `/*/markdown_history`，兩者都不會被請求。單一天賦節點頁面
   （每頁 1.2 MB）刻意不抓。
 - poe.ninja 的抓取程式讀的是 poe.ninja 網站自己使用的端點（JSON、protobuf 與一種二進位字典格式）。那不是有文件的
   公開 API，格式以前就改過，所以抓到的快照看起來不對時程式會拒絕寫入。它送出同樣表明身分的 `User-Agent`，
   請求之間等待 0.8 秒。
-- 本 repo 內的快照：寶石抓於 2026-11-10，名詞解釋與天梯抓於 2026-11-11，天賦樹 `0_5`（poe2db 天賦樹資料 `4.5`）。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
+- 本 repo 內的快照：寶石抓於 2026-11-10，名詞解釋、天梯與裝備抓於 2026-11-11，天賦樹 `0_5`（poe2db 天賦樹資料 `4.5`）。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
 
 如果你是上述網站的維護者，希望本專案調整使用資料的方式，請開 issue。
 
@@ -160,7 +167,8 @@ uv sync                                           # 只需一次：把 pytest �
 uv run python -m src.catalog.probe                # poe2db 的結構是否仍符合 catalog 的描述？
 uv run python -m src.scrapers.collect_gems --kind all --changed-only   # 3 個列表頁 + 有變動的寶石
 uv run python -m src.scrapers.collect_passives && uv run python -m src.scrapers.collect_glossary
-uv run python -m src.catalog.entity_index build   # 雙語名稱索引（讀取寶石、天賦、名詞解釋）
+uv run python -m src.scrapers.collect_items      # 138 個裝備類別頁：基底、傳奇、詞綴
+uv run python -m src.catalog.entity_index build   # 雙語名稱索引（讀取寶石、天賦、名詞解釋、裝備）
 uv run python -m src.kg.stats && uv run python -m src.kg.build_graph
 ```
 
@@ -188,7 +196,10 @@ uv run ruff check .
 - `path_to` 給的是夠好的路線，不保證最短，也不計算武器組天賦點與珠寶。
 - `verify_build` 只檢查名稱是否存在並回傳其事實，不判斷流派強不強。
 - 天梯是抽樣（數種排行各取前段，共約 600 個角色），不是完整天梯。
-- 不包含裝備、傳奇物品、製作與終局內容。
+- 詞綴是隨機的。`modifiers_for` 列的是某類裝備「可能」出的詞綴；流派回答依重要性列出目標詞綴，不代表裝備一定有。
+  不包含出現權重、製作、通貨，也不計算傷害與防禦總值。
+- 有 103 種基底（多為符文鍛造版本，以及永恆珠寶 Timeless Jewel）不在任何詞綴頁上，`modifiers_for` 無法回答它們。不包含終局物品。
+  poe2db 元技能寶石頁上有 13 顆寶石（Cast on Death、Demon Magus 等）不在任何寶石列表上，沒有蒐集。
 
 ## 授權
 

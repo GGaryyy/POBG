@@ -11,6 +11,7 @@ for one call only: a fresh clone has none, and a stale one must not answer an up
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import shutil
@@ -33,6 +34,7 @@ from src.catalog.spec import Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, save_graph
 from src.kg.stats import MIN_PARSED_RATIO, build_stat_index, parse_summary, write_stat_index
 from src.scrapers import collect_glossary as glossary
+from src.scrapers import collect_items
 from src.scrapers.collect_gems import CollectionError, collect_kind
 from src.scrapers.collect_passives import PassiveBuildError, load_tree_data, write_passives
 from src.scrapers.collect_passives import build as build_passives
@@ -41,6 +43,7 @@ from src.scrapers.common import (
     LockBusy,
     MIN_CACHEABLE_BYTES,
     cached_fetch,
+    clean_text,
     fetch_html,
     file_lock,
     now_iso,
@@ -58,7 +61,8 @@ GEM_SCOPES = {"skill_gems": "skill_gem", "spirit_gems": "spirit_gem", "support_g
 PASSIVES = "passives"
 LADDER = "ladder"
 GLOSSARY = "glossary"
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, GLOSSARY, LADDER)
+ITEMS = "items"
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, LADDER)
 WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, LADDER)      # re-fetched as a whole: no names, ages, caps or dry run
 NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
@@ -67,8 +71,9 @@ MAX_NAMES = 40
 MAX_NAME_LEN = 120
 MAX_OLDER_THAN_DAYS = 3650
 RECENT_SECONDS = 900             # a named or stale gem fetched this recently is not fetched again
+ITEMS_BATCH = 20                 # requests per items call: 10 class pages in two languages, about 600 KB each
 GLOSSARY_BATCH = 50              # requests per glossary call; the run is resumed by the next call
-GLOSSARY_RUN_SECONDS = 1800      # how long a half-finished glossary run may be resumed
+RUN_CACHE_SECONDS = 1800         # how long a half-finished glossary or items run may be resumed
 GLOSSARY_GEM_PAGES = 20          # gem pages read to find terms that no listing page links
 MIN_GLOSSARY_KEPT_RATIO = 0.9    # a refresh that reaches fewer of the known terms is not written
 MIN_GLOSSARY_ZH_RATIO = 0.5      # ... nor one that finds Chinese text for fewer of the terms that had it
@@ -158,6 +163,7 @@ class DataMaintenance:
         self.ladder_path = self.data_dir / "community_builds" / "poe_ninja_builds.jsonl"
         self.keywords_path = self.data_dir / "kg" / "keywords.jsonl"
         self.glossary_run = base_dir / "output" / "cache" / "glossary_update"
+        self.items_run = base_dir / "output" / "cache" / "items_update"
 
     # -- status ---------------------------------------------------------------
 
@@ -171,7 +177,7 @@ class DataMaintenance:
             "catalog": {"spec_version": self.spec.raw["spec_version"], "verified_at": self.spec.raw["verified_at"],
                         "pob2_tree_version": pob2["version"], "tree_data_version": tree_data["version"]},
             "datasets": [*(self._gem_status(scope) for scope in GEM_SCOPES), self._passive_status(),
-                         self._glossary_status(), self._ladder_status(), self._index_status()],
+                         self._items_status(), self._glossary_status(), self._ladder_status(), self._index_status()],
             "update_scopes": list(UPDATE_SCOPES),
             "not_updatable": dict(NOT_UPDATABLE),
         }
@@ -206,6 +212,13 @@ class DataMaintenance:
                 "tree_version": next((n.get("pob2_tree_version") for n in nodes if n.get("pob2_tree_version")), None),
                 "tree_data_version": classes.get("version"),
                 "oldest_fetched_at": fetched, "newest_fetched_at": fetched, "oldest_age_days": _age_days(fetched)}
+
+    def _items_status(self) -> dict:
+        source = self.spec.source(collect_items.SOURCE)
+        uniques, _ = _rows(self.base_dir / source["uniques_file"])
+        modifiers, _ = _rows(self.base_dir / source["modifiers_file"])
+        return {"name": ITEMS, "update_scope": ITEMS, **_dated(self.base_dir / source["bases_file"]),
+                "uniques": len(uniques), "modifiers": len(modifiers)}
 
     def _glossary_status(self) -> dict:
         return {"name": GLOSSARY, "update_scope": GLOSSARY, **_dated(self.keywords_path)}
@@ -244,6 +257,8 @@ class DataMaintenance:
                     result = self._update_passives(counting)
                 elif scope == LADDER:
                     result = self._update_ladder(counting)
+                elif scope == ITEMS:
+                    result = self._update_items(counting, names or [])
                 elif scope == GLOSSARY:
                     result = self._update_glossary(counting)
                 else:
@@ -391,14 +406,87 @@ class DataMaintenance:
                 f"have English text and {has_zh} of {len(had_zh)} kept their Chinese text. {NOTHING_WRITTEN}")
 
     def _start_or_resume_glossary_run(self) -> None:
-        marker = self.glossary_run / "started"
-        if self.glossary_run.exists():
-            newest = max((p.stat().st_mtime for p in self.glossary_run.rglob("*") if p.is_file()), default=0.0)
-            if not marker.exists() or time.time() - newest > GLOSSARY_RUN_SECONDS:
-                shutil.rmtree(self.glossary_run)   # idle too long to resume: the hover hashes may have moved on
-        if not marker.exists():
-            marker.parent.mkdir(parents=True, exist_ok=True)
-            marker.write_text(now_iso(), encoding="utf-8")
+        _start_or_resume(self.glossary_run)
+
+    def _update_items(self, counting: _Counting, names: list[str]) -> dict:
+        """Gear bases, uniques and modifiers. One call makes at most ITEMS_BATCH requests (a class page
+        in two languages is two) and keeps the pages under output/cache; the files are written once,
+        when every page is in and validates. `names` limits the update to some item classes; the
+        rest of the stored data is kept."""
+        pages = self._item_pages(names)
+        if names and collect_items.read_records(self.spec, self.data_dir) is None:
+            raise ServiceUnavailable("there is no local item data to update in part; run update_data scope items "
+                                     "without names first")
+        run = self.items_run / _run_name(pages, names)
+        urls = {self.spec.resolve_url(slug, lang) for slug in pages for lang in collect_items.LANGS}
+        try:
+            _sweep_stale_runs(self.items_run)
+            _start_or_resume(run)
+            fetch = _Budget(counting, ITEMS_BATCH, run / "failed.json", urls)
+            fresh, summary = collect_items.collect(self.spec, fetch, cache_dir=run / "pages", slugs=pages)
+        except _BudgetSpent:
+            return {"done": False, "left": len(urls) - _cached_pages(run, pages), "fetched": counting.count,
+                    "note": "not finished: call update_data with scope items (and the same names) again to continue"}
+        except requests.RequestException as exc:      # (a RequestException is also an OSError: keep this first)
+            raise ServiceUnavailable(f"network error: {exc}. Nothing was written; what was fetched so far is kept, "
+                                     "so calling again continues from there") from exc
+        except collect_items.ItemCollectionError as exc:
+            shutil.rmtree(run, ignore_errors=True)
+            raise ServiceUnavailable(f"{exc}. {NOTHING_WRITTEN}") from exc
+        except OSError as exc:
+            raise ServiceUnavailable(f"the update cache under output/ could not be used ({type(exc).__name__}). "
+                                     f"{NOTHING_WRITTEN}") from exc
+        try:
+            collect_items.validate(fresh, summary, self.spec, partial=bool(names))
+        except collect_items.ItemCollectionError as exc:
+            shutil.rmtree(run, ignore_errors=True)
+            raise ServiceUnavailable(f"{exc}. {NOTHING_WRITTEN}") from exc
+        if names:
+            fresh = collect_items.merge_records(self.spec, collect_items.read_records(self.spec, self.data_dir),
+                                                fresh, pages)
+        try:
+            collect_items.write_records(self.spec, self.data_dir, fresh)
+        except OSError as exc:
+            raise ServiceUnavailable(f"a data file could not be written ({type(exc).__name__}). {PARTIAL_WRITE}") from exc
+        derived = self._rebuild_derived(fetch, None)
+        shutil.rmtree(run, ignore_errors=True)
+        return {"done": True, "left": 0, "pages": len(pages), "bases": len(fresh["bases"]),
+                "uniques": len(fresh["uniques"]), "modifiers": len(fresh["modifiers"]),
+                "zh_name_ratio": summary.get("zh_name_ratio"), "modifier_zh_ratio": summary.get("modifier_zh_ratio"),
+                "mod_groups_english_only": summary.get("mod_groups_english_only", 0), **derived}
+
+    def _item_pages(self, names: list[str]) -> list[str]:
+        """Catalog page slugs for `names`, every page when no name is given. A page slug takes that
+        page only (Helmets_str); a class name in English or Chinese (Body Armours, 胸甲) takes its
+        item page and its attribute pages."""
+        catalog = [p["slug"] for p in self.spec.source(collect_items.SOURCE)["pages"]]
+        if not names:
+            return catalog
+        labels = self._item_class_labels()
+        picked, unknown = [], []
+        for name in names:
+            query = clean_text(name).casefold()
+            hits = [slug for slug in catalog if "_" in query and slug.casefold() == query]
+            if not hits:
+                key = labels.get(query, query).casefold().replace(" ", "_")
+                hits = [slug for slug in catalog if slug.casefold() == key or slug.casefold().startswith(key + "_")]
+            if hits:
+                picked += [slug for slug in hits if slug not in picked]
+            else:
+                unknown.append(name)
+        if unknown:
+            raise BadArgument(f"not an item class page: {', '.join(repr(n) for n in unknown)}. Pages: {', '.join(catalog)}")
+        return picked
+
+    def _item_class_labels(self) -> dict[str, str]:
+        """{English or Chinese class name, casefolded: English label} from the stored class registry."""
+        registry = _read_json(self.base_dir / self.spec.source(collect_items.SOURCE)["classes_file"])
+        labels: dict[str, str] = {}
+        for page in registry.get("pages", []):
+            for name in (page.get("label"), page.get("label_zh_tw")):
+                if name:
+                    labels[name.casefold()] = page["label"]
+        return labels
 
     def _crawl_glossary(self, fetch: Fetcher, known: set[str]) -> dict[str, dict[str, dict]]:
         """The collector's crawl over a run cache: listing pages, then gem pages for the known terms
@@ -522,6 +610,12 @@ def _check_options(scope: str, names: list[str] | None, older_than_days: int | N
         raise BadArgument("max_gems must be a whole number")
     if older_than_days is not None and (isinstance(older_than_days, bool) or not isinstance(older_than_days, int)):
         raise BadArgument("older_than_days must be a whole number")
+    if scope == ITEMS:
+        if older_than_days is not None or dry_run or max_gems != DEFAULT_MAX_GEMS:
+            raise BadArgument("older_than_days, max_gems and dry_run only apply to the gem scopes; an items update "
+                              "re-fetches whole item class pages (names may limit it to some classes)")
+        _check_names(names)
+        return
     if scope in WHOLE_SET_SCOPES:
         if names or older_than_days is not None or dry_run or max_gems != DEFAULT_MAX_GEMS:
             raise BadArgument("names, older_than_days, max_gems and dry_run only apply to the gem scopes; "
@@ -531,6 +625,10 @@ def _check_options(scope: str, names: list[str] | None, older_than_days: int | N
         raise BadArgument(f"max_gems must be between 1 and {MAX_GEMS}")
     if older_than_days is not None and not 0 <= older_than_days <= MAX_OLDER_THAN_DAYS:
         raise BadArgument(f"older_than_days must be between 0 and {MAX_OLDER_THAN_DAYS}")
+    _check_names(names)
+
+
+def _check_names(names: list[str] | None) -> None:
     if names and len(names) > MAX_NAMES:
         raise BadArgument(f"at most {MAX_NAMES} names per call")
     for name in names or []:
@@ -606,3 +704,39 @@ def _read_json(path: Path) -> dict:
     except (json.JSONDecodeError, OSError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _start_or_resume(run: Path) -> None:
+    """Keep a run cache while it was used in the last RUN_CACHE_SECONDS; start over otherwise."""
+    marker = run / "started"
+    if run.exists():
+        newest = max((p.stat().st_mtime for p in run.rglob("*") if p.is_file()), default=0.0)
+        if not marker.exists() or time.time() - newest > RUN_CACHE_SECONDS:
+            shutil.rmtree(run)   # idle too long to resume: the site may have moved on
+    if not marker.exists():
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(now_iso(), encoding="utf-8")
+
+
+def _run_name(pages: list[str], names: list[str]) -> str:
+    """One cache folder per set of pages: "all", or a short hash of the sorted page slugs."""
+    if not names:
+        return "all"
+    return "pages_" + hashlib.sha256("|".join(sorted(pages)).encode("utf-8")).hexdigest()[:12]
+
+
+def _cached_pages(run: Path, pages: list[str]) -> int:
+    folder = run / "pages"
+    return sum(1 for slug in pages for lang in collect_items.LANGS
+               if (folder / lang / f"{safe_cache_name(slug)}.html").exists())
+
+
+def _sweep_stale_runs(parent: Path) -> None:
+    """Remove run folders nobody has used for RUN_CACHE_SECONDS (abandoned named runs)."""
+    if not parent.exists():
+        return
+    for run in parent.iterdir():
+        if run.is_dir():
+            newest = max((p.stat().st_mtime for p in run.rglob("*") if p.is_file()), default=0.0)
+            if time.time() - newest > RUN_CACHE_SECONDS:
+                shutil.rmtree(run, ignore_errors=True)

@@ -83,3 +83,50 @@ def test_over_long_queries_are_rejected(svc):
         with pytest.raises(BadArgument, match="longer than 500 characters"):
             call("x" * 501)
     assert svc.lookup_entity("x" * 500)["hits"] == []
+
+
+# -- Chinese terms (gem descriptions are stored in English) ------------------------------------
+
+def subterm_service(tmp_path):
+    """The catalog with a made-up kind of the synthetic glossary term Stun: 'Heavy Stun' / 重暈眩."""
+    import copy
+
+    from src.catalog.entity_index import build_entity_index
+    from src.catalog.spec import Spec
+    from src.scrapers.common import write_jsonl
+    from tests.kg_support import ZH_NAMES
+    raw = copy.deepcopy(load_spec().raw)
+    raw["keyword_subterms"] = {"_note": "x", "Stun": [{"en": "Stun Again", "zh_tw": "再次暈眩"}]}
+    spec = Spec(raw)
+    env = build_full_environment(tmp_path, spec)
+    entities = build_entity_index(spec, data_dir=env / "data", zh_names=ZH_NAMES, passive_slugs={})
+    write_jsonl(env / "data" / "catalog" / "entity_index.jsonl", (e.as_dict() for e in entities))
+    return LookupService(base_dir=env, spec=spec, graph_path=env / GRAPH_REL)
+
+
+def test_a_chinese_glossary_name_is_searched_by_its_english_name(svc):
+    result = svc.gems_by(text="暈眩")
+    assert result["text_searched"] == "Stun" and result["total"] == svc.gems_by(text="Stun")["total"] > 0
+    assert result["filters"]["text"] == "暈眩"
+
+
+def test_chinese_text_with_no_known_term_says_descriptions_are_english(svc):
+    result = svc.gems_by(text="不存在的詞")
+    assert result["total"] == 0 and "stored in English" in result["note"]
+    assert "note" not in svc.gems_by(text="zzzz") and "text_searched" not in svc.gems_by(text="stun")
+
+
+def test_a_named_kind_of_a_term_resolves_to_the_term_and_translates(tmp_path):
+    svc = subterm_service(tmp_path)
+    assert svc.gems_by(text="再次暈眩")["text_searched"] == "Stun Again"
+    assert svc.gems_by(text="再次暈眩")["total"] == svc.gems_by(text="can stun again")["total"] == 6
+    for name in ("再次暈眩", "Stun Again", "stun agains"):
+        assert svc.explain_keyword(name)["keyword"]["slug"] == "Stun"
+        assert [(h["kind"], h["slug"]) for h in svc.lookup_entity(name)["hits"]][:1] == [("keyword", "Stun")]
+
+
+def test_the_catalog_names_the_three_charges():
+    terms = load_spec().subterms()
+    assert set(terms) == {"Charges"}
+    assert {(t["en"], t["zh_tw"]) for t in terms["Charges"]} == {
+        ("Frenzy Charge", "狂怒球"), ("Endurance Charge", "耐力球"), ("Power Charge", "暴擊球")}
