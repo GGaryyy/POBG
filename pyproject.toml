@@ -1,0 +1,32 @@
+# Environment of the MCP server: `uv run --no-dev python -m src.tools.mcp_server`.
+# The dev group adds what the tests need: `uv sync`, then `uv run pytest`.
+[project]
+name = "poe2db-mcp"
+version = "0.7.0"
+description = "Unofficial Path of Exile 2 data tools over MCP: cited gem / passive / glossary lookups, passive tree routes and verified build advice"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.3,<3",
+    "networkx",
+    "requests",
+    "beautifulsoup4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "tomli; python_version < '3.11'",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

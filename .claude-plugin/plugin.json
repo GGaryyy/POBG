@@ -1,0 +1,36 @@
+{
+  "name": "poe2db",
+  "version": "0.7.0",
+  "description": "Unofficial Path of Exile 2 data tools for AI assistants, built on poe2db.tw: cited gem, passive and glossary lookups (English + 繁體中文), passive tree routes with point costs, and build advice whose every gem and passive is verified against local data.",
+  "author": {
+    "name": "GGaryyy"
+  },
+  "repository": "https://github.com/GGaryyy/poe2db-mcp",
+  "homepage": "https://github.com/GGaryyy/poe2db-mcp",
+  "license": "MIT",
+  "keywords": [
+    "path-of-exile-2",
+    "poe2",
+    "poe2db",
+    "mcp",
+    "game-data"
+  ],
+  "mcpServers": {
+    "poe2db": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--frozen",
+        "--no-dev",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "python",
+        "-m",
+        "src.tools.mcp_server"
+      ],
+      "env": {
+        "UV_PROJECT_ENVIRONMENT": "${CLAUDE_PLUGIN_DATA}/venv"
+      }
+    }
+  }
+}

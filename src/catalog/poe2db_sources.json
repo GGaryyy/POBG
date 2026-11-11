@@ -1,0 +1,610 @@
+{
+  "spec_version": "1.2",
+  "verified_at": "2026-11-11",
+  "base_url": "https://poe2db.tw",
+  "languages": {
+    "en": "us",
+    "zh-tw": "tw"
+  },
+  "url_patterns": {
+    "page": "{base}/{lang_path}/{slug}",
+    "passive_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_PassiveSkills_hover/{hash}",
+    "passive_alt_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_AlternatePassiveSkills_hover/{hash}",
+    "gem_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_GemEffects_hover/{hash}",
+    "keyword_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_KeywordPopups_hover/{hash}"
+  },
+  "robots": {
+    "disallow": [
+      "/*/marked",
+      "/*/markdown_history"
+    ],
+    "sitemap": null,
+    "polite_delay_seconds": 0.8,
+    "hover_delay_seconds": 0.3
+  },
+  "shared_selectors": {
+    "tab_pane": "div.tab-pane[id]",
+    "gem_anchor": "a[data-hover*='GemEffects_hover'][href^='/{lang_path}/']",
+    "gem_row": "tr[data-filters]",
+    "gem_tags_block": "div.gem_tags",
+    "tag_anchor": "a.KeywordPopups[href]",
+    "popup": ".newItemPopup.GemPopup",
+    "popup_name": ".itemName:not(.typeLine) .lc",
+    "popup_typeline": ".itemName.typeLine .lc",
+    "popup_content": ".content",
+    "property": ".property",
+    "requirements": ".requirements",
+    "description": ".secDescrText",
+    "explicit_mod": ".explicitMod",
+    "hidden_stat": "span.secondary.collapse",
+    "quality_mod": ".qualityMod",
+    "gem_tags": "a.GemTags",
+    "item_classes": "a.ItemClasses",
+    "level_table_headers": [
+      "Level",
+      "Requires Level"
+    ],
+    "implicit_table_header": "Implicit",
+    "attribute_table_key": "Id",
+    "passive_anchor": "a.PassiveSkills[data-hover]",
+    "passive_alt_anchor": "a[data-hover*='AlternatePassiveSkills_hover']",
+    "passive_stats": "div.implicitMod",
+    "passive_alt_stats": "span.explicitMod",
+    "svg_node": "circle[id^='n']",
+    "svg_edge": "line[id^='c']",
+    "passive_card": "div.d-flex.border-top.rounded",
+    "passive_card_stats": "div.implicitMod",
+    "keyword_anchor": "a.KeywordPopups[href]",
+    "keyword_anchor_exclude_classes": [
+      "GemTags",
+      "ItemClasses"
+    ],
+    "keyword_hover_title": ".card-header a",
+    "keyword_hover_body": ".keyword-body",
+    "supported_by_pane": "#SupportedBy",
+    "attribute_acronym_key": "Acronym"
+  },
+  "sources": {
+    "skill_gems_listing": {
+      "slug": "Skill_Gems",
+      "kind": "skill_gem",
+      "detail_file": "data/skill_gems/Skill_Gems_Detail.jsonl",
+      "listing_file": "data/skill_gems/Skill_Gems_Listing.jsonl",
+      "gemcutting_file": "data/skill_gems/Skill_Gems_SkillGemsGemcutting.jsonl",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SkillGems",
+            "zh-tw": "技能寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 380,
+          "notes": "One tr[data-filters] per gem (the HTML nests rows inside cells, so read the gem anchor's following siblings): anchor text = name, '(N)' = tier, div.gem_tags = tag anchors. Anchor class gem_red/green/blue = attribute colour, gemitem = no colour.",
+          "universe": true
+        },
+        "summary": {
+          "ids": {
+            "en": "SkillGemsSummary",
+            "zh-tw": "技能寶石Summary"
+          },
+          "pane_index": 1,
+          "expect_min": 380,
+          "notes": "Card layout (no <tr>); same gem anchors plus a.GemTags; not used by the collector."
+        },
+        "gemcutting": {
+          "ids": {
+            "en": "SkillGemsGemcutting"
+          },
+          "pane_index": 2,
+          "row": "tr",
+          "columns": [
+            "class",
+            "tier",
+            "gems"
+          ],
+          "expect_min": 50,
+          "notes": "Rows whose first cell contains 'weapon' are weapon-set rows, not classes."
+        },
+        "tier_level": {
+          "ids": {
+            "en": "TierLevel"
+          },
+          "pane_index": 3,
+          "row": "tr",
+          "columns": [
+            "required_level",
+            "socket_number",
+            "skill_level"
+          ],
+          "expect_min": 20
+        }
+      }
+    },
+    "spirit_gems_listing": {
+      "slug": "Spirit_Gems",
+      "kind": "spirit_gem",
+      "detail_file": "data/spirit_gems/Spirit_Gems_Detail.jsonl",
+      "listing_file": "data/spirit_gems/Spirit_Gems_Listing.jsonl",
+      "gemcutting_file": "data/spirit_gems/Spirit_Gems_SpiritGemsGemcutting.jsonl",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SpiritGems",
+            "zh-tw": "精神寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 45,
+          "notes": "One tr[data-filters] per gem (the HTML nests rows inside cells, so read the gem anchor's following siblings): anchor text = name, '(N)' = tier, div.gem_tags = tag anchors. Anchor class gem_red/green/blue = attribute colour, gemitem = no colour.",
+          "universe": true
+        },
+        "gemcutting": {
+          "ids": {
+            "en": "SpiritGemsGemcutting"
+          },
+          "pane_index": 1,
+          "row": "tr",
+          "columns": [
+            "class",
+            "tier",
+            "gems"
+          ],
+          "expect_min": 20
+        },
+        "tier_level": {
+          "ids": {
+            "en": "TierLevel"
+          },
+          "pane_index": 2,
+          "row": "tr",
+          "columns": [
+            "required_level",
+            "socket_number",
+            "skill_level"
+          ],
+          "expect_min": 20
+        }
+      }
+    },
+    "support_gems_listing": {
+      "slug": "Support_Gems",
+      "kind": "support_gem",
+      "detail_file": "data/support_skill_gems/Support_Gems_Detail.jsonl",
+      "listing_file": "data/support_skill_gems/Support_Gems_Listing.jsonl",
+      "gemcutting_file": null,
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SupportGems",
+            "zh-tw": "輔助寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 520,
+          "notes": "One tr[data-filters] per gem (the HTML nests rows inside cells, so read the gem anchor's following siblings): anchor text = name, '(N)' = tier, div.gem_tags = tag anchors. Anchor class gem_red/green/blue = attribute colour, gemitem = no colour.",
+          "universe": true
+        },
+        "summary": {
+          "ids": {
+            "en": "SupportGemsList",
+            "zh-tw": "輔助寶石List"
+          },
+          "pane_index": 1,
+          "expect_min": 550,
+          "notes": "Card layout with a.GemTags; not used by the collector."
+        },
+        "gem_tags": {
+          "ids": {
+            "en": "GemTags"
+          },
+          "pane_index": 2,
+          "expect_min": 550,
+          "notes": "Gems grouped by tag (card layout, no tier). Contains ~54 supports absent from the list pane, so it is part of the gem universe.",
+          "universe": true
+        },
+        "all_gems": {
+          "ids": {
+            "en": "SupportGemsAllGems",
+            "zh-tw": "SupportGems所有寶石"
+          },
+          "pane_index": 3,
+          "row": "tr",
+          "columns": [
+            "tier",
+            "gems"
+          ],
+          "expect_min": 5,
+          "notes": "One row per support tier 1-5 listing every gem of that tier."
+        }
+      }
+    },
+    "gem_detail": {
+      "url": "{base}/{lang_path}/{slug}",
+      "popup_index": 0,
+      "samples": {
+        "skill_gem": "Leap_Slam",
+        "spirit_gem": "Herald_of_Ash",
+        "support_gem": "Fire_Attunement"
+      },
+      "sections": {
+        "popup": {
+          "selector": ".newItemPopup.GemPopup",
+          "notes": "Repeated up to 4x per page (one per level preview); index 0 is the canonical one with Tier/Cost."
+        },
+        "level_effect": {
+          "locate": "first <table> whose first two <th> are 'Level' and 'Requires Level'",
+          "heading": "Level Effect /N",
+          "notes": "Per-level progression; column set varies per gem. Support gems show a single row plus an implicit 'Mana: N%' cell."
+        },
+        "attributes": {
+          "locate": "first <table> containing a <td> equal to 'Id'",
+          "fields": [
+            "Acronym",
+            "Id",
+            "BaseType",
+            "Class",
+            "TargetTypes",
+            "Type",
+            "ItemType",
+            "ActiveSkillsCode"
+          ],
+          "notes": "Id is the game-internal identifier (e.g. LeapSlam, AddedFireDamageSupport). Acronym lists the keyword pages the skill text refers to as plain <a href=\"/us/<Keyword>\"> links (no hover hash)."
+        },
+        "other_panes": [
+          "Recommended Support Gems",
+          "From",
+          "Version history",
+          "Supported By",
+          "Microtransactions",
+          "Monster"
+        ],
+        "implicit": {
+          "locate": "<table> whose only <th> is 'Implicit', in the same pane as the level table",
+          "notes": "Support gems: first cell is 'Mana: N%' (mana multiplier) followed by the support's stat lines."
+        },
+        "supported_by": {
+          "ids": {
+            "en": "SupportedBy"
+          },
+          "notes": "Every support gem that can support this skill (gem anchors, GemEffects_hover). First <li> lists the skill's Active Types."
+        }
+      }
+    },
+    "passive_keystones": {
+      "slug": "Keystone",
+      "kind": "passive_keystone",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "KeystonePassive",
+            "zh-tw": "關鍵天賦Passive"
+          },
+          "pane_index": 0,
+          "expect_min": 30,
+          "notes": "Card layout (div.d-flex.border-top.rounded): a.PassiveSkills text anchor (slug in href, hover hash in data-hover), div.implicitMod stats with <br> separators and KeywordPopups links (hover hashes per language)."
+        },
+        "timeless": {
+          "ids": {
+            "en": "TimelessJewelKeystone",
+            "zh-tw": "永恆珠寶關鍵天賦"
+          },
+          "pane_index": 1,
+          "expect_min": 5
+        }
+      }
+    },
+    "passive_notables": {
+      "slug": "Notable",
+      "kind": "passive_notable",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "NotablePassive",
+            "zh-tw": "核心天賦Passive"
+          },
+          "pane_index": 0,
+          "expect_min": 1200,
+          "notes": "Card layout (div.d-flex.border-top.rounded): a.PassiveSkills text anchor (slug in href, hover hash in data-hover), div.implicitMod stats with <br> separators and KeywordPopups links (hover hashes per language). A div.property row can show the anointing recipe."
+        },
+        "timeless": {
+          "ids": {
+            "en": "TimelessJewelNotable",
+            "zh-tw": "永恆珠寶核心天賦"
+          },
+          "pane_index": 1,
+          "expect_min": 100
+        }
+      }
+    },
+    "passive_tree_svg": {
+      "seed_slug": "Resolute_Technique",
+      "notes": "Superseded for structure by pob2_tree (2026-11-10). Node pages are 1.2 MB because each embeds the full SVG tree; do not crawl them per node.",
+      "ascendancy_class": "druid1"
+    },
+    "pob2_tree": {
+      "kind": "passive_structure",
+      "url": "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/{version}/tree.json",
+      "versions_api": "https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev",
+      "version": "0_5",
+      "nodes_file": "data/passive_tree/passive_nodes.jsonl",
+      "edges_file": "data/passive_tree/passive_edges.jsonl",
+      "notes": "Structural source for the passive tree: every node, connections, names, stats, keystone/notable/attribute/jewel flags, classesStart, ascendancyName, isAscendancyStart, group/orbit positions. 0_5 is a superset of poe2db's SVG ids (4115/4115) and matches 1230/1231 poe2db names. isOnlyImage nodes are decorative masteries and are dropped.",
+      "expect_min": {
+        "nodes": 4000,
+        "keystones": 30,
+        "notables": 1100,
+        "class_starts": 6,
+        "ascendancy_starts": 20,
+        "poe2db_name_match_ratio": 0.97
+      }
+    },
+    "keyword_hover": {
+      "kind": "keyword",
+      "url": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_KeywordPopups_hover/{hash}",
+      "samples": {
+        "en": {
+          "slug": "Accuracy",
+          "hash": "4a439d13631e43c7f47aab345a7e6b64877fb0209f2c42901d14cd9d9f36da1c"
+        }
+      },
+      "notes": "~1.2 KB snippet: .card-header a (name + slug), .keyword-body (explanation with nested KeywordPopups links). The full /<lang>/<Keyword> page is ~1.7 MB; use the hover. Hashes are per language and not derivable; harvest them from anchors."
+    },
+    "passive_tree_data": {
+      "kind": "passive_text",
+      "url": "https://poe2db.tw/data/passive-skill-tree/{version}/data_{lang}.json",
+      "viewer_page": "https://poe2db.tw/tw/passive-skill-tree/",
+      "viewer_script_pattern": "https://cdn\\.poe2db\\.tw/js/passive-skill-tree\\.[0-9a-f]+\\.js",
+      "version_pattern": "poe2version:\"([0-9.]+)\"",
+      "version": "4.5",
+      "classes_file": "data/passive_tree/classes.json",
+      "notes": "Data file behind poe2db's passive tree viewer, one per language, same node ids as PoB2 (4546/4546 of our tree nodes). Used for text only: zh-TW name and stat lines of every node (joined by id, English name must agree) and class / ascendancy names. Existing zh names from the listing cards agree 1224/1224. Structure still comes from pob2_tree.",
+      "expect_min": {
+        "nodes": 4500,
+        "zh_name_ratio": 0.99
+      }
+    }
+  },
+  "fields": {
+    "gem.name": {
+      "type": "str",
+      "source": "popup_name",
+      "reliability": "ok"
+    },
+    "gem.slug": {
+      "type": "str",
+      "source": "listing gem_anchor href",
+      "semantics": "Language-independent page slug; primary key across /us/ and /tw/.",
+      "reliability": "ok"
+    },
+    "gem.tags": {
+      "type": "list[str]",
+      "source": "popup_typeline + gem_tags in first property",
+      "semantics": "Display tags (English).",
+      "reliability": "ok"
+    },
+    "gem.tag_slugs": {
+      "type": "list[str]",
+      "source": "listing tag_anchor href",
+      "semantics": "Language-independent tag slugs (e.g. Minions, Persistent_Skills).",
+      "reliability": "ok"
+    },
+    "gem.level_range": {
+      "type": "[int,int]|null",
+      "source": "property 'Level:'",
+      "semantics": "Gem level range, normally [1,20].",
+      "reliability": "ok",
+      "notes": "Support gems have no 'Level:' property (always null); their level table has one row."
+    },
+    "gem.requires_level": {
+      "type": "[int,int]|null",
+      "source": "requirements containing 'Level'",
+      "semantics": "Character level needed at gem level min..max.",
+      "reliability": "ok",
+      "notes": "Fixed-level gems (e.g. lineage supports) show 'Requires: Level 65' without a range; stored as [65, 65]."
+    },
+    "gem.requires_stats": {
+      "type": "str|null",
+      "source": "requirements containing 'Level' (text after the level part) or 'Support Requirements'",
+      "semantics": "Attribute requirement range, e.g. '(4 — 157) Str' or '+5 Str'.",
+      "reliability": "ok"
+    },
+    "gem.requires_weapons": {
+      "type": "list[str]|null",
+      "source": "item_classes in requirements; plain text fallback",
+      "semantics": "Weapon classes; 'Any Martial Weapon' is plain text.",
+      "reliability": "ok"
+    },
+    "gem.main_stat": {
+      "type": "str|null",
+      "source": "first 'label: value' property after Tier/Level/Cost/Category",
+      "semantics": "Headline scaling stat such as 'Attack Damage: (110 — 449)% of base'.",
+      "reliability": "ok",
+      "notes": "Null is normal for buffs, auras and most spirit gems (no 'label: value' property). 2026-11-10 run: null for 36% of skill, 89% of spirit, 58% of support gems."
+    },
+    "gem.level_effects": {
+      "type": "list[dict]",
+      "source": "level_effect table",
+      "semantics": "Per-level rows keyed by column header.",
+      "reliability": "ok"
+    },
+    "gem.game_id": {
+      "type": "str|null",
+      "source": "attributes.Id",
+      "semantics": "Game-internal id; stable across patches and languages.",
+      "reliability": "ok"
+    },
+    "skill_gem.tier": {
+      "type": "int|null",
+      "source": "property 'Tier:'",
+      "semantics": "Gemcutting tier, odd numbers 1-13. Null for gems not obtainable from uncut gems (e.g. granted skills).",
+      "reliability": "ok",
+      "notes": "2026-11-10 run: 165 of 400 skill gems show no Tier in the popup; the collector backfills it from the listing row and adds parse_warning 'tier_from_listing'."
+    },
+    "skill_gem.cost": {
+      "type": "str|null",
+      "source": "property 'Cost:'",
+      "semantics": "Flat resource cost range, e.g. '(14 — 97) Mana'.",
+      "reliability": "ok"
+    },
+    "spirit_gem.tier": {
+      "type": "int|null",
+      "source": "property 'Tier:'",
+      "semantics": "Spirit gemcutting tier; only 4, 8, 14 exist.",
+      "reliability": "ok"
+    },
+    "spirit_gem.cost": {
+      "type": "str|null",
+      "source": "property 'Reservation:'",
+      "semantics": "Flat Spirit reservation, e.g. '30 Spirit'.",
+      "reliability": "ok"
+    },
+    "support_gem.tier": {
+      "type": "int|null",
+      "source": "property 'Tier:'",
+      "semantics": "Support tier 1-5; a separate scale from skill/spirit tiers.",
+      "reliability": "ok"
+    },
+    "support_gem.cost": {
+      "type": "str|null",
+      "source": "implicit table cell 'Mana: N%'",
+      "semantics": "Mana cost multiplier applied to the supported skill, not a flat cost.",
+      "reliability": "partial",
+      "notes": "Absent on supports that do not change cost."
+    },
+    "support_gem.category": {
+      "type": "str|null",
+      "source": "property 'Category :'",
+      "semantics": "Exclusivity group: only one support per category per skill.",
+      "reliability": "ok"
+    },
+    "support_gem.summary": {
+      "type": "str|null",
+      "source": "listing row text",
+      "semantics": "Short listing blurb.",
+      "reliability": "ok"
+    },
+    "passive.id": {
+      "type": "str",
+      "source": "svg circle id (numeric PassiveSkillsHash) or slug for timeless nodes",
+      "reliability": "ok"
+    },
+    "passive.name": {
+      "type": "str",
+      "source": "poe2db listing card when the node has a page, else pob2 name",
+      "reliability": "ok"
+    },
+    "passive.stats": {
+      "type": "list[str]",
+      "source": "poe2db listing card stats when the node has a page, else pob2 stats (stats_source says which)",
+      "reliability": "ok"
+    },
+    "passive.position": {
+      "type": "{x,y}|null",
+      "source": "pob2 groups[group - 1] x/y + orbitRadii / orbitAnglesByOrbit",
+      "semantics": "PoB2 tree units; null for timeless jewel nodes.",
+      "reliability": "ok"
+    },
+    "passive.ascendancy": {
+      "type": "str|null",
+      "source": "pob2 ascendancyName",
+      "reliability": "ok"
+    },
+    "passive.class_start": {
+      "type": "list[str]",
+      "source": "pob2 classesStart filtered to PoE2 class names",
+      "semantics": "Classes that start at this node (two classes can share a start).",
+      "reliability": "ok"
+    },
+    "gem.extra_properties": {
+      "type": "list[str]",
+      "source": "explicit_mod without a hidden_stat span",
+      "semantics": "Player-facing stat lines shown in the gem tooltip.",
+      "reliability": "ok"
+    },
+    "gem.hidden_stats": {
+      "type": "list[str]",
+      "source": "explicit_mod containing span.secondary.collapse",
+      "semantics": "Internal stat ids poe2db shows under 'Show hidden stats', e.g. 'is area damage [1]'. Useful for mechanics questions, not for display.",
+      "reliability": "ok"
+    },
+    "gem.keyword_slugs": {
+      "type": "list[str]",
+      "source": "popup a.KeywordPopups (minus GemTags / ItemClasses) + attribute Acronym links",
+      "semantics": "Glossary terms the gem text refers to; each slug is a keyword page.",
+      "reliability": "ok"
+    },
+    "skill_gem.supported_by": {
+      "type": "list[str]",
+      "source": "#SupportedBy pane gem anchors",
+      "semantics": "Support gem slugs poe2db lists as able to support this skill.",
+      "reliability": "ok"
+    },
+    "passive.slug": {
+      "type": "str|null",
+      "source": "listing card anchor href",
+      "semantics": "poe2db page slug; null for nodes without a page (small, attribute, ascendancy, class start).",
+      "reliability": "ok"
+    },
+    "passive.keyword_slugs": {
+      "type": "list[str]",
+      "source": "KeywordPopups links in the listing card stats",
+      "reliability": "ok"
+    },
+    "keyword.text": {
+      "type": "str",
+      "source": "keyword hover .keyword-body",
+      "semantics": "Official in-game glossary explanation.",
+      "reliability": "ok"
+    },
+    "passive.name_zh_tw": {
+      "type": "str | null",
+      "source": "poe2db /tw/ listing card when the node has a page, else poe2db passive tree data (zh_source says which)",
+      "reliability": "ok"
+    },
+    "passive.stats_zh_tw": {
+      "type": "list[str]",
+      "source": "poe2db /tw/ listing card, else poe2db passive tree data when its lines align one-to-one with the English lines; empty otherwise",
+      "reliability": "partial"
+    },
+    "class.name_zh_tw": {
+      "type": "str",
+      "source": "poe2db passive tree data (classes[].name, ascendancies[].name), paired with the English file by position and id",
+      "reliability": "ok"
+    },
+    "passive.unlock_ascendancy": {
+      "type": "str | null",
+      "source": "pob2 unlockConstraint.ascendancy: the node can only be allocated by that ascendancy (176 Oracle-only nodes in 0_5); constraints without an ascendancy are stored as null",
+      "reliability": "ok"
+    },
+    "class.points": {
+      "type": "{passive: int, ascendancy: int}",
+      "source": "poe2db passive tree data points.totalPoints / points.ascendancyPoints",
+      "reliability": "ok"
+    }
+  },
+  "traps": [
+    "The gem popup is repeated up to 4 times per detail page; only index 0 carries Tier and Cost/Reservation.",
+    "'Any Martial Weapon' is plain text inside .requirements, not an a.ItemClasses link.",
+    "Numeric ranges use a spaced em dash: '(1 — 20)'. Older pages used '(1—20)'.",
+    "Requirement text is split across spans: 'Requires: Level (1 — 90) , (4 — 157) Str'.",
+    "Support gems have no 'Cost:' property; the mana multiplier lives in the Level Effect table as 'Mana: N%'.",
+    "Support gems use 'Support Requirements : +5 Str' instead of a Level requirement line.",
+    "Tier means a different scale per gem kind (skill 1-13 odd, spirit 4/8/14, support 1-5).",
+    "Some /tw/ tab-pane ids are localized (技能寶石, 精神寶石, 輔助寶石, 核心天賦Passive); Gemcutting, TierLevel and GemTags are not.",
+    "Passive data-hover hashes differ per language; join /us/ and /tw/ passive names by href slug.",
+    "Ascendancy and small nodes have no poe2db page; their names and stats come from PathOfBuilding-PoE2 tree.json (pob2_tree.version).",
+    "Small passive nodes have no name or stats on poe2db.",
+    "Listing rows are tr[data-filters] (data-tags is gone); gem anchors are recognised by data-hover containing GemEffects_hover, with class gem_red/gem_green/gem_blue (attribute colour) or gemitem (no colour).",
+    "Hidden internal stats sit inside .explicitMod as <span class='secondary collapse'>; keep them out of extra_properties.",
+    "Passive node pages embed the whole SVG tree (~1.2 MB each); per-node data comes from listing cards and hover snippets instead.",
+    "Keyword pages are ~1.7 MB; the KeywordPopups hover snippet (~1.2 KB) carries the same explanation.",
+    "Hover hashes are language-specific and not derivable from the slug; harvest them from anchors in each language.",
+    "In the gem popup, GemTags and ItemClasses anchors also carry the KeywordPopups class; exclude them when collecting glossary terms.",
+    "PoB2 classesStart uses PoE1 internal names alongside PoE2 ones (['Witch', 'Sorceress'], ['Marauder', 'Warrior']); keep only names in tree.classes.",
+    "Some glossary terms appear only in gem descriptions; their zh-TW hover hash comes from the gem's zh-TW GemEffects hover (~6 KB), not from any listing page.",
+    "PoB2 node['group'] is 1-based: the group is tree['groups'][group - 1].",
+    "Several tree nodes can share a notable name with different stats; the poe2db card is joined to the best stat match only.",
+    "poe2db passive tree data: stat lines carry keyword markup ([Key|text] or [text]) that must be stripped, and the classes list also holds classes with no start node on the PoE2 tree (Marauder, Duelist, Shadow, Templar); keep only classes that start on our tree."
+  ]
+}

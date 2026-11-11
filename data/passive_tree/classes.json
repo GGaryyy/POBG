@@ -1,0 +1,184 @@
+{
+  "version": "4.5",
+  "source_url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json",
+  "fetched_at": "2026-11-11T06:56:25.919268+00:00",
+  "points": {
+    "passive": 123,
+    "ascendancy": 8
+  },
+  "classes": [
+    {
+      "name": "Witch",
+      "name_zh_tw": "女巫",
+      "ascendancies": [
+        {
+          "id": "Witch1",
+          "name": "Infernalist",
+          "name_zh_tw": "獄火師"
+        },
+        {
+          "id": "Witch2",
+          "name": "Blood Mage",
+          "name_zh_tw": "血法師"
+        },
+        {
+          "id": "Witch3",
+          "name": "Lich",
+          "name_zh_tw": "巫妖"
+        },
+        {
+          "id": "Witch3b",
+          "name": "Abyssal Lich",
+          "name_zh_tw": "深淵妖巫"
+        }
+      ]
+    },
+    {
+      "name": "Ranger",
+      "name_zh_tw": "遊俠",
+      "ascendancies": [
+        {
+          "id": "Ranger1",
+          "name": "Deadeye",
+          "name_zh_tw": "銳眼"
+        },
+        {
+          "id": "Ranger2",
+          "name": "[DNT-UNUSED] Piscator",
+          "name_zh_tw": "秘能弓箭手"
+        },
+        {
+          "id": "Ranger3",
+          "name": "Pathfinder",
+          "name_zh_tw": "追獵者"
+        }
+      ]
+    },
+    {
+      "name": "Warrior",
+      "name_zh_tw": "戰士",
+      "ascendancies": [
+        {
+          "id": "Warrior1",
+          "name": "Titan",
+          "name_zh_tw": "泰坦"
+        },
+        {
+          "id": "Warrior2",
+          "name": "Warbringer",
+          "name_zh_tw": "戰爭使者"
+        },
+        {
+          "id": "Warrior3",
+          "name": "Smith of Kitava",
+          "name_zh_tw": "奇塔弗工匠"
+        }
+      ]
+    },
+    {
+      "name": "Sorceress",
+      "name_zh_tw": "女術者",
+      "ascendancies": [
+        {
+          "id": "Sorceress1",
+          "name": "Stormweaver",
+          "name_zh_tw": "風暴編織者"
+        },
+        {
+          "id": "Sorceress2",
+          "name": "Chronomancer",
+          "name_zh_tw": "時空幻術師"
+        },
+        {
+          "id": "Sorceress3",
+          "name": "Disciple of Varashta",
+          "name_zh_tw": "瓦拉什塔門徒"
+        }
+      ]
+    },
+    {
+      "name": "Huntress",
+      "name_zh_tw": "女獵人",
+      "ascendancies": [
+        {
+          "id": "Huntress1",
+          "name": "Amazon",
+          "name_zh_tw": "亞馬遜"
+        },
+        {
+          "id": "Huntress2",
+          "name": "Spirit Walker",
+          "name_zh_tw": "魂靈行者"
+        },
+        {
+          "id": "Huntress3",
+          "name": "Ritualist",
+          "name_zh_tw": "儀式行者"
+        }
+      ]
+    },
+    {
+      "name": "Mercenary",
+      "name_zh_tw": "傭兵",
+      "ascendancies": [
+        {
+          "id": "Mercenary1",
+          "name": "Tactician",
+          "name_zh_tw": "智勇軍師"
+        },
+        {
+          "id": "Mercenary2",
+          "name": "Witchhunter",
+          "name_zh_tw": "女巫獵人"
+        },
+        {
+          "id": "Mercenary3",
+          "name": "Gemling Legionnaire",
+          "name_zh_tw": "古靈軍團"
+        }
+      ]
+    },
+    {
+      "name": "Monk",
+      "name_zh_tw": "僧侶",
+      "ascendancies": [
+        {
+          "id": "Monk1",
+          "name": "Martial Artist",
+          "name_zh_tw": "武聖"
+        },
+        {
+          "id": "Monk2",
+          "name": "Invoker",
+          "name_zh_tw": "祈靈者"
+        },
+        {
+          "id": "Monk3",
+          "name": "Acolyte of Chayula",
+          "name_zh_tw": "夏烏拉侍僧"
+        }
+      ]
+    },
+    {
+      "name": "Druid",
+      "name_zh_tw": "德魯伊",
+      "ascendancies": [
+        {
+          "id": "Druid1",
+          "name": "Oracle",
+          "name_zh_tw": "天啟先知"
+        },
+        {
+          "id": "Druid2",
+          "name": "Shaman",
+          "name_zh_tw": "狂徒薩滿"
+        },
+        {
+          "id": "Druid3",
+          "name": "[DNT-UNUSED] Wildfowler",
+          "name_zh_tw": "荒野之心"
+        }
+      ]
+    }
+  ]
+}

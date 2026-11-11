@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+output/
+# rebuilt in seconds from data/ by python -m src.kg.build_graph
+indexes/
+# held only while an update runs
+data/.update.lock
+# local only
+.env
+.env.*
+floorplan/
+CLAUDE.local.md

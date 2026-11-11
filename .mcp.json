@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "poe2db": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--frozen",
+        "--no-dev",
+        "python",
+        "-m",
+        "src.tools.mcp_server"
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "classes": [
+    {"name": "Witch", "ascendancies": [{"id": "Infernalist", "name": "Infernalist"}]},
+    {"name": "Sorceress", "ascendancies": [{"id": "Stormweaver", "name": "Stormweaver"}]}
+  ],
+  "constants": {
+    "orbitRadii": [0, 82, 162],
+    "skillsPerOrbit": [1, 4, 12],
+    "orbitAnglesByOrbit": [
+      [0],
+      [0, 1.5707963267948966, 3.141592653589793, 4.71238898038469],
+      [0, 0.5235987755982988, 1.0471975511965976, 1.5707963267948966, 2.0943951023931953, 2.6179938779914944,
+       3.141592653589793, 3.6651914291880923, 4.1887902047863905, 4.71238898038469, 5.235987755982989, 5.759586531581287]
+    ]
+  },
+  "groups": [
+    {"x": 100, "y": 200, "nodes": [1, 2, 13]},
+    {"x": 1000, "y": 0, "nodes": [3, 4, 10, 11, 12]},
+    {"x": -500, "y": 300, "nodes": [5, 6, 7, 8, 9]}
+  ],
+  "nodes": {
+    "1":  {"skill": 1,  "name": "WITCH", "group": 1, "orbit": 0, "orbitIndex": 0,
+           "classesStart": ["Witch", "Sorceress", "Templar"], "connections": [{"id": 2}]},
+    "2":  {"skill": 2,  "name": "Chaos Inoculation", "isKeystone": true, "group": 1, "orbit": 1, "orbitIndex": 1,
+           "stats": ["Maximum Life is 1", "Immune to Chaos Damage"], "connections": [{"id": 1}, {"id": 3}]},
+    "3":  {"skill": 3,  "name": "Heart of Ice", "isNotable": true, "group": 2, "orbit": 2, "orbitIndex": 1,
+           "stats": ["20% increased Cold Damage", "10% increased Spell Damage"], "connections": [{"id": 4}, {"id": 13}]},
+    "4":  {"skill": 4,  "name": "Mind Over Matter", "isNotable": true, "group": 2, "orbit": 1, "orbitIndex": 2,
+           "stats": ["30% of Damage is taken from Mana before Life"], "connections": [{"id": 5}]},
+    "5":  {"skill": 5,  "name": "Heart of Ice", "isNotable": true, "group": 3, "orbit": 1, "orbitIndex": 0,
+           "stats": ["20% increased Cold Damage"], "connections": [{"id": 6}]},
+    "6":  {"skill": 6,  "name": "", "group": 3, "orbit": 0, "orbitIndex": 0,
+           "stats": ["+5 to Strength"], "connections": [{"id": 7}, {"id": 10}]},
+    "7":  {"skill": 7,  "name": "", "group": 3, "orbit": 2, "orbitIndex": 3,
+           "stats": ["Minions deal 20% increased", "damage while on Full Life"], "connections": [{"id": 8}]},
+    "8":  {"skill": 8,  "name": "Attribute", "isAttribute": true, "group": 3, "orbit": 1, "orbitIndex": 3,
+           "stats": ["+5 to any Attribute"], "connections": [{"id": 9}]},
+    "9":  {"skill": 9,  "name": "Jewel Socket", "isJewelSocket": true, "group": 3, "orbit": 1, "orbitIndex": 1,
+           "connections": []},
+    "10": {"skill": 10, "name": "Infernalist", "ascendancyName": "Infernalist", "isAscendancyStart": true,
+           "group": 2, "orbit": 0, "orbitIndex": 0, "connections": [{"id": 11}]},
+    "11": {"skill": 11, "name": "Beidat's Will", "ascendancyName": "Infernalist", "isNotable": true,
+           "group": 2, "orbit": 1, "orbitIndex": 0, "stats": ["+10 to Spirit"], "connections": [{"id": 12}]},
+    "12": {"skill": 12, "name": "Ascendant Small", "ascendancyName": "Infernalist",
+           "group": 2, "orbit": 1, "orbitIndex": 1, "stats": ["5% increased Spirit"], "connections": []},
+    "13": {"skill": 13, "name": "Mastery", "isOnlyImage": true, "group": 1, "orbit": 0, "orbitIndex": 0,
+           "connections": [{"id": 3}]}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "poe2db-mcp",
+  "owner": {
+    "name": "GGaryyy"
+  },
+  "metadata": {
+    "description": "poe2db-mcp: unofficial Path of Exile 2 data tools for AI assistants (cited poe2db lookups, passive routes and verified build advice)."
+  },
+  "plugins": [
+    {
+      "name": "poe2db",
+      "source": "./",
+      "description": "Path of Exile 2 cited lookups, passive routes and verified build advice (MCP server + skill)."
+    }
+  ]
+}

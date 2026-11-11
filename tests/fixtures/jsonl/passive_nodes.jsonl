@@ -1,0 +1,5 @@
+{"id": "44017", "name": "Resolute Technique", "type": "Keystone", "stats": ["Your hits can't be Evaded"], "ascendancy": null, "class_start": null, "position": {"x": 10.5, "y": -20.0}, "neighbors": ["20001"]}
+{"id": "20001", "name": "Mind Over Matter", "type": "Notable", "stats": ["30% of damage taken from Mana"], "ascendancy": null, "class_start": null, "position": {"x": 12.0, "y": -22.0}, "neighbors": ["44017", "30001"]}
+{"id": "Black_Scythe_Training", "name": "Black Scythe Training", "type": "Notable", "stats": ["Timeless stat"], "ascendancy": null, "class_start": null, "position": null, "neighbors": []}
+{"id": "55001", "name": "Ancestral Bond", "type": "Ascendancy", "is_notable": true, "stats": [], "ascendancy": null, "class_start": null, "position": {"x": 100.0, "y": 100.0}, "neighbors": []}
+{"id": "30001", "name": "", "type": "Small", "stats": [], "ascendancy": null, "class_start": null, "position": {"x": 13.0, "y": -23.0}, "neighbors": ["20001"]}

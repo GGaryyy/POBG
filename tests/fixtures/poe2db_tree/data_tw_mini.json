@@ -1,0 +1,143 @@
+{
+ "tree": "Default",
+ "classes": [
+  {
+   "name": "野蠻人",
+   "ascendancies": [
+    {
+     "id": "Marauder1",
+     "name": "督軍"
+    }
+   ]
+  },
+  {
+   "name": "女巫",
+   "ascendancies": [
+    {
+     "id": "Witch1",
+     "name": "獄火師"
+    },
+    {
+     "id": "Witch2",
+     "name": "血法師"
+    }
+   ]
+  },
+  {
+   "name": "女術者",
+   "ascendancies": [
+    {
+     "id": "Sorceress1",
+     "name": "風暴編織者"
+    }
+   ]
+  }
+ ],
+ "nodes": {
+  "root": {
+   "group": 0,
+   "orbit": 0,
+   "orbitIndex": 0,
+   "in": [],
+   "out": [
+    "1"
+   ]
+  },
+  "1": {
+   "skill": 1,
+   "name": "女巫",
+   "stats": [],
+   "classStartIndex": [
+    1,
+    2
+   ]
+  },
+  "2": {
+   "skill": 2,
+   "name": "異靈之體",
+   "stats": [
+    "最大[Life|生命]為 1",
+    "免疫[ChaosDamage|混沌傷害]"
+   ]
+  },
+  "3": {
+   "skill": 3,
+   "name": "冰霜之心",
+   "stats": [
+    "增加 20% [ColdDamage|冰冷傷害]",
+    "增加 10% 法術傷害"
+   ]
+  },
+  "4": {
+   "skill": 4,
+   "name": "心靈昇華",
+   "stats": [
+    "30% 的傷害優先從魔力扣除"
+   ]
+  },
+  "5": {
+   "skill": 5,
+   "name": "冰霜之心",
+   "stats": [
+    "增加 20% [ColdDamage|冰冷傷害]"
+   ]
+  },
+  "6": {
+   "skill": 6,
+   "name": "",
+   "stats": [
+    "+5 [Strength|力量]"
+   ]
+  },
+  "7": {
+   "skill": 7,
+   "name": "",
+   "stats": [
+    "召喚物在滿血時",
+    "造成的傷害增加 20%"
+   ]
+  },
+  "8": {
+   "skill": 8,
+   "name": "屬性",
+   "stats": [
+    "+5 任意屬性"
+   ]
+  },
+  "9": {
+   "skill": 9,
+   "name": "[Jewel|珠寶]插槽",
+   "stats": []
+  },
+  "10": {
+   "skill": 10,
+   "name": "血肉轉化",
+   "stats": [],
+   "isAscendancyStart": true,
+   "ascendancyName": "Witch1"
+  },
+  "11": {
+   "skill": 11,
+   "name": "貝達特的意志",
+   "stats": [
+    "+10 [Spirit|精魂]",
+    "多出來的一行"
+   ],
+   "ascendancyName": "Witch1"
+  },
+  "12": {
+   "skill": 12,
+   "name": "昇華小點",
+   "stats": [
+    "增加 5% [Spirit|精魂]"
+   ],
+   "ascendancyName": "Witch1"
+  },
+  "13": {
+   "skill": 13,
+   "name": "專精",
+   "stats": [],
+   "isMastery": true
+  }
+ }
+}

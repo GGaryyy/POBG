@@ -1,0 +1,283 @@
+{
+  "spec_version": "1.0",
+  "verified_at": "2026-11-09",
+  "base_url": "https://poe2db.tw",
+  "languages": {
+    "en": "us",
+    "zh-tw": "tw"
+  },
+  "url_patterns": {
+    "page": "{base}/{lang_path}/{slug}",
+    "passive_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_PassiveSkills_hover/{hash}",
+    "passive_alt_hover": "https://cdn.poe2db.tw/cache2/{lang_path}/Poe_Data_AlternatePassiveSkills_hover/{hash}"
+  },
+  "robots": {
+    "disallow": [],
+    "sitemap": null,
+    "polite_delay_seconds": 0
+  },
+  "shared_selectors": {
+    "tab_pane": "div.tab-pane[id]",
+    "gem_anchor": "a[data-hover*='GemEffects_hover'][href^='/{lang_path}/']",
+    "gem_row": "tr[data-filters]",
+    "gem_tags_block": "div.gem_tags",
+    "tag_anchor": "a.KeywordPopups[href]",
+    "popup": ".newItemPopup.GemPopup",
+    "popup_name": ".itemName:not(.typeLine) .lc",
+    "popup_typeline": ".itemName.typeLine .lc",
+    "popup_content": ".content",
+    "property": ".property",
+    "requirements": ".requirements",
+    "description": ".secDescrText",
+    "explicit_mod": ".explicitMod",
+    "hidden_stat": "span.secondary.collapse",
+    "quality_mod": ".qualityMod",
+    "gem_tags": "a.GemTags",
+    "item_classes": "a.ItemClasses",
+    "level_table_headers": [
+      "Level",
+      "Requires Level"
+    ],
+    "attribute_table_key": "Id",
+    "passive_anchor": "a.PassiveSkills[data-hover]",
+    "passive_alt_anchor": "a[data-hover*='AlternatePassiveSkills_hover']",
+    "passive_stats": "div.implicitMod",
+    "passive_alt_stats": "span.explicitMod",
+    "svg_node": "circle[id^='n']",
+    "svg_edge": "line[id^='c']"
+  },
+  "sources": {
+    "skill_gems_listing": {
+      "slug": "Skill_Gems",
+      "kind": "skill_gem",
+      "detail_file": "data/skill_gems/Skill_Gems_Detail.jsonl",
+      "listing_file": "data/skill_gems/Skill_Gems_Listing.jsonl",
+      "gemcutting_file": "data/skill_gems/Skill_Gems_SkillGemsGemcutting.jsonl",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SkillGems",
+            "zh-tw": "技能寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 1,
+          "universe": true
+        },
+        "summary": {
+          "ids": {
+            "en": "SkillGemsSummary",
+            "zh-tw": "技能寶石Summary"
+          },
+          "pane_index": 1,
+          "expect_min": 1
+        },
+        "gemcutting": {
+          "ids": {
+            "en": "SkillGemsGemcutting"
+          },
+          "pane_index": 2,
+          "row": "tr",
+          "columns": [
+            "class",
+            "tier",
+            "gems"
+          ],
+          "expect_min": 1
+        },
+        "tier_level": {
+          "ids": {
+            "en": "TierLevel"
+          },
+          "pane_index": 3,
+          "row": "tr",
+          "columns": [
+            "required_level",
+            "socket_number",
+            "skill_level"
+          ],
+          "expect_min": 1
+        }
+      }
+    },
+    "spirit_gems_listing": {
+      "slug": "Spirit_Gems",
+      "kind": "spirit_gem",
+      "detail_file": "data/spirit_gems/Spirit_Gems_Detail.jsonl",
+      "listing_file": "data/spirit_gems/Spirit_Gems_Listing.jsonl",
+      "gemcutting_file": "data/spirit_gems/Spirit_Gems_SpiritGemsGemcutting.jsonl",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SpiritGems",
+            "zh-tw": "精神寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 1,
+          "universe": true
+        },
+        "gemcutting": {
+          "ids": {
+            "en": "SpiritGemsGemcutting"
+          },
+          "pane_index": 1,
+          "row": "tr",
+          "columns": [
+            "class",
+            "tier",
+            "gems"
+          ],
+          "expect_min": 1
+        },
+        "tier_level": {
+          "ids": {
+            "en": "TierLevel"
+          },
+          "pane_index": 2,
+          "row": "tr",
+          "columns": [
+            "required_level",
+            "socket_number",
+            "skill_level"
+          ],
+          "expect_min": 1
+        }
+      }
+    },
+    "support_gems_listing": {
+      "slug": "Support_Gems",
+      "kind": "support_gem",
+      "detail_file": "data/support_skill_gems/Support_Gems_Detail.jsonl",
+      "listing_file": "data/support_skill_gems/Support_Gems_Listing.jsonl",
+      "gemcutting_file": null,
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "SupportGems",
+            "zh-tw": "輔助寶石"
+          },
+          "pane_index": 0,
+          "row": "tr",
+          "expect_min": 1,
+          "universe": true
+        },
+        "summary": {
+          "ids": {
+            "en": "SupportGemsList",
+            "zh-tw": "輔助寶石List"
+          },
+          "pane_index": 1,
+          "expect_min": 1
+        },
+        "gem_tags": {
+          "ids": {
+            "en": "GemTags"
+          },
+          "pane_index": 2,
+          "expect_min": 1,
+          "universe": true
+        },
+        "all_gems": {
+          "ids": {
+            "en": "SupportGemsAllGems",
+            "zh-tw": "SupportGems所有寶石"
+          },
+          "pane_index": 3,
+          "row": "tr",
+          "columns": [
+            "tier",
+            "gems"
+          ],
+          "expect_min": 1
+        }
+      }
+    },
+    "gem_detail": {
+      "url": "{base}/{lang_path}/{slug}",
+      "popup_index": 0,
+      "samples": {
+        "skill_gem": "Leap_Slam",
+        "spirit_gem": "Herald_of_Ash",
+        "support_gem": "Fire_Attunement"
+      }
+    },
+    "passive_keystones": {
+      "slug": "Keystone",
+      "kind": "passive_keystone",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "KeystonePassive",
+            "zh-tw": "關鍵天賦Passive"
+          },
+          "pane_index": 0,
+          "expect_min": 1
+        },
+        "timeless": {
+          "ids": {
+            "en": "TimelessJewelKeystone",
+            "zh-tw": "永恆珠寶關鍵天賦"
+          },
+          "pane_index": 1,
+          "expect_min": 1
+        }
+      }
+    },
+    "passive_notables": {
+      "slug": "Notable",
+      "kind": "passive_notable",
+      "sections": {
+        "list": {
+          "ids": {
+            "en": "NotablePassive",
+            "zh-tw": "核心天賦Passive"
+          },
+          "pane_index": 0,
+          "expect_min": 1
+        },
+        "timeless": {
+          "ids": {
+            "en": "TimelessJewelNotable",
+            "zh-tw": "永恆珠寶核心天賦"
+          },
+          "pane_index": 1,
+          "expect_min": 1
+        }
+      }
+    },
+    "passive_tree_svg": {
+      "seed_slug": "Resolute_Technique",
+      "notes": "Any node page embeds the full SVG tree. circle id='n<PassiveSkillsHash>', line id='c<A>-<B>'. Class 'druid1' marks ascendancy nodes.",
+      "ascendancy_class": "druid1",
+      "patch_source": "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_4/tree.json",
+      "nodes_file": "data/passive_tree/passive_nodes.jsonl",
+      "edges_file": "data/passive_tree/passive_edges.jsonl"
+    }
+  },
+  "fields": {
+    "gem.name": {
+      "type": "str",
+      "source": "popup_name",
+      "reliability": "ok"
+    },
+    "gem.slug": {
+      "type": "str",
+      "source": "listing gem_anchor href",
+      "semantics": "Language-independent page slug; primary key across /us/ and /tw/.",
+      "reliability": "ok"
+    },
+    "skill_gem.tier": {
+      "type": "int|null",
+      "source": "property 'Tier:'",
+      "semantics": "Gemcutting tier, odd numbers 1-13. Null for gems not obtainable from uncut gems (e.g. granted skills).",
+      "reliability": "ok"
+    },
+    "passive.id": {
+      "type": "str",
+      "source": "svg circle id (numeric PassiveSkillsHash) or slug for timeless nodes",
+      "reliability": "ok"
+    }
+  },
+  "traps": []
+}

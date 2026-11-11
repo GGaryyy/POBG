@@ -1,0 +1,142 @@
+{
+ "tree": "Default",
+ "classes": [
+  {
+   "name": "Marauder",
+   "ascendancies": [
+    {
+     "id": "Marauder1",
+     "name": "Warlord"
+    }
+   ]
+  },
+  {
+   "name": "Witch",
+   "ascendancies": [
+    {
+     "id": "Witch1",
+     "name": "Infernalist"
+    },
+    {
+     "id": "Witch2",
+     "name": "Blood Mage"
+    }
+   ]
+  },
+  {
+   "name": "Sorceress",
+   "ascendancies": [
+    {
+     "id": "Sorceress1",
+     "name": "Stormweaver"
+    }
+   ]
+  }
+ ],
+ "nodes": {
+  "root": {
+   "group": 0,
+   "orbit": 0,
+   "orbitIndex": 0,
+   "in": [],
+   "out": [
+    "1"
+   ]
+  },
+  "1": {
+   "skill": 1,
+   "name": "Witch",
+   "stats": [],
+   "classStartIndex": [
+    1,
+    2
+   ]
+  },
+  "2": {
+   "skill": 2,
+   "name": "Chaos Inoculation",
+   "stats": [
+    "Maximum [Life] is 1",
+    "Immune to [ChaosDamage|Chaos Damage]"
+   ]
+  },
+  "3": {
+   "skill": 3,
+   "name": "Heart of Ice",
+   "stats": [
+    "20% increased [ColdDamage|Cold Damage]",
+    "10% increased Spell Damage"
+   ]
+  },
+  "4": {
+   "skill": 4,
+   "name": "Mind Over Matter",
+   "stats": [
+    "30% of Damage is taken from Mana before Life"
+   ]
+  },
+  "5": {
+   "skill": 5,
+   "name": "Heart of Ice",
+   "stats": [
+    "20% increased [ColdDamage|Cold Damage]"
+   ]
+  },
+  "6": {
+   "skill": 6,
+   "name": "",
+   "stats": [
+    "+5 to [Strength]"
+   ]
+  },
+  "7": {
+   "skill": 7,
+   "name": "",
+   "stats": [
+    "Minions deal 20% increased",
+    "damage while on Full Life"
+   ]
+  },
+  "8": {
+   "skill": 8,
+   "name": "Attribute",
+   "stats": [
+    "+5 to any Attribute"
+   ]
+  },
+  "9": {
+   "skill": 9,
+   "name": "[Jewel] Socket",
+   "stats": []
+  },
+  "10": {
+   "skill": 10,
+   "name": "Altered Flesh",
+   "stats": [],
+   "isAscendancyStart": true,
+   "ascendancyName": "Witch1"
+  },
+  "11": {
+   "skill": 11,
+   "name": "Beidat's Will",
+   "stats": [
+    "+10 to [Spirit]"
+   ],
+   "ascendancyName": "Witch1"
+  },
+  "12": {
+   "skill": 12,
+   "name": "Ascendant Small",
+   "stats": [
+    "5% increased [Spirit]"
+   ],
+   "ascendancyName": "Witch1"
+  },
+  "13": {
+   "skill": 13,
+   "name": "Mastery",
+   "stats": [],
+   "isMastery": true
+  }
+ }
+}
