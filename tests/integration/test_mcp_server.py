@@ -575,3 +575,18 @@ def test_update_prompt_arguments_are_optional_strings():
 def test_instructions_say_updates_need_a_user_request_and_a_scope():
     assert "data_status" in mcp_server.INSTRUCTIONS and "update_data" in mcp_server.INSTRUCTIONS
     assert "only when the user asks" in mcp_server.INSTRUCTIONS and "exactly one scope" in mcp_server.INSTRUCTIONS
+
+
+def test_unfinished_glossary_call_does_not_reload_the_service(fresh, monkeypatch):
+    service, _ = fresh
+    monkeypatch.setattr(mnt.DataMaintenance, "update", lambda self, scope, **kw: {"scope": scope, "done": False, "left": 9})
+    assert payload(call("update_data", {"scope": "glossary"}))["done"] is False
+    assert mcp_server._service is service
+    monkeypatch.setattr(mnt.DataMaintenance, "update", lambda self, scope, **kw: {"scope": scope, "done": True})
+    payload(call("update_data", {"scope": "glossary"}))
+    assert mcp_server._service is not service
+
+
+def test_update_prompt_description_lists_every_scope():
+    prompts = {p.name: p for p in asyncio.run(mcp_server.server.list_prompts())}
+    assert all(scope in prompts["update"].description for scope in mnt.UPDATE_SCOPES)

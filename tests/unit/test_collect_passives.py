@@ -671,3 +671,10 @@ def test_classes_doc_carries_the_point_budgets(nodes):
     data["en"]["points"] = {"totalPoints": 123, "ascendancyPoints": 8}
     assert cp.classes_doc(data, list(nodes.values()), "t")["points"] == {"passive": 123, "ascendancy": 8}
     assert cp.classes_doc(mini_tree_data(), list(nodes.values()), "t")["points"] == {"passive": None, "ascendancy": None}
+
+
+def test_every_built_node_carries_the_build_time(caches):
+    pob2, pages = caches
+    nodes, _, summary = cp.build(mini_spec(), fetch=no_network, offline=True, pob2_cache=pob2, page_cache=pages,
+                                 tree_data_cache=tree_cache(pob2))
+    assert summary["built_at"] and {n["fetched_at"] for n in nodes} == {summary["built_at"]}

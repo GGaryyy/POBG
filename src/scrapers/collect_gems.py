@@ -146,12 +146,10 @@ def collect_kind(
                 "removed": sorted(set(existing) - current), "skipped": [], "files": []}
 
     detail_fetch = _cached_fetch(fetch, cache_dir, lang, from_cache)
-    fetched, skipped = _collect_details(targets, kind, spec, lang, detail_fetch)
-    if len(skipped) > max(MIN_ALLOWED_SKIPS, int(len(targets) * MAX_SKIP_RATIO)):
-        raise CollectionError(
-            f"{kind}: {len(skipped)} of {len(targets)} detail pages failed ({skipped[:5]}...); aborting without writing."
-        )
-    _validate_parse_quality(fetched, kind)
+    fetched, skipped = _collect_details(targets, kind, spec, lang, detail_fetch,
+                                        _allowed(len(targets), MAX_SKIP_RATIO))
+    known_broken = {slug for slug, record in existing.items() if _is_broken(record)}
+    _validate_parse_quality(fetched, kind, known_broken)
     records = _merge_records(rows, existing, fetched) if incremental else fetched
     _validate_records(records, kind)
 
@@ -233,21 +231,22 @@ def _select_targets(
             reasons.append("new")
         elif row.slug not in previous_rows or _listing_signature(previous_rows[row.slug]) != _listing_signature(row):
             reasons.append("listing_changed")
-        elif any(w in BROKEN_WARNINGS for w in record.get("parse_warnings", [])):
-            reasons.append("broken")
         fresh = record is not None and fresh_after is not None and not _fetched_before(record, fresh_after)
         stale = cutoff is not None and record is not None and _fetched_before(record, cutoff)
-        if fresh and (row.slug in wanted or stale):
+        if not reasons and _is_broken(record or {}) and not fresh:   # a page still broken minutes ago waits
+            reasons.append("broken")
+        if fresh and not reasons and (row.slug in wanted or stale or _is_broken(record)):
             recent += 1
-        elif row.slug in wanted:
+        elif row.slug in wanted and not fresh:
             reasons.append("requested")
         if stale and not fresh:
             reasons.append("stale")
         if reasons:
             counts.update(reasons)
-            selected.append((min(TARGET_PRIORITY.index(r) for r in reasons), row))
-    selected.sort(key=lambda pair: pair[0])   # stable: listing order within a priority
-    return [row for _, row in selected], dict(counts), recent
+            age = str((existing.get(row.slug) or {}).get("fetched_at") or "")
+            selected.append((min(TARGET_PRIORITY.index(r) for r in reasons), age, row))
+    selected.sort(key=lambda entry: entry[:2])   # by priority, then oldest first; stable otherwise
+    return [row for _, _, row in selected], dict(counts), recent
 
 
 def _fetched_before(record: dict, cutoff: datetime) -> bool:
@@ -315,9 +314,20 @@ def _cached_fetch(fetch: Fetcher, cache_dir: Path | None, lang: str, from_cache:
     return _CachedFetcher(fetch, cache_dir / lang, from_cache)
 
 
+def _allowed(total: int, ratio: float) -> int:
+    """How many bad pages a run of `total` may contain; one is always allowed."""
+    return max(MIN_ALLOWED_SKIPS, int(total * ratio))
+
+
+def _is_broken(record: dict) -> bool:
+    return any(w in BROKEN_WARNINGS for w in record.get("parse_warnings", []))
+
+
 def _collect_details(
-    rows: list[ListingRow], kind: str, spec: Spec, lang: str, fetch: Fetcher
+    rows: list[ListingRow], kind: str, spec: Spec, lang: str, fetch: Fetcher, max_skips: int | None = None
 ) -> tuple[list[dict], list[str]]:
+    """Fetch and parse the detail pages. Stops as soon as more than max_skips pages failed: the run
+    is refused then anyway, and a hanging site must not keep it going for every remaining page."""
     records: list[dict] = []
     skipped: list[str] = []
     total = len(rows)
@@ -328,6 +338,9 @@ def _collect_details(
         except (requests.RequestException, ValueError) as exc:
             print(f"[WARN] skip {row.slug}: {exc}", file=sys.stderr)
             skipped.append(row.slug)
+            if max_skips is not None and len(skipped) > max_skips:
+                raise CollectionError(f"{kind}: {len(skipped)} detail pages failed ({skipped[:5]}...); "
+                                      "aborting without writing.") from exc
             continue
         record = parse_detail(html, spec, row.slug, kind, lang)
         if isinstance(fetch, _CachedFetcher) and url in fetch.fetched_at:
@@ -373,12 +386,13 @@ def _validate_records(records: list[dict], kind: str) -> None:
                 raise CollectionError(f"{kind}: bad {key} for {rec['slug']}: {value!r}")
 
 
-def _validate_parse_quality(records: list[dict], kind: str) -> None:
-    """Refuse to overwrite data when the detail popup itself stopped parsing (markup drift)."""
+def _validate_parse_quality(records: list[dict], kind: str, known_broken: set[str] = frozenset()) -> None:
+    """Refuse to overwrite data when the detail popup itself stopped parsing (markup drift). Pages
+    that were already broken before say nothing about drift, so they are not counted."""
     if not records:
         return
-    broken = [r["slug"] for r in records if any(w in BROKEN_WARNINGS for w in r["parse_warnings"])]
-    if len(broken) / len(records) > MAX_BROKEN_RATIO:
+    broken = [r["slug"] for r in records if _is_broken(r) and r["slug"] not in known_broken]
+    if len(broken) > _allowed(len(records), MAX_BROKEN_RATIO):
         raise CollectionError(
             f"{kind}: {len(broken)} of {len(records)} detail pages had no parsable popup "
             f"({broken[:5]}...); the detail markup probably changed. Run `python -m src.catalog.probe`."

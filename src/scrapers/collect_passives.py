@@ -411,6 +411,8 @@ def build(spec: Spec, *, fetch: Fetcher, offline: bool = False,
     summary["edge_kinds"] = dict(Counter(e["kind"] for e in edges))
     summary["connections_dropped"] = dropped
     summary["built_at"] = now_iso()
+    for node in nodes.values():   # every source of the node was read in this build
+        node["fetched_at"] = summary["built_at"]
     return list(nodes.values()), edges, summary
 
 

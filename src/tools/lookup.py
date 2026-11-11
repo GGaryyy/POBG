@@ -129,8 +129,10 @@ class LookupService:
         """poe2db lists every spirit gem among the skill gems too, so such a gem is stored once per
         kind and the copies can differ in age after a scoped update. Answer from the newest one."""
         copies = [(k, self.gems[k][slug]) for k in GEM_KINDS if slug in self.gems.get(k, {})]
-        if len(copies) < 2:
+        if not copies:
             return kind, self._gem_record(kind, slug)
+        if len(copies) == 1:            # possibly under another kind than the index says
+            return copies[0]
         return max(copies, key=lambda copy: (str(copy[1].get("fetched_at") or ""), copy[0] == kind))
 
     def get_passive(self, slug_or_id: str) -> dict:
@@ -368,11 +370,13 @@ class LookupService:
                 "url_en": node.get("url_en"), "url_zh_tw": node.get("url_zh_tw")}
 
     def _passive_sources(self, node: dict) -> list[dict]:
+        fetched_at = node.get("fetched_at")
         if node.get("url_en"):
-            return _sources(node["url_en"], node.get("url_zh_tw"), None)
-        out = [{"label": f"PathOfBuilding-PoE2 tree {node.get('pob2_tree_version')}", "url": self._pob2_url}]
+            return _sources(node["url_en"], node.get("url_zh_tw"), fetched_at)
+        out = [{"label": f"PathOfBuilding-PoE2 tree {node.get('pob2_tree_version')}", "url": self._pob2_url,
+                "fetched_at": fetched_at}]
         if node.get("zh_source") == ZH_FROM_TREE_DATA:  # where the Chinese name and stat lines come from
-            out.append({"label": TREE_DATA_LABEL, "url": self._tree_data_url})
+            out.append({"label": TREE_DATA_LABEL, "url": self._tree_data_url, "fetched_at": fetched_at})
         return out
 
     def canonical_class(self, name: str) -> str:

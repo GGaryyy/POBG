@@ -9,9 +9,9 @@ end-to-end.
 
 | Suite | Passed | Failed | Skipped |
 |---|---|---|---|
-| Unit (`-m unit`) | 558 | 0 | 0 |
-| Integration (`-m integration`) | 577 | 0 | 0 |
-| **Total (`uv run pytest`)** | **1,135** | 0 | 0 |
+| Unit (`-m unit`) | 559 | 0 | 0 |
+| Integration (`-m integration`) | 591 | 0 | 0 |
+| **Total (`uv run pytest`)** | **1,150** | 0 | 0 |
 
 Run time 32 s (about 55 s with coverage). All tests are offline and use `tests/fixtures/` only.
 `uv run ruff check .` (rules E4, E7, E9, F): no findings.
@@ -55,6 +55,8 @@ retrievers) and `tests/conftest.py`, which only held their fixtures.
 | `update_data` `skill_gems`, three named gems | 10 s, 4 requests, 3 updated, 0 left; `get_gem` in the same session returned the new `fetched_at`; the Chinese lookup still resolved |
 | `update_data` `passives` | 17 s, 7 requests; 4,714 nodes, 5,187 edges, 6,377 stat lines; 0 changed; `path_to` worked afterwards |
 | `update_data` scope `all` | Refused, no request |
+| One-gem update through the Windows launcher after the lock became an OS lock | 2 requests, 1 updated; the lock was free afterwards; no CRLF written |
+| `update_data` `passives` after adding node dates | 16 s, 7 requests, 4,714 of 4,714 nodes dated, 0 changed; the rendered Chinese source list shows "擷取於" for the passives |
 | `update_data` `ladder` (after the parser was rewritten for poe.ninja's new layout) | 16 s, 14 requests; 593 characters of the league "Runes of Aldur" replaced 588 of "Fate of the Vaal"; `reference_builds` in the same session answered from the new snapshot; no name field in the file |
 | `update_data` `glossary`, full run | 357 terms refreshed, 0 changed, 0 added, none lost in any of the four text fields (compared with the committed file); the run cache and the lock file were removed. The last three calls made 100, 100 and 4 requests in 95, 108 and 26 s; the batch was then halved to 50 requests per call. A first attempt met HTTP 500 from one poe2db listing page (three tries) and wrote nothing |
 | Repeated capped update after the fix: three named spirit gems, `max_gems=1` | Call 1: 1 updated, 1 left (the third had been fetched minutes before: `recently_updated` 1). Call 2: 1 updated, 0 left. A further call: nothing selected, 1 request. `get_gem` then answered from the updated spirit copy |

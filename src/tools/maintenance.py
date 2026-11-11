@@ -39,6 +39,7 @@ from src.scrapers.collect_passives import build as build_passives
 from src.scrapers.common import (
     DATA_LOCK_FILE,
     LockBusy,
+    MIN_CACHEABLE_BYTES,
     cached_fetch,
     fetch_html,
     file_lock,
@@ -111,8 +112,8 @@ class _Budget:
     """A fetcher that stops after `limit` requests in total, gives up after several network errors
     in a row, and asks for a URL that failed in this run only once."""
 
-    def __init__(self, counting: _Counting, limit: int, failed_file: Path) -> None:
-        self.counting, self.limit, self.failed_file = counting, limit, failed_file
+    def __init__(self, counting: _Counting, limit: int, failed_file: Path, required: set[str] = frozenset()) -> None:
+        self.counting, self.limit, self.failed_file, self.required = counting, limit, failed_file, required
         self.failed = set(_read_json(failed_file).get("urls", []))
         self.streak = 0
 
@@ -124,19 +125,25 @@ class _Budget:
         try:
             body = self.counting(url)
         except requests.RequestException:
-            if urlparse(url).hostname != HOVER_HOST:
+            if url in self.required:
                 raise                      # a page the crawl cannot do without: the call fails, a later call retries it
+            self._remember_failure(url)
+            raise
+        self.streak = 0
+        if len(body.encode("utf-8")) < MIN_CACHEABLE_BYTES:
+            self._remember_failure(url, counts_toward_streak=False)   # too small to cache: never asked again this run
+        return body
+
+    def _remember_failure(self, url: str, counts_toward_streak: bool = True) -> None:
+        self.failed.add(url)
+        self.failed_file.parent.mkdir(parents=True, exist_ok=True)
+        self.failed_file.write_text(json.dumps({"urls": sorted(self.failed)}), encoding="utf-8")
+        if counts_toward_streak:
             self.streak += 1
-            self.failed.add(url)
-            self.failed_file.parent.mkdir(parents=True, exist_ok=True)
-            self.failed_file.write_text(json.dumps({"urls": sorted(self.failed)}), encoding="utf-8")
             if self.streak >= MAX_CONSECUTIVE_FAILURES:
                 raise ServiceUnavailable(
                     f"{self.streak} requests in a row failed; the site or the network is down. Nothing was "
-                    "written; what was fetched so far is kept, so calling again later continues") from None
-            raise
-        self.streak = 0
-        return body
+                    "written; what was fetched so far is kept, so calling again later continues")
 
 
 class DataMaintenance:
@@ -175,8 +182,10 @@ class DataMaintenance:
         if not DATA_LOCK.acquire(blocking=False):      # two crawlers at once would halve the polite delay
             raise ServiceUnavailable(BUSY)
         try:
-            with contextlib.redirect_stdout(sys.stderr):
+            with file_lock(self.data_dir / DATA_LOCK_FILE), contextlib.redirect_stdout(sys.stderr):
                 doc = run_probe(self.spec, PROBE_LANGS, fetcher=counting)
+        except LockBusy as exc:
+            raise ServiceUnavailable(f"another process is updating this data folder ({exc}); try again later") from exc
         finally:
             DATA_LOCK.release()
         problems = [{key: check[key] for key in ("source", "section", "lang", "count", "expect_min", "error")}
@@ -335,7 +344,7 @@ class DataMaintenance:
                                      "uv run python -m src.scrapers.collect_glossary")
         try:
             self._start_or_resume_glossary_run()
-            fetch = _Budget(counting, GLOSSARY_BATCH, self.glossary_run / "failed.json")
+            fetch = _Budget(counting, GLOSSARY_BATCH, self.glossary_run / "failed.json", self._glossary_listing_urls())
             parsed = self._crawl_glossary(fetch, set(old))
         except _BudgetSpent:
             cached = sum(1 for _ in (self.glossary_run / "hover").rglob("*.html"))
@@ -354,12 +363,17 @@ class DataMaintenance:
         except OSError as exc:
             raise ServiceUnavailable(f"the glossary file could not be written ({exc}); the old one is kept") from exc
         failed = len(fetch.failed)
+        derived = self._rebuild_derived(fetch, None)   # before the run cache goes: a repeat then costs no requests
         shutil.rmtree(self.glossary_run, ignore_errors=True)
         changed = sum(1 for slug in fresh if slug in old
                       and any(merged[slug].get(f) != old[slug].get(f) for f in GLOSSARY_TEXT_FIELDS))
         return {"done": True, "left": 0, "records": len(merged), "refreshed": len(fresh), "changed": changed,
                 "added": sorted(set(fresh) - set(old)), "kept_without_refresh": len(set(old) - set(fresh)),
-                "failed_requests": failed, **self._rebuild_derived(fetch, None)}
+                "failed_requests": failed, **derived}
+
+    def _glossary_listing_urls(self) -> set[str]:
+        return {self.spec.resolve_url(self.spec.source(source)["slug"], lang)
+                for lang in glossary.LANGS for source in (*glossary.PASSIVE_SOURCES, *glossary.GEM_LISTING_SOURCES)}
 
     def _check_glossary(self, old: dict[str, dict], fresh: dict[str, dict]) -> None:
         """Refuse a crawl that reached too few known terms, mostly lacks English text, or lost the
@@ -398,8 +412,11 @@ class DataMaintenance:
         hashes = glossary.harvest_refs(self.spec, page_cache=pages, detail_cache=detail)
         mentions = glossary._gems_mentioning(self.spec, self.data_dir)
         gems = sorted({mentions[slug][0] for slug in known - set(hashes) if mentions.get(slug)})[:GLOSSARY_GEM_PAGES]
-        for gem in gems:
-            cached_fetch(self.spec.resolve_url(gem, "en"), detail / "en" / f"{safe_cache_name(gem)}.html", fetch)
+        for gem in gems:     # optional: a gem page that fails only means fewer terms are found through it
+            try:
+                cached_fetch(self.spec.resolve_url(gem, "en"), detail / "en" / f"{safe_cache_name(gem)}.html", fetch)
+            except requests.RequestException as exc:
+                print(f"[WARN] glossary: gem page {gem}: {exc}", file=sys.stderr)
         if gems:
             hashes = glossary.harvest_refs(self.spec, page_cache=pages, detail_cache=detail)
         options = {"fetch": fetch, "data_dir": self.data_dir, "page_cache": pages, "cache_dir": hover}
@@ -540,10 +557,13 @@ def _check_ladder(records: list[dict], previous: list[dict]) -> None:
 
 
 def _merge_term(old: dict | None, fresh: dict | None) -> dict:
-    """A refreshed glossary term never loses text: a field the crawl did not get keeps its old value."""
+    """A refreshed glossary term never loses text: a field the crawl did not get keeps its old value,
+    and then the entry keeps its old date too, so a citation never claims older text is new."""
     if old is None or fresh is None:
         return fresh or old
     merged = {**old, **{key: value for key, value in fresh.items() if value not in (None, "", [])}}
+    if any(old.get(field) and not fresh.get(field) for field in GLOSSARY_TEXT_FIELDS):
+        merged["fetched_at"] = old.get("fetched_at")
     return merged
 
 

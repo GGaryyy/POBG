@@ -13,7 +13,7 @@ import requests
 
 from src import __version__
 from src.catalog.spec import Spec
-from src.scrapers.common import DATA_LOCK_FILE, read_jsonl, write_jsonl
+from src.scrapers.common import DATA_LOCK_FILE, LockBusy, file_lock, read_jsonl, write_jsonl
 from src.tools import maintenance as mnt
 from src.tools.lookup import DATA_LOCK, BadArgument, LookupService, ServiceUnavailable
 from tests.kg_support import FETCHED, GRAPH_REL, build_full_environment
@@ -96,7 +96,17 @@ def lenient_stats(monkeypatch):
 
 
 def snapshot(base) -> dict[str, bytes]:
-    return {p.relative_to(base).as_posix(): p.read_bytes() for p in sorted(base.rglob("*")) if p.is_file()}
+    """Every data file; the lock file is not data (it stays in place, only the OS lock on it is released)."""
+    return {p.relative_to(base).as_posix(): p.read_bytes() for p in sorted(base.rglob("*"))
+            if p.is_file() and p.name != DATA_LOCK_FILE}
+
+
+def lock_is_free(base) -> bool:
+    try:
+        with file_lock(base / "data" / DATA_LOCK_FILE):
+            return True
+    except LockBusy:
+        return False
 
 
 def slugs(base, rel=SKILL_DETAIL) -> list[str]:
@@ -522,7 +532,7 @@ def test_one_page_that_fails_is_reported_as_skipped_and_does_not_block_the_rest(
 
 def test_two_pages_that_fail_abort_with_nothing_written(tool, base):
     before = snapshot(base)
-    with pytest.raises(ServiceUnavailable, match=r"2 of 3 detail pages failed.*Nothing was written"):
+    with pytest.raises(ServiceUnavailable, match=r"2 detail pages failed.*Nothing was written"):
         tool.update("skill_gems", fetch=Web(broken=("Grim_Feast", "Unearth")))
     assert snapshot(base) == before
 
@@ -558,41 +568,42 @@ def test_failed_write_in_a_gem_update_says_files_may_be_half_updated(tool, monke
 
 
 def test_another_process_holding_the_data_folder_blocks_the_update_but_not_a_dry_run(tool, base):
-    lock = base / "data" / DATA_LOCK_FILE
-    lock.write_text("4242 other process\n", encoding="utf-8")
     web, before = Web(), snapshot(base)
-    with pytest.raises(ServiceUnavailable, match="another process is updating this data folder"):
-        tool.update("skill_gems", fetch=web)
-    assert web.calls == [] and snapshot(base) == before and lock.exists()
-    assert tool.update("skill_gems", dry_run=True, fetch=web)["selected"] == 3
+    with file_lock(base / "data" / DATA_LOCK_FILE):           # held through another open file, as by another process
+        with pytest.raises(ServiceUnavailable, match="another process is updating this data folder"):
+            tool.update("skill_gems", fetch=web)
+        assert web.calls == [] and snapshot(base) == before
+        assert tool.update("skill_gems", dry_run=True, fetch=web)["selected"] == 3
 
 
-def test_lock_left_behind_by_a_dead_process_is_taken_over(tool, base):
-    lock = base / "data" / DATA_LOCK_FILE
-    lock.write_text("4242 crashed\n", encoding="utf-8")
-    old = time.time() - 3600
-    os.utime(lock, (old, old))
+def test_lock_file_left_behind_by_a_dead_process_does_not_block(tool, base):
+    (base / "data" / DATA_LOCK_FILE).write_text("4242 crashed\n", encoding="utf-8")
     assert tool.update("skill_gems", fetch=Web())["updated"] == 3
-    assert not lock.exists()
+    assert lock_is_free(base)
 
 
 def test_refresh_gem_respects_another_process_and_releases_its_own_lock(base):
     service = LookupService(base, fixture_spec(), base / GRAPH_REL)
-    lock = base / "data" / DATA_LOCK_FILE
-    lock.write_text("4242 other process\n", encoding="utf-8")
-    with pytest.raises(ServiceUnavailable, match="another process is updating this data folder"):
-        service.refresh_gem("Leap_Slam", fetcher=Web())
-    lock.unlink()
+    with file_lock(base / "data" / DATA_LOCK_FILE):
+        with pytest.raises(ServiceUnavailable, match="another process is updating this data folder"):
+            service.refresh_gem("Leap_Slam", fetcher=Web())
     assert service.refresh_gem("Leap_Slam", fetcher=Web())["slug"] == "Leap_Slam"
-    assert not lock.exists()
+    assert lock_is_free(base)
 
 
-def test_update_removes_its_lock_file_even_when_it_fails(tool, base):
+def test_update_releases_its_lock_even_when_it_fails(tool, base):
     with pytest.raises(BadArgument):
         tool.update("skill_gems", names=["nope"], fetch=Web())
     with pytest.raises(ServiceUnavailable):
         tool.update("skill_gems", fetch=Web(broken=("Grim_Feast", "Unearth")))
-    assert not (base / "data" / DATA_LOCK_FILE).exists()
+    assert lock_is_free(base)
+
+
+def test_online_check_waits_for_no_one_and_is_refused_while_another_process_updates(probe_tool, base):
+    with file_lock(base / "data" / DATA_LOCK_FILE):
+        with pytest.raises(ServiceUnavailable, match="another process is updating this data folder"):
+            probe_tool.online_check(fetch=make_fake())
+    assert lock_is_free(base)
 
 
 def test_online_check_does_not_run_alongside_an_update(probe_tool):
@@ -642,7 +653,7 @@ def test_ladder_update_writes_a_snapshot_without_names(tool, base, ninja):
                                "skill_gems", "source"]
     ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ladder")
     assert ladder["records"] == 120 and ladder["league"] == LEAGUE and ladder["oldest_age_days"] == 0
-    assert not (base / "data" / DATA_LOCK_FILE).exists()
+    assert lock_is_free(base)
 
 
 def test_ladder_update_reports_the_league_it_replaced(tool, base, ninja):
@@ -763,7 +774,9 @@ def test_glossary_update_refreshes_reachable_terms_and_keeps_the_rest(tool, base
     assert list(new) == sorted(new) and set(new) == set(old) | {"Wither"}
     assert new["Chaos_Damage"]["text_en"].startswith("Chaos bypasses shields.") and new["Chaos_Damage"]["text_zh_tw"] == "混沌傷害無視護盾。"
     assert new["Chaos_Damage"]["see_also"] == ["Wither"] and new["Stun"]["see_also"] == ["Freeze"]
-    assert new["Freeze"]["text_en"] == "Frozen solid." and new["Freeze"]["fetched_at"] > FETCHED     # found through Stun
+    assert new["Freeze"]["text_en"] == "Frozen solid."                          # found through Stun
+    assert new["Freeze"]["fetched_at"] == FETCHED        # its Chinese name is the old one, so the old date stays
+    assert new["Chaos_Damage"]["fetched_at"] > FETCHED   # both languages refreshed: new date
     assert new["Minions"] == old["Minions"]                                    # not reachable: kept as it was
     # the fixture site has no Chinese hover for Stun or Critical Hit: their old Chinese text must survive
     assert new["Stun"]["text_zh_tw"] == old["Stun"]["text_zh_tw"] and new["Stun"]["name_zh_tw"] == "暈眩"
@@ -893,7 +906,9 @@ def test_merged_term_keeps_every_field_the_crawl_did_not_get():
            "fetched_at": "2026-01-01"}
     fresh = {"slug": "Stun", "name_en": "Stun", "name_zh_tw": None, "text_en": "new", "text_zh_tw": None, "see_also": [],
              "fetched_at": "2026-02-02"}
-    assert mnt._merge_term(old, fresh) == {**old, "text_en": "new", "fetched_at": "2026-02-02"}
+    assert mnt._merge_term(old, fresh) == {**old, "text_en": "new", "fetched_at": "2026-01-01"}   # old text kept: old date
+    complete = {**fresh, "name_zh_tw": "暈眩", "text_zh_tw": "新", "see_also": ["B"]}
+    assert mnt._merge_term(old, complete)["fetched_at"] == "2026-02-02"
     assert mnt._merge_term(None, fresh) is fresh and mnt._merge_term(old, None) is old
 
 
@@ -949,7 +964,7 @@ def test_ladder_snapshot_much_smaller_than_the_last_one_of_the_same_league_is_re
     before = (base / LADDER).read_bytes()
     with pytest.raises(ServiceUnavailable, match=r"returned 100 characters.*previous snapshot has 120"):
         tool.update("ladder")
-    assert (base / LADDER).read_bytes() == before and "Secret" not in str(before)
+    assert (base / LADDER).read_bytes() == before and b"Secret" not in before
 
 
 def test_ladder_without_any_keystone_is_refused(tool, base, monkeypatch):
@@ -984,3 +999,148 @@ def test_unreadable_spirit_gem_file_stops_a_skill_gem_update(tool, base):
     with pytest.raises(ServiceUnavailable, match="a local gem file is unreadable"):
         tool.update("skill_gems", fetch=Web())
     assert slugs(base) == ["Contagion", "Leap_Slam", "Unearth"]
+
+
+# -- after the re-review ----------------------------------------------------------------------
+
+def mark_broken(base, slug, minutes_ago=60):
+    stamp = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
+    rows = read_jsonl(base / SKILL_DETAIL)
+    for row in rows:
+        if row["slug"] == slug:
+            row["parse_warnings"] = ["no_popup"]
+            row["fetched_at"] = stamp
+    write_jsonl(base / SKILL_DETAIL, rows)
+
+
+class StillBroken(Web):
+    """A gem page that keeps failing to parse (the site serves no popup for it)."""
+
+    def __init__(self, slug, listing=None):
+        super().__init__(listing)
+        self.slug = slug
+
+    def __call__(self, url):
+        if url.endswith("/" + self.slug):
+            self.calls.append(url)
+            return html("detail_nopopup.html")
+        return super().__call__(url)
+
+
+def test_one_gem_page_that_stays_broken_does_not_block_the_scope(tool, base):
+    tool.update("skill_gems", fetch=Web())
+    age_records(base)
+    mark_broken(base, "Unearth")
+    first = tool.update("skill_gems", fetch=StillBroken("Unearth"))
+    assert first["reasons"] == {"broken": 1} and first["updated"] == 1
+    named = tool.update("skill_gems", names=["Leap Slam"], fetch=StillBroken("Unearth"))
+    assert named["updated"] == 1                                   # other gems can still be updated
+    again = StillBroken("Unearth")
+    assert tool.update("skill_gems", fetch=again)["recently_updated"] == 1 and again.details() == []
+
+
+def test_many_newly_broken_pages_are_still_refused_as_markup_drift(tool, base):
+    tool.update("skill_gems", fetch=Web())
+    age_records(base)
+    before = snapshot(base)
+
+    class AllBroken(Web):
+        def __call__(self, url):
+            if url.startswith("https://poe2db.tw/us/") and "Gems" not in url:
+                self.calls.append(url)
+                return html("detail_nopopup.html")
+            return super().__call__(url)
+
+    with pytest.raises(ServiceUnavailable, match="no parsable popup.*markup probably changed"):
+        tool.update("skill_gems", older_than_days=0, fetch=AllBroken())
+    assert snapshot(base) == before
+
+
+def test_failing_pages_stop_the_run_early(tool, base):
+    tool.update("skill_gems", fetch=Web())
+    age_records(base)
+    web = Web(broken=("Leap_Slam", "Unearth", "Grim_Feast"))
+    with pytest.raises(ServiceUnavailable, match="2 detail pages failed"):
+        tool.update("skill_gems", older_than_days=0, fetch=web)
+    assert len(web.details()) == 2                                 # the third page is never asked for
+
+
+def test_stale_gems_are_fetched_oldest_first(tool, base):
+    tool.update("skill_gems", fetch=Web())
+    rows = read_jsonl(base / SKILL_DETAIL)
+    for hours, row in zip((1, 3, 2), rows):
+        row["fetched_at"] = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    write_jsonl(base / SKILL_DETAIL, rows)
+    web = Web()
+    tool.update("skill_gems", older_than_days=0, max_gems=3, fetch=web)
+    order = {row["slug"]: hours for hours, row in zip((1, 3, 2), rows)}
+    assert [order[slug] for slug in web.details()] == [3, 2, 1]
+
+
+def test_glossary_gem_page_that_fails_is_skipped_and_the_run_finishes(tool, base, lenient_glossary):
+    class DeadGemPage(GlossarySite):
+        def __call__(self, url):
+            if url == GEM_PAGES[0]:
+                self.calls.append(url)
+                raise requests.HTTPError("404 for " + url)
+            return super().__call__(url)
+
+    site = DeadGemPage()
+    result = tool.update("glossary", fetch=site)
+    assert result["done"] is True and site.calls.count(GEM_PAGES[0]) == 1
+
+
+def test_glossary_failure_registry_carries_over_to_the_next_call(tool, base, monkeypatch):
+    monkeypatch.setattr(mnt, "MIN_GLOSSARY_KEPT_RATIO", 0.7)        # five of the seven fixture terms are reached
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+
+    class OneDead(GlossarySite):
+        def __call__(self, url):
+            if url.endswith("/aa04"):
+                self.calls.append(url)
+                raise requests.ConnectionError("404")
+            return super().__call__(url)
+
+    calls = []
+    for _ in range(12):
+        site = OneDead()
+        result = tool.update("glossary", fetch=site)
+        calls += site.calls
+        if result["done"]:
+            break
+    assert result["done"] is True and sum(u.endswith("/aa04") for u in calls) == 1
+
+
+def test_tiny_hover_bodies_are_not_fetched_again_in_the_same_run(tool, base, monkeypatch):
+    monkeypatch.setattr(mnt, "MIN_GLOSSARY_KEPT_RATIO", 0.7)
+    monkeypatch.setattr(mnt, "GLOSSARY_BATCH", 6)
+    tiny = HOVER.format(lang="us", hash="c9")
+
+    class TinyFreeze(GlossarySite):
+        def __call__(self, url):
+            if url == tiny:
+                self.calls.append(url)
+                return "x"
+            return super().__call__(url)
+
+    calls = []
+    for _ in range(12):
+        site = TinyFreeze()
+        result = tool.update("glossary", fetch=site)
+        calls += site.calls
+        if result["done"]:
+            break
+    assert result["done"] is True and calls.count(tiny) == 1
+
+
+def test_failed_index_rebuild_after_the_glossary_write_is_repaired_without_new_requests(tool, base, lenient_glossary, monkeypatch):
+    def broken(*args, **kwargs):
+        raise ValueError("duplicate slug")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(mnt, "build_entity_index", broken)
+        with pytest.raises(ServiceUnavailable, match="not rebuilt"):
+            tool.update("glossary", fetch=GlossarySite())
+    site = GlossarySite()
+    result = tool.update("glossary", fetch=site)
+    assert result["done"] is True and site.calls == []          # everything came from the kept run cache

@@ -30,8 +30,9 @@ that work with a new history.
   runs; gems left for later (or whose page failed) keep their previous listing row; a gem
   fetched recently is not selected again by name or age; summaries gain `targets_total`,
   `targets_left`, `reasons`, `recently_fetched`.
-- A lock file (`data/.update.lock`) so that `update_data` and `refresh_gem` from two processes
-  never write the same data folder at once; a lock older than 15 minutes is taken over.
+- A cross-process lock on `data/.update.lock` (an OS lock: `flock` / `msvcrt`, released when the
+  holder exits or crashes) so that `update_data`, `refresh_gem` and the online check from two
+  processes never run on the same data folder at once.
 - MCP tool `build_workflow(lang)`: the cited-build steps for clients that cannot use MCP
   prompts. The server instructions point to it. Fourteen tools in total.
 - Tool titles and annotations: twelve tools are read-only (`data_status` can reach the network
@@ -67,6 +68,15 @@ that work with a new history.
 - One detail page that fails to download no longer aborts an incremental gem run; it is
   reported in `skipped`. More than one (or more than 2 %) still aborts.
 - `stat_families.json` is written atomically.
+- A gem page that stays unparsable no longer blocks its scope: pages that were already broken do
+  not count as markup drift, and one is not fetched again within 15 minutes. A run stops as soon
+  as too many pages failed. Stale gems are fetched oldest first.
+- Glossary: gem pages used to find terms are optional (a dead one no longer stops the run); tiny
+  hover bodies are asked once per run; a term that keeps old text keeps its old date; the index
+  is rebuilt before the run cache is removed.
+- Every passive node stores when it was built (`fetched_at`), so the sources of passives in
+  `get_passive`, `verify_build` and `path_to` show a date like gems do, also for nodes without a
+  poe2db page.
 - Data files are written with LF line endings on every platform (an update run on Windows
   wrote CRLF).
 - The poe.ninja ladder fetcher identifies itself with the project User-Agent instead of a

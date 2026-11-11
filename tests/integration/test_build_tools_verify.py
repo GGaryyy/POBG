@@ -186,7 +186,7 @@ def test_sources_markdown_english(tools):
     assert lines[1] == ("1. [Leap Slam](https://poe2db.tw/us/Leap_Slam) · [躍擊](https://poe2db.tw/tw/Leap_Slam)"
                         " — poe2db, fetched 2026-01-01")
     assert lines[2].startswith("2. [PathOfBuilding-PoE2 tree 0\\_5](https://raw.githubusercontent.com/")
-    assert lines[2].endswith("— passive nodes without a poe2db page")
+    assert lines[2].endswith("— passive nodes without a poe2db page, fetched 2026-01-01")
     assert "Not found" not in md
 
 
@@ -328,8 +328,8 @@ def test_small_node_fact_carries_chinese_name_and_stats(tools):
     assert fact["sources"][1]["url"] == TREE_DATA_URL and fact["cite"] == 1
 
 
-@pytest.mark.parametrize("lang, note", [("en", "Traditional Chinese names and stat lines of those nodes"),
-                                        ("zh-tw", "這些天賦點的繁體中文名稱與屬性文字")])
+@pytest.mark.parametrize("lang, note", [("en", "Traditional Chinese names and stat lines of those nodes, fetched 2026-01-01"),
+                                        ("zh-tw", "這些天賦點的繁體中文名稱與屬性文字，擷取於 2026-01-01")])
 def test_tree_data_is_cited_in_the_rendered_sources(tools, lang, note):
     result = tools.verify_build(passives=["5"], lang=lang)
     lines = result["sources_markdown"].splitlines()
@@ -341,3 +341,13 @@ def test_tree_data_is_not_cited_when_no_fact_uses_it(tools):
     result = tools.verify_build(passives=["4", "Heart of Ice"])     # node 4 has no Chinese text; node 3 has a page
     assert all(r["label"] != TREE_DATA_LABEL for r in result["sources"])
     assert TREE_DATA_URL not in result["sources_markdown"]
+
+
+def test_page_less_passive_row_without_a_date_shows_only_what_it_is(tools):
+    node = tools.lookup.passives["4"]
+    saved = node.pop("fetched_at")
+    try:
+        lines = tools.verify_build(passives=["4"])["sources_markdown"].splitlines()
+        assert lines[1].endswith("— passive nodes without a poe2db page")
+    finally:
+        node["fetched_at"] = saved

@@ -500,7 +500,8 @@ def number_sources(facts: list[dict]) -> list[dict]:
         for extra in fact["sources"][1:]:  # where a page-less node's Chinese text comes from
             if extra["label"] == TREE_DATA_LABEL and extra["url"] not in by_url:
                 by_url[extra["url"]] = {"n": len(rows) + 1, "label": extra["label"], "name": None, "name_zh_tw": None,
-                                        "url": extra["url"], "url_zh_tw": None, "fetched_at": None, "note": "zh_text"}
+                                        "url": extra["url"], "url_zh_tw": None, "fetched_at": extra.get("fetched_at"),
+                                        "note": "zh_text"}
                 rows.append(by_url[extra["url"]])
     return rows
 
@@ -528,7 +529,10 @@ def render_ladder_source(source: dict, lang: str = "en", total: int | None = Non
 def _source_line(row: dict, lang: str) -> str:
     text = TEXT[lang]
     if row["label"] != POE2DB_LABEL:  # PoB2 tree: one row for every node without a page
-        return f"[{_md_text(row['label'])}]({_md_url(row['url'])}) — {text[row.get('note') or 'no_page']}"
+        what = text[row.get("note") or "no_page"]
+        date = (row.get("fetched_at") or "")[:10]
+        tail = text["fetched"].format(label=what, date=date) if date else what
+        return f"[{_md_text(row['label'])}]({_md_url(row['url'])}) — {tail}"
     name = row.get("name") or row.get("name_zh_tw") or str(row["url"]).rsplit("/", 1)[-1]
     links = [f"[{_md_text(name)}]({_md_url(row['url'])})"]
     if row.get("name_zh_tw") and row.get("url_zh_tw"):

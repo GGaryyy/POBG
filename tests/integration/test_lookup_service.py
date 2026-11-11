@@ -184,22 +184,23 @@ def test_get_passive_page_node_details(svc):
     assert res["keywords"] == [{"slug": "Cold_Damage", "name_en": "Cold Damage", "name_zh_tw": "冰冷傷害",
                                 "url_en": "https://poe2db.tw/us/Cold_Damage"}]
     assert res["sources"] == [
-        {"label": "poe2db (en)", "url": "https://poe2db.tw/us/Heart_of_Ice", "fetched_at": None},
-        {"label": "poe2db (zh-TW)", "url": "https://poe2db.tw/tw/Heart_of_Ice", "fetched_at": None}]
+        {"label": "poe2db (en)", "url": "https://poe2db.tw/us/Heart_of_Ice", "fetched_at": FETCHED},
+        {"label": "poe2db (zh-TW)", "url": "https://poe2db.tw/tw/Heart_of_Ice", "fetched_at": FETCHED}]
 
 
 def test_get_passive_without_page_cites_pob2(svc):
     res = svc.get_passive("4")
     assert res["passive"]["slug"] is None and res["passive"]["stats"] == ["8% increased Cold Damage"]
-    assert res["sources"] == [{"label": "PathOfBuilding-PoE2 tree 0_5", "url": POB2_URL}]
+    assert res["sources"] == [{"label": "PathOfBuilding-PoE2 tree 0_5", "url": POB2_URL, "fetched_at": FETCHED}]
 
 
 def test_get_passive_without_page_with_tree_data_text_cites_both(svc):
     res = svc.get_passive("5")
     assert res["passive"]["name_zh_tw"] == "攻擊速度" and res["passive"]["stats_zh_tw"] == ["增加 12% 攻擊速度"]
     assert res["sources"] == [
-        {"label": "PathOfBuilding-PoE2 tree 0_5", "url": POB2_URL},
-        {"label": lk.TREE_DATA_LABEL, "url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json"}]
+        {"label": "PathOfBuilding-PoE2 tree 0_5", "url": POB2_URL, "fetched_at": FETCHED},
+        {"label": lk.TREE_DATA_LABEL, "url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json",
+         "fetched_at": FETCHED}]
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -571,3 +572,22 @@ def test_gem_stored_under_two_kinds_is_answered_from_the_newer_copy(svc):
 
 def test_gem_stored_once_is_unaffected_by_the_newest_copy_rule(svc):
     assert svc.get_gem("Leap_Slam")["gem"] is svc.gems["skill_gem"]["Leap_Slam"]
+
+
+def test_passive_from_data_without_a_date_cites_no_date(svc):
+    node = svc.passives["4"]
+    saved = node.pop("fetched_at")
+    try:
+        assert svc.get_passive("4")["sources"][0]["fetched_at"] is None
+    finally:
+        node["fetched_at"] = saved
+
+
+def test_gem_stored_only_under_another_kind_than_the_index_says_is_still_found(svc):
+    record = svc.gems["skill_gem"].pop("Leap_Slam")
+    svc.gems["spirit_gem"]["Leap_Slam"] = record
+    try:
+        kind, found = svc._freshest_gem("skill_gem", "Leap_Slam")
+        assert kind == "spirit_gem" and found is record
+    finally:
+        svc.gems["skill_gem"]["Leap_Slam"] = svc.gems["spirit_gem"].pop("Leap_Slam")

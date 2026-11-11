@@ -94,7 +94,7 @@ def test_all_detail_pages_failing(tmp_path):
             return html("listing_skill_us.html")
         raise requests.ConnectionError("down")
 
-    with pytest.raises(CollectionError, match="3 of 3 detail pages failed"):
+    with pytest.raises(CollectionError, match="2 detail pages failed"):
         collect_kind("skill_gem", lowered_spec(1), out_dir=tmp_path, fetcher=fetcher)
     assert list(tmp_path.rglob("*.jsonl")) == []
 

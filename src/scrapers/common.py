@@ -30,7 +30,6 @@ RETRY_STATUS = {429, 500, 502, 503, 504}
 RETRY_EXCEPTIONS = (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError)
 MAX_RETRY_AFTER_SECONDS = 60
 DATA_LOCK_FILE = ".update.lock"     # inside data/: one writer per data folder, across processes
-LOCK_STALE_SECONDS = 900
 
 _CJK_SPACE_RE = re.compile(r"(?<=[^\x00-\x7F]) +(?=[^\x00-\x7F])")
 _RANGE_RE = re.compile(r"^\(\s*(-?\d+(?:\.\d+)?)\s*[—–-]\s*(-?\d+(?:\.\d+)?)\s*\)")
@@ -248,33 +247,47 @@ class LockBusy(Exception):
 
 
 @contextlib.contextmanager
-def file_lock(path: Path, stale_seconds: float = LOCK_STALE_SECONDS):
-    """Cross-process lock: a file created exclusively and removed on exit. A lock older than
-    stale_seconds belongs to a process that died and is taken over."""
+def file_lock(path: Path):
+    """Cross-process lock held through the operating system (flock / msvcrt): it is released when
+    the holder exits, even after a crash, so no lock is ever taken over by age. The lock file
+    itself stays in place; only the lock on it matters."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = _create_lock(path, stale_seconds)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT)
     try:
-        os.write(fd, f"{os.getpid()} {now_iso()}\n".encode("utf-8"))
+        _lock_fd(fd)
+    except OSError:
         os.close(fd)
+        raise LockBusy(f"{path.name} is held by another process") from None
+    try:
+        os.ftruncate(fd, 0)
+        os.write(fd, f"{os.getpid()} {now_iso()}\n".encode("utf-8"))   # for a human looking at the file
         yield
     finally:
-        path.unlink(missing_ok=True)
-
-
-def _create_lock(path: Path, stale_seconds: float) -> int:
-    for attempt in (1, 2):
         try:
-            return os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
-            try:
-                age = time.time() - path.stat().st_mtime
-            except FileNotFoundError:      # released between the two calls
-                continue
-            if attempt == 2 or age < stale_seconds:
-                raise LockBusy(f"{path.name} is held by another process") from None
-            path.unlink(missing_ok=True)
-    raise LockBusy(f"{path.name} is held by another process")
+            _unlock_fd(fd)
+        finally:
+            os.close(fd)
+
+
+if os.name == "nt":
+    import msvcrt
+
+    def _lock_fd(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+
+    def _unlock_fd(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+else:
+    import fcntl
+
+    def _lock_fd(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _unlock_fd(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 def now_iso() -> str:

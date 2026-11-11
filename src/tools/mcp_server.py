@@ -265,7 +265,7 @@ def update_data(scope: str, names: list[str] | None = None, older_than_days: int
     aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
-    if not dry_run:
+    if not dry_run and result.get("done", True):   # an unfinished glossary call wrote nothing
         _reload_service()
     return result
 
@@ -290,8 +290,8 @@ def status() -> str:
 
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
-    """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems or
-    passives. names: optional gem names, comma-separated."""
+    """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
+    passives, glossary or ladder. names: optional gem names, comma-separated."""
     return update_prompt_text(scope, names)
 
 

@@ -154,3 +154,39 @@ dictionary strings, a missing glossary baseline, run expiry by last use, a corru
 and collection order. Still untested: names in the traceback of an unexpected ladder shape.
 
 **State after the fixes:** 1,135 tests pass.
+
+---
+
+# Fourth review — re-review of the fixes from the second and third reviews
+
+Reviewer: the `reviewer` subagent, on HEAD `8b6e386`, offline; it reproduced findings 1 and 2
+with scripts. **Its verdict: Needs Revision** (one High). Dispositions by the main session.
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| 1 | **High** | One gem page that stays unparsable was selected as "broken" on every call and, being more than 2 % of a capped run, aborted every update of its scope, named updates included | **Fixed**: pages that were already broken do not count as markup drift; one newly broken page is always allowed; a page that was broken minutes ago is not fetched again within 15 minutes. Tests reproduce the case |
+| 2 | Medium | The lock file was removed on release without an ownership check; a holder outliving the 15-minute window removed the next holder's lock | **Fixed** by replacing the lock: an OS lock (`flock` / `msvcrt`) on the file, released when the holder exits or crashes; no age-based takeover at all. Checked on this drive from Linux and from Windows Python |
+| 3 | Medium | Race in the stale-lock takeover | **Fixed** with 2 (no takeover any more) |
+| 4 | Medium | The skip limit was checked only after every page; a hanging site could keep one call going for about an hour | **Fixed**: the run stops as soon as more pages failed than it may skip |
+| 5 | Medium | A glossary gem page returning 404 failed every call, so the run never finished | **Fixed**: gem pages are optional and asked once per run; only listing pages are required |
+| 6 | Low | A merged glossary term took the new date even when part of its text was old | **Fixed**: the old date stays when any text field was kept |
+| 7 | Low | A failed index rebuild after the glossary write needed a whole new crawl to repair | **Fixed**: derived files are rebuilt before the run cache is removed; a repeat costs no requests (tested) |
+| 8 | Low | Reload race between two updates in one session | **Not changed**; updates are serialised, the window is a reload of about a second |
+| 9 | Low | The server reloaded after unfinished glossary calls that wrote nothing | **Fixed** |
+| 10 | Low | `_freshest_gem` raised for a gem stored only under another kind | **Fixed** |
+| 11 | Low | A gem counted as recently fetched and selected at once | **Fixed** |
+| 12 | Low | `left` does not include pages that failed and will be retried | **Not changed**; they are listed in `skipped` |
+| 13 | Low | Stale gems were fetched in listing order, not oldest first | **Fixed** |
+| 14 | Low | The online check took only the in-process lock | **Fixed**: it also takes the file lock, without waiting |
+| 15 | Low | Windows `PermissionError` on removing the lock file | **Fixed** with 2 (the file is no longer removed) |
+| 16 | Low | File descriptor leak when writing the lock file fails | **Fixed** with 2 |
+| 17 | Low | Hover bodies under 64 bytes were fetched again on every call | **Fixed**: asked once per run (tested) |
+| 18 | Low | The `update` prompt description omitted two scopes | **Fixed** (tested) |
+
+Also taken from its test audit: the failure registry carrying over to the next call, the 404
+gem page, tiny hovers, the glossary repair, the single-copy gem, the unfinished-call reload,
+the bytes assertion. Still untested: names in a ladder traceback after rows exist, and a refresh
+waiting behind an update in one session.
+
+**State after the fixes:** 1,150 tests pass. A real one-gem update through the Windows launcher
+(2 requests) completed and released the lock. These fixes have not been reviewed again.

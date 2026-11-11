@@ -58,7 +58,7 @@ def _passive(nid, name, type_, **over) -> dict:
             "neighbors": [], "slug": None, "url_en": None, "url_zh_tw": None, "name_zh_tw": None,
             "stats_zh_tw": [], "zh_source": None, "unlock_ascendancy": None, "keyword_slugs": [], "timeless": False,
             "stats_source": "pob2",
-            "pob2_tree_version": "0_5"}
+            "pob2_tree_version": "0_5", "fetched_at": FETCHED}
     node.update(over)
     if node["url_zh_tw"] and node["name_zh_tw"]:
         node["zh_source"] = "poe2db_page"
