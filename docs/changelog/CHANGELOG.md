@@ -24,6 +24,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 - The uv requirement is stated as a version only (0.13.4 or newer) in the READMEs and client
   guides, without the certificate explanation, at the user's request.
 
+- ROADMAP: two next phases named by the user on 2026-11-13: the unique items that make a build
+  (unique jewels in the passive tree, uniques that enable a build; scope still open), then gear
+  crafting (the former "Crafting and currency").
+
 ### Added
 - `docs/flow/commands.md` and `docs/flow/commands.zh-TW.md`: Mermaid flowcharts of the four
   commands with every decision and stop: `poe2-advisor` (and what `export_pob` works out),

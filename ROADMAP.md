@@ -25,7 +25,8 @@ client connects without friction.
 
 The data covers gems, the passive tree, the glossary and (0.8.0) gear, flask, charm and jewel
 bases, uniques and modifiers. Phase 1 is done; Path of Building export part 1 (class, ascendancy,
-passive tree, skill gems) is in 0.9.0 and part 2 (gear) in 0.10.0. Crafting and currency are next.
+passive tree, skill gems) is in 0.9.0 and part 2 (gear) in 0.10.0. Next are the unique items that
+make a build, jewels in the passive tree and build-enabling uniques (added 2026-11-13), then gear crafting.
 
 | # | Phase | What | Why |
 |---|---|---|---|
@@ -33,7 +34,8 @@ passive tree, skill gems) is in 0.9.0 and part 2 (gear) in 0.10.0. Crafting and 
 | 1 | Gem and ascendancy gaps (checked in 0.8.0) | Lineage supports were already covered (77 of 77); socketables came with the modifiers; ascendancy pages add nothing the tree data lacks; 13 gems on the meta gem page are on no gem listing and were left out | Completes what a build can name |
 | 2 | Export to Path of Building, part 1 (done in 0.9.0) | `export_pob`: class, ascendancy, passive route from `path_to` and skill groups as a Path of Building code; `update-pob` keeps the user's PoB current | The advice can be opened, checked and continued in PoB. The passive node ids are already PoB's |
 | 2 | Export to Path of Building, part 2: gear (done in 0.10.0) | Bases, uniques and target modifiers as PoB items, each modifier at the upper end of its best tier (a stated ideal) | PoB's damage and defence figures need gear |
-| 3 | Crafting and currency | Crafting methods, currency, essences, catalysts, omens, liquid emotions | How to obtain the gear, after the gear itself is known |
+| 3 | Unique items that make a build (added 2026-11-13; scope still open) | Two cases named by the user: (a) unique jewels socketed in the passive tree, which many builds add late in the game; (b) builds that only start working once a certain slot holds a certain unique. What exactly to cover is hard to pin down and is decided when the phase starts | Today a unique can be named for a slot and is checked and exported, but the workflow does not look for a unique that enables the build, and jewels are left out altogether: `path_to` does not plan jewel sockets and `export_pob` does not export jewels |
+| 4 | Gear crafting | How to make the target gear: crafting methods, currency, essences, catalysts, omens, liquid emotions, and which of them give the modifiers a build names | How to obtain the gear, after the gear itself is known. Build answers name target modifiers but not how to get them |
 
 Also open:
 
