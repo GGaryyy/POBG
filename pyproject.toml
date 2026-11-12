@@ -2,7 +2,7 @@
 # The dev group adds what the tests need: `uv sync`, then `uv run pytest`.
 [project]
 name = "pobg"
-version = "0.8.0"
+version = "0.9.0"
 description = "Unofficial Path of Exile 2 data tools over MCP: cited gem / passive / glossary lookups, passive tree routes and verified build advice"
 readme = "README.md"
 license = "MIT"

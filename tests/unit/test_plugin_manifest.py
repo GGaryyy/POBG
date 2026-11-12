@@ -33,7 +33,7 @@ STATUS_SKILL = (ROOT / "skills" / "status" / "SKILL.md").read_text(encoding="utf
 UPDATE_SKILL = (ROOT / "skills" / "update" / "SKILL.md").read_text(encoding="utf-8")
 HEAVY_MODULES = ("faiss", "torch", "langchain", "langchain_core", "langgraph", "sentence_transformers", "fastapi")
 TOOL_LIKE = re.compile(r"\b(?:lookup_entity|get_\w+|explain_\w+|passives_\w+|gems_\w+|supports_\w+|"
-                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|build_workflow|data_status|update_data|items_by|modifiers_for)\b")
+                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|export_pob|build_workflow|data_status|update_data|items_by|modifiers_for)\b")
 
 
 def tool_names() -> set[str]:
@@ -197,3 +197,22 @@ def test_the_ladder_is_for_comparison_not_for_choosing():
         assert flat.index("verify_build") < flat.index("Compare with the ladder") < flat.index("sources_markdown")
         assert "Optional" not in flat.split("Compare with the ladder")[0].split("Generate the build")[1]
     assert "differs from what ladder characters run" in SERVER_INSTRUCTIONS
+
+
+def test_update_pob_skill_is_user_invoked_checks_first_and_asks_before_downloading():
+    text = (ROOT / "skills" / "update-pob" / "SKILL.md").read_text(encoding="utf-8")
+    head = frontmatter(text)
+    assert head["name"] == "update-pob" and head["disable-model-invocation"] == "true"
+    body = " ".join(text.split("---", 2)[2].split())
+    assert "$ARGUMENTS" in body and "Do not search the disk" in body
+    command = 'uv run --directory "${CLAUDE_PLUGIN_ROOT}" python -m src.tools.pob_update --dir "<folder>"'
+    assert body.index(command + " --check") < body.index("Only after the user agrees") < body.rindex(command)
+    assert "Never delete the old folder" in body and not TOOL_LIKE.findall(body.replace("export_pob", ""))
+    assert "600000 ms" in body and "do not run anything" in body and "poecharm_latest_date" in body
+    from src.tools import pob_update
+    assert pob_update.MANIFEST in body and pob_update.CHARM_EXE in body
+
+
+def test_advisor_points_to_the_update_pob_command():
+    skill = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
+    assert "/pobg:update-pob" in skill and (ROOT / "skills" / "update-pob" / "SKILL.md").is_file()

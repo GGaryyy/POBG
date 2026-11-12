@@ -1,6 +1,6 @@
 ---
 name: poe2-advisor
-description: Answer Path of Exile 2 questions and write build advice from the local poe2db data with source links. Use when the user asks about a PoE2 skill / support / spirit gem, a passive node or keystone, a game term (e.g. Stun, Critical Hit), "which passives give X", or wants a build / 流派 / 配裝 recommendation, in English or 繁體中文.
+description: Answer Path of Exile 2 questions and write build advice from the local poe2db data with source links, ending with a Path of Building code. Use when the user asks about a PoE2 skill / support / spirit gem, a passive node or keystone, a game term (e.g. Stun, Critical Hit), "which passives give X", wants a build / 流派 / 配裝 recommendation, or a PoB code / 匯入碼 for one, in English or 繁體中文.
 ---
 
 # PoE2 advisor (pobg tools)
@@ -18,6 +18,7 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
    For "which passives give X" use `passives_with_stat`; for "which gems …" use `gems_by`
    (tag, tier, class, weapon, kind or free `text`); for "what supports work with X" use `supports_for`;
    for "how many points to reach X" or "how do I path to X" use `path_to`;
+   for a Path of Building code of a build use `export_pob`;
    for gear use `get_item` (one base or unique), `items_by` (by class, text or level; add
    `with_lines: true` to list a class with what each item does in one call) and
    `modifiers_for` (what an item class can roll, with tiers).
@@ -68,6 +69,18 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
 8. End the answer with `sources_markdown` from the last `verify_build` call, unchanged — it
    already lists the names that were removed. Add `source_markdown` from `reference_builds`
    below it.
+9. Give a Path of Building code: call `export_pob` with the class (or ascendancy), the verified
+   passives as `targets` (the same as for `path_to`) and one `"skill: support, support"` entry
+   per skill group, main skill first. Pass `character_level` when the user asked for a build at
+   a level (123 passive points is level 100). The tool works out from the data, and you must not:
+   the character level (from the points spent), each skill gem's level (the highest that level
+   can use, from the gem's level table) and which attribute each attribute passive gets (toward
+   the gems' requirements first). Put `code` in a code block after the sources, followed by
+   `how_to_import` and `notes`: the code has no gear yet, so PoB's numbers cover the passive
+   tree and gems only. Say what `not_exported` left out and why. Report `summary.attributes`:
+   where `need` is above `have`, the gems' Strength / Dexterity / Intelligence requirement is
+   not met by the tree, so say it must come from gear, or pick gems the build can use. An older
+   PoB skips or refuses what it does not have: suggest `/pobg:update-pob`.
 
 ## Notes
 

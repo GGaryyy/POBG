@@ -60,7 +60,14 @@ BUILD_WORKFLOW = """\
 7. Write the build from the `verified` facts, with a short "compared with the ladder" section. """ + WRITING_RULES + """ Modifiers are random: present the
    target modifiers as goals to look for, not as what the item will have, and say that damage is not calculated.
 8. End the answer with `sources_markdown` from the last verify_build call, unchanged. It already lists
-   the names that were not found. Add `source_markdown` from reference_builds below it."""
+   the names that were not found. Add `source_markdown` from reference_builds below it.
+9. Give a Path of Building code: call export_pob with the class (or ascendancy), the verified passives
+   as `targets` and one "skill: support, support" entry per skill group, main skill first; pass
+   `character_level` when the user asked for a build at a level. The tool works out the character
+   level, each gem's level and the attribute passives from the data: do not work them out yourself.
+   Put `code` in a code block after the sources, with `how_to_import` and `notes`, say what is in
+   `not_exported`, and report `summary.attributes`: where `need` is above `have`, say that attribute
+   must come from gear, or change the gems."""
 
 SERVER_INSTRUCTIONS = (
     "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary), English and Traditional "
@@ -75,8 +82,9 @@ SERVER_INSTRUCTIONS = (
     "the build names. Drop or "
     "replace each name it reports as unverified, call path_to with the class and the verified "
     "passives to get the point cost and allocation order, call reference_builds to say how the "
-    "draft differs from what ladder characters run, write only from the verified facts, and "
-    "end the answer with the returned sources_markdown unchanged. "
+    "draft differs from what ladder characters run, write only from the verified facts, "
+    "end the answer with the returned sources_markdown unchanged, and give the Path of Building "
+    "code from export_pob after it. "
     "The build_workflow tool returns these steps in full. "
     "data_status reports what the local data holds and how old it is. update_data changes it: "
     "call it only when the user asks for an update, with exactly one scope."
@@ -120,8 +128,8 @@ ON_ERROR = "When a call returns an error, show the error and stop. Do not call u
 
 UPDATE_WHOLE_SET_STEPS = {
     PASSIVES: f"""\
-1. Call update_data with scope="passives" and no other argument. It makes 7 requests: the
-   PathOfBuilding-PoE2 tree, two poe2db tree data files and four listing pages.
+1. Call update_data with scope="passives" and no other argument. It makes 8 requests: the
+   PathOfBuilding-PoE2 tree and quest rewards, two poe2db tree data files and four listing pages.
 2. Report `records`, `changed`, `added`, `removed` and the tree versions.
 {ON_ERROR}""",
     GLOSSARY: f"""\

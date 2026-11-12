@@ -336,7 +336,8 @@ class DataMaintenance:
         if ratio < MIN_PARSED_RATIO:
             raise ServiceUnavailable(f"only {ratio:.0%} of the passive stat lines parsed. {NOTHING_WRITTEN}")
         try:
-            write_passives(self.spec, self.data_dir, nodes, edges, tree_data, summary["built_at"])
+            write_passives(self.spec, self.data_dir, nodes, edges, tree_data, summary["built_at"],
+                           summary.get("pob_classes"), summary.get("pob_level_acts"))
             write_stat_index(rows, families, self.data_dir / "kg" / "passive_stats.jsonl",
                              self.data_dir / "kg" / "stat_families.json")
         except OSError as exc:

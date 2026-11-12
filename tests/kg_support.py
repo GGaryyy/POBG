@@ -30,22 +30,30 @@ EXPECTED_EDGE_TYPES = {
 def gem(spec: Spec, slug: str, kind: str, **over) -> dict:
     """A detail record: the keyword fixture page parsed for `kind`, then overridden."""
     rec = parse_detail(html("detail_skill_keywords.html"), spec, slug, kind)
-    rec.update(fetched_at=FETCHED, **over)
+    # the game's ids, as PoB loads a gem by them
+    rec.update(fetched_at=FETCHED, item_type=f"Metadata/Items/Gems/{slug}", game_id=slug.replace("_", ""))
+    rec.update(**over)
     return rec
 
 
 def gem_records(spec: Spec) -> dict[str, list[dict]]:
     leap = gem(spec, "Leap_Slam", "skill_gem", tag_slugs=["Attacks", "Area_of_Effect_Skills"],
-               attribute_colour="str", summary="Jump and slam")
+               attribute_colour="str", summary="Jump and slam",
+               item_type=None)   # as the fixture page parses: a record without the game's item type
     unearth = gem(spec, "Unearth", "skill_gem", name="Unearth", tier=1, tags=["Spell", "Minion"],
                   tag_slugs=["Spells", "Minions"], requires_weapons=None, keyword_slugs=["Minions"],
-                  supported_by=["Added_Fire_Damage", "Ghost_Support"])
+                  supported_by=["Added_Fire_Damage", "Ghost_Support"],
+                  level_effects=[{"Level": "1", "Requires Level": "0", "Int": "4"},
+                                 {"Level": "2", "Requires Level": "3", "Int": "9"},
+                                 {"Level": "3", "Requires Level": "10", "Int": "30"},
+                                 {"Level": "21", "Requires Level": "", "Int": ""}])
     contagion = gem(spec, "Contagion", "skill_gem", name="Contagion", tier=1, tags=["Spell", "Chaos"],
                     tag_slugs=["Spells", "Chaos"], requires_weapons=None, keyword_slugs=[], supported_by=[])
     herald = gem(spec, "Herald_of_Ash", "spirit_gem", name="Herald of Ash", tier=4, tags=["Spirit", "Fire"],
                  tag_slugs=["Persistent_Skills", "Fire"], requires_weapons=["Any Martial Weapon"],
-                 keyword_slugs=[], supported_by=[])
-    added = gem(spec, "Added_Fire_Damage", "support_gem", name="Added Fire Damage", tier=1,
+                 keyword_slugs=[], supported_by=[],
+                 level_effects=[{"Level": "1", "Requires Level": "0", "Str": "4", "Dex": "4"}])
+    added = gem(spec, "Added_Fire_Damage", "support_gem", name="Added Fire Damage", tier=1, requires_stats="+5 Int",
                 tags=["Support", "Fire"], tag_slugs=["Support", "Fire"], requires_weapons=None, keyword_slugs=[])
     faster = gem(spec, "Faster_Attacks", "support_gem", name="Faster Attacks", tier=2,
                  tags=["Support", "Attack"], tag_slugs=["Support", "Attacks"], requires_weapons=None, keyword_slugs=[])
@@ -194,9 +202,12 @@ def routing_tree() -> tuple[list[dict], list[dict]]:
 def routing_classes_doc(passive: int = 123, ascendancy: int = 8) -> dict:
     doc = classes_doc()
     doc["points"] = {"passive": passive, "ascendancy": ascendancy}
+    # Blood Mage has no PoB id: an ascendancy PoB does not have yet
     doc["classes"][0]["ascendancies"].append({"id": "Witch2", "name": "Blood Mage", "name_zh_tw": "血法師"})
-    doc["classes"].append({"name": "Druid", "name_zh_tw": "德魯伊",
-                           "ascendancies": [{"id": "Druid1", "name": "Oracle", "name_zh_tw": "天啟先知"}]})
+    doc["classes"].append({"name": "Druid", "name_zh_tw": "德魯伊", "pob_id": 11,
+                           "base_attributes": {"str": 11, "dex": 7, "int": 11},
+                           "ascendancies": [{"id": "Druid1", "name": "Oracle", "name_zh_tw": "天啟先知",
+                                             "pob_id": "Druid1"}]})
     return doc
 
 
@@ -225,15 +236,17 @@ def write_data_dir(base: Path, spec: Spec | None = None, tree: tuple[list[dict],
 
 
 def classes_doc() -> dict:
-    def cls(name, zh, *ascendancies):
-        return {"name": name, "name_zh_tw": zh,
-                "ascendancies": [{"id": f"{name}{i}", "name": a, "name_zh_tw": a_zh}
+    def cls(name, zh, pob_id, *ascendancies):
+        return {"name": name, "name_zh_tw": zh, "pob_id": pob_id, "base_attributes": {"str": 7, "dex": 7, "int": 15},
+                "ascendancies": [{"id": f"{name}{i}", "name": a, "name_zh_tw": a_zh, "pob_id": f"{name}{i}"}
                                  for i, (a, a_zh) in enumerate(ascendancies, 1)]}
     return {"version": "4.5", "source_url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json",
             "fetched_at": FETCHED, "points": {"passive": 123, "ascendancy": 8},
-            "classes": [cls("Witch", "女巫", ("Infernalist", "獄火師")),
-                        cls("Sorceress", "女術者", ("Stormweaver", "風暴編織者")),
-                        cls("Warrior", "戰士", ("Titan", "泰坦"))]}
+            # PoB's act table for its automatic level (the first two acts of the real one)
+            "pob_level_acts": [{"level": 1, "quest_points": 0}, {"level": 12, "quest_points": 4}],
+            "classes": [cls("Witch", "女巫", 1, ("Infernalist", "獄火師")),
+                        cls("Sorceress", "女術者", 7, ("Stormweaver", "風暴編織者")),
+                        cls("Warrior", "戰士", 6, ("Titan", "泰坦"))]}
 
 
 def build_full_environment(base: Path, spec: Spec | None = None, tree: tuple[list[dict], list[dict]] | None = None,

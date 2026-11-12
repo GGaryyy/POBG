@@ -225,6 +225,25 @@ def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, 
     return build_tools().path_to(class_name, targets, ascendancy=ascendancy, lang=lang)
 
 
+@server.tool(title="Path of Building build code", annotations=READ_ONLY)
+@_user_errors
+def export_pob(class_name: str, targets: list[str] | None = None, skills: list[str] | None = None,
+               ascendancy: str | None = None, main_skill: str | None = None, title: str | None = None,
+               attribute: str | None = None, character_level: int | None = None, lang: str | None = None) -> dict:
+    """A Path of Building (PoE2) build code for a verified build, to paste into PoB's Import/Export
+    tab. `class_name` / `ascendancy` / `targets` work as in path_to (the code holds the whole route).
+    `skills`: one entry per skill group, "skill: support, support" (English or 繁體中文; at most 12
+    groups, 5 supports each). `main_skill` picks the main group (default: the first). Worked out
+    from the data, not to be guessed: the character level (from the points; `character_level`
+    1-100 sets it), each skill gem's level (highest that level can use) and the attribute passives
+    (toward the gems' requirements; `attribute` str/dex/int forces one). `summary.attributes` gives
+    have / need. Names that do not match local data and supports that cannot support the skill go
+    to `not_exported`. No gear yet. Show `code`, `notes`, `how_to_import`. Writes no file."""
+    return build_tools().export_pob(class_name, targets=targets, skills=skills, ascendancy=ascendancy,
+                                    main_skill=main_skill, title=title, attribute=attribute,
+                                    character_level=character_level, lang=lang)
+
+
 @server.tool(title="Item base or unique", annotations=READ_ONLY)
 @_user_errors
 def get_item(name: str) -> dict:

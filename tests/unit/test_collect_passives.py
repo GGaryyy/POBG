@@ -122,7 +122,7 @@ def test_tree_nodes_schema_and_values(nodes):
     assert key == {
         "id": "2", "name": "Chaos Inoculation", "type": "Keystone",
         "stats": ["Maximum Life is 1", "Immune to Chaos Damage"], "ascendancy": None, "class_start": [],
-        "is_ascendancy_start": False, "is_notable": False, "position": {"x": 182.0, "y": 200.0},
+        "is_ascendancy_start": False, "is_notable": False, "no_point": False, "position": {"x": 182.0, "y": 200.0},
         "neighbors": [], "slug": None, "url_en": None, "url_zh_tw": None, "name_zh_tw": None,
         "stats_zh_tw": [], "zh_source": None, "unlock_ascendancy": None, "keyword_slugs": [], "timeless": False,
         "stats_source": "pob2", "pob2_tree_version": VERSION}
@@ -403,14 +403,17 @@ def test_build_fetches_and_caches_when_online(tmp_path):
         urls.append(url)
         if url in data_urls:
             return fixture_text("poe2db_tree", data_urls[url])
+        if url == spec.source("pob2_tree")["quest_rewards_url"]:
+            return fixture_text("pob2", "QuestRewards_mini.lua")
         return fixture_text("pob2", "tree_mini.json") if url == tree_url else fixture_text("html", pages[url])
 
     kwargs = dict(pob2_cache=tmp_path / "p", page_cache=tmp_path / "c", tree_data_cache=tmp_path / "t")
     cp.build(spec, fetch=fetch, **kwargs)
-    assert len(urls) == 7 and tree_url in urls and set(data_urls) <= set(urls)
+    assert len(urls) == 8 and tree_url in urls and set(data_urls) <= set(urls)
     assert (tmp_path / "t" / "data_4.5_zh-tw.json").exists()
     cp.build(spec, fetch=no_network, offline=True, **kwargs)  # second run served from the cache
     assert (tmp_path / "p" / f"tree_{VERSION}.json").exists() and (tmp_path / "c" / "en_Keystone.html").exists()
+    assert (tmp_path / "p" / f"QuestRewards_{VERSION}.lua").exists()
 
 
 def test_build_offline_empty_cache_raises(tmp_path):
@@ -578,6 +581,119 @@ def test_classes_doc_keeps_only_classes_that_start_on_the_tree(nodes):
     assert doc["source_url"] == "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json"
     assert [(c["name"], c["name_zh_tw"]) for c in doc["classes"]] == [("Witch", "女巫"), ("Sorceress", "女術者")]
     assert doc["classes"][1]["ascendancies"] == [{"id": "Sorceress1", "name": "Stormweaver", "name_zh_tw": "風暴編織者"}]
+
+
+POB_TREE_CLASSES = {"classes": [
+    {"name": "Witch", "integerId": 1, "base_str": 7, "base_dex": 7, "base_int": 15, "ascendancies": [{"id": "Infernalist", "name": "Infernalist", "internalId": "Witch1"}]},
+    {"name": "Sorceress", "integerId": 7, "ascendancies": [{"id": "Stormweaver", "name": "Stormweaver",
+                                                           "internalId": "Sorceress1"},
+                                                          {"id": "Old", "name": "Old"}]},   # no internalId
+    {"name": "Monk", "ascendancies": []},                                                   # no integerId
+]}
+
+
+def test_pob_class_ids_by_english_name():
+    assert cp.pob_class_ids(POB_TREE_CLASSES) == {
+        "Witch": {"pob_id": 1, "base": {"str": 7, "dex": 7, "int": 15}, "ascendancies": {"Infernalist": "Witch1"}},
+        "Sorceress": {"pob_id": 7, "ascendancies": {"Stormweaver": "Sorceress1"}}}
+    assert cp.pob_class_ids({}) == {}
+
+
+def test_classes_doc_carries_pob_ids_where_pob_has_them(nodes):
+    ids = cp.pob_class_ids(POB_TREE_CLASSES)
+    ids.pop("Witch")
+    doc = cp.classes_doc(mini_tree_data(), list(nodes.values()), "t", ids)
+    witch, sorceress = doc["classes"]
+    assert "pob_id" not in witch and all("pob_id" not in a for a in witch["ascendancies"])
+    assert sorceress["pob_id"] == 7
+    assert sorceress["ascendancies"] == [{"id": "Sorceress1", "name": "Stormweaver", "name_zh_tw": "風暴編織者",
+                                          "pob_id": "Sorceress1"}]
+
+
+def test_build_reads_the_pob_ids_and_write_passives_stores_them(caches, tmp_path):
+    pob2, pages = caches
+    raw = json.loads((pob2 / f"tree_{VERSION}.json").read_text(encoding="utf-8"))
+    raw["classes"] = POB_TREE_CLASSES["classes"]
+    (pob2 / f"tree_{VERSION}.json").write_text(json.dumps(raw), encoding="utf-8")
+    tree_data = cp.load_tree_data(mini_spec(), fetch=no_network, cache_dir=tree_cache(pob2), offline=True)
+    nodes, edges, summary = cp.build(mini_spec(), fetch=no_network, offline=True, pob2_cache=pob2, page_cache=pages,
+                                     tree_data_cache=tree_cache(pob2), tree_data=tree_data)
+    assert summary["pob_classes"]["Witch"] == {"pob_id": 1, "base": {"str": 7, "dex": 7, "int": 15},
+                                               "ascendancies": {"Infernalist": "Witch1"}}
+    written = cp.write_passives(mini_spec(), tmp_path / "out", nodes, edges, tree_data, summary["built_at"],
+                                summary["pob_classes"])
+    doc = json.loads(written["paths"][2].read_text(encoding="utf-8"))
+    assert [(c["name"], c.get("pob_id")) for c in doc["classes"]] == [("Witch", 1), ("Sorceress", 7)]
+    assert doc["classes"][0]["base_attributes"] == {"str": 7, "dex": 7, "int": 15}
+    assert "base_attributes" not in doc["classes"][1]                   # the tree gave no base values
+
+
+QUESTS = """return {
+	{ ["Act"] = 1, ["Area"] = "Clearfell", ["Stat"] = "+10% to Cold Resistance", ["AreaLevel"] = 2 },
+	{ ["Act"] = 1, ["Stat"] = "+2 Weapon Set Passive Skill Points", ["questPoints"] = 2, ["AreaLevel"] = 10 },
+	{ ["Act"] = 1, ["questPoints"] = 2, ["AreaLevel"] = 12 },
+	{ ["Act"] = 2, ["questPoints"] = 2, ["AreaLevel"] = 22 },
+	{ ["Act"] = 2, ["questPoints"] = 2, ["AreaLevel"] = 28 },
+	{ ["Act"] = 3, ["questPoints"] = 2, ["AreaLevel"] = 40 },
+	{ ["Act"] = 1, ["Type"] = "Cruel", ["questPoints"] = 2, ["AreaLevel"] = 51 },
+}"""
+
+
+def test_quest_acts_builds_pobs_act_table():
+    assert cp.quest_acts(QUESTS) == [{"level": 1, "quest_points": 0}, {"level": 12, "quest_points": 4},
+                                     {"level": 28, "quest_points": 8}, {"level": 40, "quest_points": 10},
+                                     {"level": 51, "quest_points": 12}]
+
+
+@pytest.mark.parametrize("text", [
+    "return {}",                                                         # nothing with points
+    'return { { ["Act"] = 3, ["questPoints"] = 2, ["AreaLevel"] = 40 } }',   # a gap PoB would fail on
+    'return { { ["Act"] = "one", ["questPoints"] = 2, ["AreaLevel"] = 40 } }',
+    'return { { ["questPoints"] = 2, ["AreaLevel"] = 40 } }',
+])
+def test_quest_acts_gives_nothing_for_what_it_cannot_use(text):
+    assert cp.quest_acts(text) == []
+
+
+def test_load_quest_acts_from_the_cache_and_offline_without_it(tmp_path):
+    assert cp.load_quest_acts(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == []
+    (tmp_path / f"QuestRewards_{VERSION}.lua").write_text(QUESTS, encoding="utf-8")
+    assert cp.load_quest_acts(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == cp.quest_acts(QUESTS)
+
+
+def test_a_failed_quest_download_gives_no_table_instead_of_stopping(tmp_path, capsys):
+    def down(url):
+        raise requests.ConnectionError("404")
+    assert cp.load_quest_acts(mini_spec(), fetch=down, cache_dir=tmp_path) == []
+    assert "quest rewards not fetched" in capsys.readouterr().err
+
+
+def test_quests_with_nested_tables_are_read():
+    text = """return {
+\t{ ["Act"] = 1, ["Options"] = { "a", "b" }, ["questPoints"] = 2, ["AreaLevel"] = 10 },
+\t{ ["Act"] = 1, ["Options"] = { { ["x"] = 1 }, "b" }, ["AreaLevel"] = 12 },
+\t{ ["Act"] = 0, ["questPoints"] = 1, ["AreaLevel"] = 1 },
+}"""
+    assert cp.quest_acts(text) == [{"level": 1, "quest_points": 1}, {"level": 10, "quest_points": 2}]
+
+
+def test_free_nodes_are_marked_no_point():
+    tree = json.loads(fixture_text("pob2", "tree_mini.json"))
+    first = next(k for k, n in tree["nodes"].items() if "skill" in n and not n.get("isOnlyImage"))
+    tree["nodes"][first]["isFreeAllocate"] = True
+    others = [k for k, n in tree["nodes"].items() if "skill" in n and not n.get("isOnlyImage") and k != first]
+    main = next(k for k in others if not tree["nodes"][k].get("ascendancyName"))
+    asc = next(k for k in others if tree["nodes"][k].get("ascendancyName"))
+    tree["nodes"][main]["isMultipleChoiceOption"] = True         # PoB counts a main-tree option as a point
+    tree["nodes"][asc]["isMultipleChoiceOption"] = True
+    nodes = cp.tree_nodes(tree, VERSION)
+    assert {n["id"] for n in nodes.values() if n["no_point"]} == {str(tree["nodes"][k]["skill"]) for k in (first, asc)}
+
+
+def test_classes_doc_stores_the_act_table(nodes):
+    doc = cp.classes_doc(mini_tree_data(), list(nodes.values()), "t", None, [{"level": 1, "quest_points": 0}])
+    assert doc["pob_level_acts"] == [{"level": 1, "quest_points": 0}]
+    assert "pob_level_acts" not in cp.classes_doc(mini_tree_data(), list(nodes.values()), "t")
 
 
 def test_load_tree_data_offline_without_cache(tmp_path):

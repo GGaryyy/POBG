@@ -5,7 +5,9 @@
 POBG is an unofficial [Model Context Protocol](https://modelcontextprotocol.io) server and
 Claude Code plugin. It lets an AI assistant look up accurate **Path of Exile 2** data, cite where
 each fact came from, and give build advice in which every gem and passive has been checked
-against that data — in English or Traditional Chinese.
+against that data — in English or Traditional Chinese. A build answer ends with a
+[Path of Building](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) code to paste
+into PoB.
 
 The data is a local copy of [poe2db.tw](https://poe2db.tw) (gems, passive tree, glossary), the
 [PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) passive
@@ -26,7 +28,8 @@ Once the server is connected, ask your assistant things like:
 - "What modifiers can a bow roll, and what are the attack speed tiers?" / 「弓能出哪些詞綴？」
 - "What does Quill Rain do?" / 「驟雨之弦有什麼詞綴？」
 - "Give me a fire Titan build" — every gem, passive, item and target modifier in the answer is
-  checked against the data, names that do not exist are removed, and the answer ends with a source list.
+  checked against the data, names that do not exist are removed, and the answer ends with a source list
+  and a Path of Building code (passive tree and skill gems; gear comes in a later version).
 
 ## Install
 
@@ -75,12 +78,14 @@ locally over stdio.
 
 Two commands look after the data from inside the AI client. In Claude Code they are plugin
 skills; every other client gets them as MCP prompts of the `pobg` server (the "+" menu in
-Claude Desktop, `/pobg.status` in VS Code, slash commands in Gemini CLI).
+Claude Desktop, `/pobg.status` in VS Code, slash commands in Gemini CLI). A third one updates
+your Path of Building.
 
 | Command | Claude Code | What it does |
 |---|---|---|
 | status | `/pobg:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. On request it also checks the live sites (about 19 requests): do the pages still parse, is there a newer passive tree |
 | update | `/pobg:update <scope> [names]` | Re-fetches **one** data set. Shows what would be fetched first, then updates it |
+| update-pob | `/pobg:update-pob <folder>` | Updates your Path of Building (PoE2), alone or inside a PoeCharm2 folder, to the latest release. Checks versions first; after you agree, downloads into a **new folder** next to the old one (see below) |
 | advisor | `/pobg:poe2-advisor` | Not a data command: the instructions Claude Code follows to answer PoE2 questions and write cited builds. It is applied automatically |
 
 `update` always needs a scope; there is no "update everything":
@@ -88,13 +93,27 @@ Claude Desktop, `/pobg.status` in VS Code, slash commands in Gemini CLI).
 | Scope | Fetches | Requests per call |
 |---|---|---|
 | `skill_gems`, `spirit_gems`, `support_gems` | The listing page, then only gems that are new, changed on the listing, named by you, or older than N days | 1 + at most 20 gems (40 at most); repeated until nothing is left |
-| `passives` | The PathOfBuilding-PoE2 tree, poe2db's two tree data files and four listing pages; the stat index is rebuilt | 7 |
+| `passives` | The PathOfBuilding-PoE2 tree and quest rewards (PoB's level table for exported codes), poe2db's two tree data files and four listing pages; the stat index is rebuilt | 8 |
 | `items` | Gear bases, unique items and modifiers from the 69 item class pages (English and Chinese; gear, flasks, charms, jewels); add item class names (`Bows`, `Body Armours`) to update only those | At most 20 requests per call (10 class pages in both languages, about 600 KB each), 138 in all; repeated until done, and written only when every page is fetched and checked |
 | `glossary` | Every glossary term (English and Chinese hover snippets), found through the listing pages and a few gem pages | At most 50 per call (under a minute), about 750 in all; repeated until done, and written only when the whole glossary has been fetched |
 | `ladder` | A new poe.ninja snapshot of the current league: class, level, skills, keystones. No character or account names are kept | At most 14 |
 
 Examples: `/pobg:update skill_gems`, `/pobg:update support_gems Fire Attunement, Brutality I`,
 `/pobg:update items Bows`, "update the skill gems older than 30 days".
+
+`update-pob` is a Claude Code skill only. In any other client, or by hand, run the same program
+from this folder:
+
+```
+uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410" --check   # versions only
+uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"           # update
+```
+
+It downloads Path of Building's release file (about 380 MB) and checks it against the SHA-256
+GitHub publishes; a PoeCharm2 folder also gets the latest PoeCharm2 commit (no published
+checksum). Saved builds and PoeCharm2's language setting are copied; `Settings.xml` is not,
+because it holds your account login, so you sign in again. The old folder is never changed or
+deleted.
 
 Good to know:
 
@@ -128,6 +147,7 @@ Good to know:
 | `reference_builds` | what ladder characters run (class, main skill, rank, gems, keystones — no character names); a build answer uses it to show how the generated build differs from the ladder, not to pick the build |
 | `verify_build` | checks a draft build's gems, passives, items and target modifiers ("Rings: +#% to Fire Resistance": the whole modifier, at most 3 prefixes and 3 suffixes per item; a partial wording comes back with candidates); returns facts, removed names and a finished source list |
 | `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route) |
+| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route and skill groups ("skill: support, support"); names that do not verify, and supports that cannot support the skill, are listed in `not_exported` instead. Character level, gem levels and attribute passives are worked out from the data, with have / need per attribute. No gear yet |
 | `get_item` | one gear base (properties, requirements, implicit) or unique item (its modifiers), with sources |
 | `items_by` | bases and uniques by item class, kind, required level or text |
 | `modifiers_for` | what an item class (or a base or unique's class) can roll: modifiers grouped by family, every tier's level and value range, prefix or suffix; also desecrated, essence, corrupted and socketable effects |
@@ -137,7 +157,7 @@ Good to know:
 | `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ladder), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the commands above). Only
-`refresh_gem` and `update_data` change anything; the other fifteen tools are marked read-only,
+`refresh_gem` and `update_data` change anything; the other sixteen tools are marked read-only,
 and of those only `data_status` can reach the network, when asked to check the live sites.
 
 ## Data sources and scope of use
@@ -161,7 +181,7 @@ normally after a game patch. A running server makes no network request unless `r
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `POBG/0.8 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
+  `POBG/0.9 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
@@ -218,6 +238,16 @@ data), `docs/` (client guide, flow diagrams, changelog). See `ROADMAP.md` for wh
   passive points or jewels.
 - `verify_build` checks that names exist and returns their facts. It does not judge whether a
   build is strong.
+- `export_pob` codes hold the passive tree and skill gems, not gear, so PoB's damage and defence
+  figures for them cover the tree and gems only, and attack skills show as disabled until you add
+  a weapon. The character level comes from the points spent (123 points is level 100; you can ask
+  for a level), each skill gem is set to the highest level that character can use, and the
+  route's attribute passives go to the gems' attribute requirements first; what the tree cannot
+  cover is reported as "must come from gear". Passives that give increased (percentage)
+  attributes are not counted. The passive tree comes from
+  PathOfBuilding-PoE2's development branch, which can be ahead of its latest release: a PoB that
+  is older than the data skips passives and gems it does not know, and may refuse a tree version
+  or ascendancy it does not have (update it with `update-pob`).
 - The ladder is a sample (about 600 characters near the top of several rankings), not the
   whole ladder.
 - Modifiers are random. `modifiers_for` lists what an item class *can* roll; build answers name

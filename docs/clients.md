@@ -138,8 +138,8 @@ folder as the working directory.
 
 | Feature | Detail |
 |---|---|
-| Tools | Seventeen. Names use only letters, digits and `_`; descriptions are under 1,024 characters; input schemas are flat objects (strings, integers, booleans, string lists) |
-| Annotations | Fourteen tools are `readOnlyHint: true`, `openWorldHint: false`. `data_status` is read-only but `openWorldHint: true` (its optional online check). `refresh_gem` and `update_data` are `readOnlyHint: false`, `destructiveHint: true`, `openWorldHint: true`: they fetch from the sources and replace local records, so clients should ask before running them |
+| Tools | Eighteen. Names use only letters, digits and `_`; descriptions are under 1,024 characters; input schemas are flat objects (strings, integers, booleans, string lists) |
+| Annotations | Fifteen tools are `readOnlyHint: true`, `openWorldHint: false`. `data_status` is read-only but `openWorldHint: true` (its optional online check). `refresh_gem` and `update_data` are `readOnlyHint: false`, `destructiveHint: true`, `openWorldHint: true`: they fetch from the sources and replace local records, so clients should ask before running them |
 | Prompts | `build_guide(request, lang)`, `status()`, `update(scope, names)`. Clients without prompt support call the `build_workflow` tool for the build steps, and can call `data_status` / `update_data` directly |
 | Server instructions | A short "how to use these tools" text sent at initialisation; some clients ignore it, which is why `build_workflow` exists |
 | Languages | Queries and answers in English and Traditional Chinese; `lang` is `en` or `zh-tw` |

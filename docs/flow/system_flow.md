@@ -1,6 +1,6 @@
 # System Flow
 
-Updated 2026-11-11 (0.8.0: gear bases, uniques and modifiers; 0.7.0 was the first public release).
+Updated 2026-11-12 (0.9.0: Path of Building codes and the PoB updater; 0.8.0: gear data).
 
 ## System flow
 
@@ -46,7 +46,9 @@ flowchart LR
         LK[lookup.py + items.py]
         BT[build_tools.py + pathing.py]
         MT[maintenance.py: status + scoped update]
-        MCP[MCP server pobg: 17 tools + build_guide / status / update prompts]
+        MCP[MCP server pobg: 18 tools + build_guide / status / update prompts]
+        PE[pob_export.py: XML + zlib + base64 build code]
+        PU[pob_update.py: CLI, PoB release into a new folder]
     end
 
     subgraph Clients
@@ -85,12 +87,16 @@ flowchart LR
     LK --> BT
     COM -->|class, main skill, rank only| BT
     BT --> MCP
+    BT -->|export_pob: class ids, route, gem ids| PE
+    PE -->|code, no file| MCP
     MT --> MCP
     MT -->|one scope per call| CG
     MT -->|passives scope| PT
     MT -->|rebuild| EI
     MCP -->|uv run, stdio| CC
     MCP -->|uv run, stdio| OC
+    CC -->|/pobg:update-pob, uv run, after the user agrees| PU
+    PU -->|GitHub release + SHA-256, PoeCharm2 commit| PBF[(user's Path of Building, new folder)]
 ```
 
 ## Data flow (gem collection)

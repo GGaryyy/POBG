@@ -326,6 +326,8 @@
       "kind": "passive_structure",
       "url": "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/{version}/tree.json",
       "versions_api": "https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev",
+      "quest_rewards_url": "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/Data/QuestRewards.lua",
+      "quest_rewards_notes": "PoB's quest rewards; the ones with questPoints give PoB's act table for its automatic character level (Build.lua EstimatePlayerProgress). export_pob writes that level so PoB does not calculate the first view at level 1. Like the tree, it follows the dev branch, which can be ahead of the PoB release a user runs. The collector CLI caches it per tree version; update_data always fetches it again.",
       "version": "0_5",
       "nodes_file": "data/passive_tree/passive_nodes.jsonl",
       "edges_file": "data/passive_tree/passive_edges.jsonl",

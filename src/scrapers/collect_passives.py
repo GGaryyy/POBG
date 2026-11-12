@@ -42,6 +42,9 @@ ZH_FROM_PAGE = "poe2db_page"
 ZH_FROM_TREE_DATA = "poe2db_tree_data"
 LANGS = ("en", "zh-tw")
 _NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+NESTED_TABLE = re.compile(r"\{[^{}]*\}")                        # a table inside a quest (e.g. Options)
+QUEST_FIELD = re.compile(r'\["(\w+)"\]\s*=\s*"?([^",\n]*)"?')
+CRUEL_OFFSET = 3                                                  # Cruel acts follow the three normal ones
 
 Fetcher = Callable[[str], str]
 
@@ -70,6 +73,65 @@ def load_pob2_tree(spec: Spec, *, fetch: Fetcher, cache_dir: Path = POB2_CACHE_D
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise PassiveBuildError(f"PoB2 tree {version} is not valid JSON: {exc}") from exc
+
+
+def load_quest_acts(spec: Spec, *, fetch: Fetcher, cache_dir: Path = POB2_CACHE_DIR, offline: bool = False) -> list[dict]:
+    """PoB's act table for its automatic character level, from its QuestRewards.lua; [] when the
+    file is not available offline or does not parse (the export then falls back to level 1)."""
+    source = spec.source("pob2_tree")
+    url = source.get("quest_rewards_url")
+    if not url:
+        return []
+    try:   # the level table is an extra: without it the tree is still collected
+        text = cached_fetch(url, cache_dir / f"QuestRewards_{source['version']}.lua", fetch, offline)
+    except requests.RequestException as exc:
+        print(f"[WARN] PoB quest rewards not fetched ({type(exc).__name__}); exported codes will say level 1",
+              file=sys.stderr)
+        return []
+    return quest_acts(text) if text else []
+
+
+def quest_blocks(text: str) -> list[str]:
+    """The top-level quest tables of QuestRewards.lua, each without the tables nested in it."""
+    blocks, depth, start = [], 0, 0
+    for index, char in enumerate(text):
+        if char == "{":
+            depth += 1
+            if depth == 2:
+                start = index + 1
+        elif char == "}":
+            if depth == 2:
+                block = text[start:index]
+                while NESTED_TABLE.search(block):
+                    block = NESTED_TABLE.sub("", block)
+                blocks.append(block)
+            depth -= 1
+    return blocks
+
+
+def quest_acts(text: str) -> list[dict]:
+    """[{"level", "quest_points"}] per act, built the way PoB's Build.lua builds `self.acts`:
+    the first act is level 1 with no points; each quest with questPoints adds to its act
+    (Cruel acts come after the three normal ones), and a new act starts at the quest's area
+    level with the points so far."""
+    acts = [{"level": 1, "quest_points": 0}]
+    for block in quest_blocks(text):
+        fields = dict(QUEST_FIELD.findall(block))
+        if "questPoints" not in fields:
+            continue
+        try:
+            act = int(fields["Act"]) + (CRUEL_OFFSET if fields.get("Type") == "Cruel" else 0) + 1
+            points, level = int(fields["questPoints"]), int(fields["AreaLevel"])
+        except (KeyError, ValueError):
+            return []
+        if act == len(acts) + 1:
+            acts.append({"level": level, "quest_points": points + acts[-1]["quest_points"]})
+        elif 1 <= act <= len(acts):
+            acts[act - 1]["quest_points"] += points
+            acts[act - 1]["level"] = max(acts[act - 1]["level"], level)
+        else:
+            return []          # a gap PoB itself would fail on
+    return acts if len(acts) > 1 else []
 
 
 def load_tree_data(spec: Spec, *, fetch: Fetcher, cache_dir: Path = TREE_DATA_CACHE_DIR, offline: bool = False,
@@ -181,6 +243,9 @@ def tree_nodes(tree: dict, version: str) -> dict[str, dict]:
             "class_start": [c for c in raw.get("classesStart", []) if c in class_names],
             "is_ascendancy_start": bool(raw.get("isAscendancyStart")),
             "is_notable": bool(raw.get("isNotable")),
+            # allocated without spending a point (PoB's CountAllocNodes skips these)
+            "no_point": bool(raw.get("isFreeAllocate")
+                             or (raw.get("isMultipleChoiceOption") and raw.get("ascendancyName"))),
             "position": node_position(tree, raw),
             "neighbors": [],
             "slug": None,
@@ -265,15 +330,44 @@ def _fold(name: str) -> str:
     return " ".join(name.split()).casefold()
 
 
-def classes_doc(tree_data: dict, nodes: list[dict], fetched_at: str) -> dict:
-    """Classes that start somewhere on our tree, with their ascendancies, in both languages."""
+def pob_class_ids(tree: dict) -> dict[str, dict]:
+    """PoB's own ids by English class name: the class integerId and each ascendancy's internalId.
+    A Path of Building build code names the class and ascendancy by these."""
+    out: dict[str, dict] = {}
+    for cls in tree.get("classes") or []:
+        if cls.get("name") and isinstance(cls.get("integerId"), int):
+            base = {key: cls.get(f"base_{key}") for key in ("str", "dex", "int")}
+            out[cls["name"]] = {"pob_id": cls["integerId"],
+                                **({"base": base} if all(isinstance(v, int) for v in base.values()) else {}),
+                                "ascendancies": {a["name"]: a["internalId"] for a in cls.get("ascendancies") or []
+                                                 if a.get("name") and a.get("internalId")}}
+    return out
+
+
+def classes_doc(tree_data: dict, nodes: list[dict], fetched_at: str, pob_ids: dict | None = None,
+                pob_acts: list[dict] | None = None) -> dict:
+    """Classes that start somewhere on our tree, with their ascendancies, in both languages, and
+    PoB's ids for them (`pob_id`) where the PoB2 tree has them. `pob_level_acts` is PoB's act
+    table for its automatic character level."""
     playable = {c for n in nodes for c in n["class_start"]}
     classes = [c for c in class_names(tree_data["en"], tree_data["zh-tw"]) if c["name"] in playable]
+    for cls in classes:
+        ids = (pob_ids or {}).get(cls["name"])
+        if ids:
+            cls["pob_id"] = ids["pob_id"]
+            if ids.get("base"):
+                cls["base_attributes"] = ids["base"]
+            for asc in cls["ascendancies"]:
+                if asc["name"] in ids["ascendancies"]:
+                    asc["pob_id"] = ids["ascendancies"][asc["name"]]
     points = tree_data["en"].get("points") or {}
-    return {"version": tree_data["version"], "source_url": tree_data["urls"]["zh-tw"],
-            "fetched_at": fetched_at,
-            "points": {"passive": points.get("totalPoints"), "ascendancy": points.get("ascendancyPoints")},
-            "classes": classes}
+    doc = {"version": tree_data["version"], "source_url": tree_data["urls"]["zh-tw"],
+           "fetched_at": fetched_at,
+           "points": {"passive": points.get("totalPoints"), "ascendancy": points.get("ascendancyPoints")},
+           "classes": classes}
+    if pob_acts is not None:
+        doc["pob_level_acts"] = pob_acts
+    return doc
 
 
 def attach_cards(nodes: dict[str, dict], cards: dict[str, dict[str, PassiveCard]], spec: Spec) -> dict:
@@ -411,19 +505,21 @@ def build(spec: Spec, *, fetch: Fetcher, offline: bool = False,
     summary["edge_kinds"] = dict(Counter(e["kind"] for e in edges))
     summary["connections_dropped"] = dropped
     summary["built_at"] = now_iso()
+    summary["pob_classes"] = pob_class_ids(tree)
+    summary["pob_level_acts"] = load_quest_acts(spec, fetch=fetch, cache_dir=pob2_cache, offline=offline)
     for node in nodes.values():   # every source of the node was read in this build
         node["fetched_at"] = summary["built_at"]
     return list(nodes.values()), edges, summary
 
 
 def write_passives(spec: Spec, out_dir: Path, nodes: list[dict], edges: list[dict], tree_data: dict,
-                   built_at: str) -> dict:
+                   built_at: str, pob_ids: dict | None = None, pob_acts: list[dict] | None = None) -> dict:
     """Write nodes, edges and classes.json under out_dir. Returns the paths and the class counts."""
     source = spec.source("pob2_tree")
     nodes_path = out_dir / Path(source["nodes_file"]).relative_to("data")
     edges_path = out_dir / Path(source["edges_file"]).relative_to("data")
     classes_path = out_dir / Path(spec.source("passive_tree_data")["classes_file"]).relative_to("data")
-    classes = classes_doc(tree_data, nodes, built_at)
+    classes = classes_doc(tree_data, nodes, built_at, pob_ids, pob_acts)
     write_jsonl(nodes_path, nodes)
     write_jsonl(edges_path, edges)
     atomic_write_text(classes_path, json.dumps(classes, ensure_ascii=False, indent=2) + "\n")
@@ -450,7 +546,8 @@ def main(argv: list[str] | None = None) -> int:
     except (KeyError, IndexError, TypeError) as exc:
         print(f"[ERROR] PoB2 tree schema changed? {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
-    written = write_passives(spec, args.out_dir, nodes, edges, tree_data, summary["built_at"])
+    written = write_passives(spec, args.out_dir, nodes, edges, tree_data, summary["built_at"],
+                             summary.pop("pob_classes"), summary.pop("pob_level_acts"))
     summary["classes"], summary["ascendancies"] = written["classes"], written["ascendancies"]
     print("=== collect_passives summary ===")
     for key, value in summary.items():

@@ -3,7 +3,68 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.0] - 2026-11-12
+
+Path of Building export, part 1 (`docs/plan_pob_export.md`): class, ascendancy, passive tree
+and skill gems. Gear is part 2.
+
+### Added
+- MCP tool `export_pob` (eighteen tools in all, read-only, no network, writes no file): a Path of
+  Building (PoE2) build code for a class or ascendancy, the `path_to` route to the given target
+  passives, and skill groups written `"skill: support, support"` (English or 繁體中文, at most
+  12 groups and 5 supports each). Only names that match the local data go in; a support that
+  cannot support its skill (per the knowledge graph), an unknown name, a gem whose record has
+  no game id, an unreachable passive and an ascendancy PoB has no id for are listed in
+  `not_exported` with the reason, as are a skill listed as its own support, a second group for
+  the same skill and a `main_skill` with no group. Attribute passives on the route are written
+  as PoB's attribute choice (`attribute`: str / dex / int, default the main skill gem's
+  attribute); without one PoB gives them no attribute at all. An ascendancy PoB has no id for is
+  left out with its passives and the route is made again without it. The answer carries the
+  code, `notes` (no gear, skill gems level 20 / quality 0 and supports level 1, attack skills
+  disabled until a weapon is added, update PoB first, budget overruns, supports not checked when
+  the knowledge graph lacks the skill) and `how_to_import` in the answer language.
+- `src/tools/pob_export.py`: builds PoB's XML (Build, Tree, Skills, Notes sections) and the
+  code (zlib, base64 with `-` and `_`), and reads a code back (`decode_code`, bounded against
+  oversized and cut-off input). Gems are named by PoB's `gemId` (the game's item type) and
+  `variantId` (the game id), which match PoB 0.23.1's gem table for every collected gem PoB has
+  (946 of 1,012).
+- Command `/pobg:update-pob <folder>` (plugin skill, user-invoked) and
+  `python -m src.tools.pob_update --dir <folder> [--check]`: updates a local Path of Building,
+  alone or inside a PoeCharm2 (中文化) folder, into a new folder next to the old one. The PoB
+  release file is checked against GitHub's published SHA-256; PoeCharm2 has no releases, so its
+  latest commit is used (no checksum). Saved builds and PoeCharm2's language setting are copied,
+  `Settings.xml` (account login) is not; the old folder is never changed. The new folder is
+  named by PoB's version (`PathOfBuildingCommunity-PoE2-Portable-0.23.1`,
+  `PoeCharm2-20260728-pob0.23.1`). Unsafe archive paths, archives over 4 GB unpacked, downloads
+  larger than published, odd GitHub replies (checked link host, size, SHA-256, commit sha and
+  date) and too little disk space stop the update before anything is kept; work folders left by
+  an interrupted run are removed after an hour; progress goes to stderr.
+- The code carries the character level PoB's automatic mode would set (`pob_level`, PoB's own
+  formula; 123 points is level 100). PoB sets that level only after calculating, so a code saying
+  level 1 showed level-1 life and mana (seen in a real import: 65 life instead of 242).
+  `character_level` (1–100) asks for a level instead; a route that needs more gets a note.
+- Levels and attributes are worked out by code from the data, not by the model. Each skill gem is
+  written at the highest level the character can use, from the gem's level table (it was always
+  20, which a level-15 character cannot use). The attributes the gems require (combined as
+  PoB does: the highest of each skill gem at that level and of all support additions together)
+  are compared with what the build has (class base
+  attributes plus fixed attributes on the route), each attribute passive goes to the attribute
+  furthest below its requirement, and the rest to the main skill's attribute.
+  `summary.attributes` gives have / need; what the tree cannot cover is noted as needing gear.
+- `path_to` no longer routes through another class's start node, and passives that are
+  allocated for free (`no_point`) no longer count as points.
+- The passive collector stores PoB's class `integerId` and ascendancy `internalId` as `pob_id`,
+  and PoB's act table for its level estimate (`pob_level_acts`, from PathOfBuilding-PoE2
+  `src/Data/QuestRewards.lua`) and each class's base attributes, in
+  `data/passive_tree/classes.json`. A failed download of the quest file no longer stops the update. `update passives` now makes
+  8 requests (was 7); re-collected, no node changed. The entity index rebuilt with it picked
+  up nine gem names poe2db has since changed in Traditional Chinese (seven skill gems, one
+  spirit gem, one support gem).
+- Build workflow, server instructions and the `poe2-advisor` skill: a ninth step gives the
+  Path of Building code after the sources.
+
+### Changed
+- Version 0.9.0; User-Agent `POBG/0.9`.
 
 ### Security
 - The READMEs and `docs/clients.md` now require uv 0.13.4 or newer. Older uv versions still

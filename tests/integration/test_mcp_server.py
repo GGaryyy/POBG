@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -13,13 +14,15 @@ from src.tools import mcp_server
 from src.tools.build_tools import POE_NINJA_URL, BuildTools
 from src.tools.build_workflow import BUILD_WORKFLOW, MAX_REQUEST_LEN, SERVER_INSTRUCTIONS, build_workflow_text
 from src.tools.lookup import LookupService
+from src.tools.pob_export import decode_code
 from tests.kg_support import GRAPH_REL, build_full_environment
 from tests.support import html
 
 pytestmark = pytest.mark.integration
 
 TOOLS = ["lookup_entity", "get_gem", "get_passive", "passives_with_stat", "explain_keyword", "gems_by",
-         "supports_for", "reference_builds", "verify_build", "path_to", "get_item", "items_by", "modifiers_for",
+         "supports_for", "reference_builds", "verify_build", "path_to", "export_pob", "get_item", "items_by",
+         "modifiers_for",
          "refresh_gem", "build_workflow",
          "data_status", "update_data"]
 LADDER = Path(__file__).resolve().parents[1] / "fixtures" / "jsonl" / "poe_ninja_builds.jsonl"
@@ -46,7 +49,7 @@ def payload(result):
     return json.loads(result.content[0].text)
 
 
-def test_lists_the_seventeen_tools():
+def test_lists_the_eighteen_tools():
     tools = asyncio.run(mcp_server.server.list_tools())
     assert [t.name for t in tools] == TOOLS
     assert all(t.description for t in tools)
@@ -160,7 +163,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.8.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.9.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
@@ -310,6 +313,40 @@ def test_path_to_schema_and_description():
 def test_path_to_errors_reach_the_model_as_tool_errors(svc, ladder, args, message):
     with pytest.raises(ToolError) as err:
         call("path_to", args)
+    assert message in str(err.value)
+
+
+# -- export_pob ---------------------------------------------------------------------------------------
+
+def test_export_pob_through_the_server(svc, ladder):
+    body = payload(call("export_pob", {"class_name": "女巫", "targets": ["冰之心"],
+                                       "skills": ["掘屍: 附加火焰傷害", "Not A Gem"]}))
+    assert body["lang"] == "zh-tw" and body["summary"]["class"] == "Witch"
+    spec = ET.fromstring(decode_code(body["code"])).find("Tree/Spec").attrib
+    assert spec["classInternalId"] == "1" and spec["nodes"].split(",")[-1] == "3"
+    assert body["groups"] == [{"skill": "Unearth", "level": 2, "gems": ["Unearth", "Added Fire Damage"]}]
+    assert [e["input"] for e in body["not_exported"]] == ["Not A Gem"]
+    assert body["how_to_import"].startswith("在 Path of Building")
+
+
+def test_export_pob_schema_and_description():
+    tool = next(t for t in asyncio.run(mcp_server.server.list_tools()) if t.name == "export_pob")
+    assert tool.input_schema["required"] == ["class_name"]
+    assert set(tool.input_schema["properties"]) == {"class_name", "targets", "skills", "ascendancy", "main_skill",
+                                                    "title", "attribute", "character_level", "lang"}
+    assert "not_exported" in tool.description and "skill: support, support" in tool.description
+    assert tool.annotations.read_only_hint is True and tool.annotations.open_world_hint is False
+    assert len(tool.description) <= 1024
+
+
+@pytest.mark.parametrize("args, message", [
+    ({"class_name": "Witch"}, "at least one target passive or one skill"),
+    ({"class_name": "Paladin", "skills": ["Unearth"]}, "unknown class 'Paladin'"),
+    ({"class_name": "Witch", "skills": [": Unearth"]}, "must start with a skill gem"),
+])
+def test_export_pob_errors_reach_the_model_as_tool_errors(svc, ladder, args, message):
+    with pytest.raises(ToolError) as err:
+        call("export_pob", args)
     assert message in str(err.value)
 
 

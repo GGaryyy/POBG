@@ -31,10 +31,12 @@ STATS = "data/kg/passive_stats.jsonl"
 LISTING_US = "https://poe2db.tw/us/Skill_Gems"
 LISTING_TW = "https://poe2db.tw/tw/Skill_Gems"
 TREE_URL = "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json"
+QUESTS_URL = "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/Data/QuestRewards.lua"
 PASSIVE_PAGES = {
     "https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json": ("poe2db_tree", "data_us_mini.json"),
     "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json": ("poe2db_tree", "data_tw_mini.json"),
     TREE_URL: ("pob2", "tree_mini.json"),
+    QUESTS_URL: ("pob2", "QuestRewards_mini.lua"),
     "https://poe2db.tw/us/Keystone": ("html", "passive_keystone_cards_en.html"),
     "https://poe2db.tw/tw/Keystone": ("html", "passive_keystone_cards_zh.html"),
     "https://poe2db.tw/us/Notable": ("html", "passive_notable_cards_en.html"),
@@ -375,10 +377,10 @@ def test_missing_index_is_rebuilt_within_the_request_bound(tool, base):
     assert names["Leap_Slam"] == "躍擊" and names["Herald_of_Ash"] is None and result["index_entities"] == len(names)
 
 
-def test_passives_update_without_an_index_stays_at_seven_requests(tool, base, lenient_stats):
+def test_passives_update_without_an_index_stays_at_eight_requests(tool, base, lenient_stats):
     (base / INDEX).unlink()
     web = Web()
-    assert tool.update("passives", fetch=web)["requests"] == 7 == len(web.calls)
+    assert tool.update("passives", fetch=web)["requests"] == 8 == len(web.calls)
     assert (base / INDEX).exists()
 
 
@@ -429,7 +431,7 @@ def test_passives_update_replaces_the_tree_and_the_stat_index(tool, base, lenien
     old_nodes, old_stats = (base / NODES).read_bytes(), (base / STATS).read_bytes()
     web = Web()
     result = tool.update("passives", fetch=web)
-    assert sorted(web.calls) == sorted(PASSIVE_PAGES) and result["requests"] == 7
+    assert sorted(web.calls) == sorted(PASSIVE_PAGES) and result["requests"] == 8
     nodes = read_jsonl(base / NODES)
     assert result["scope"] == "passives" and result["dry_run"] is False
     assert result["records"] == len(nodes) > 10 and result["stat_lines"] == len(read_jsonl(base / STATS)) > 0
@@ -438,6 +440,8 @@ def test_passives_update_replaces_the_tree_and_the_stat_index(tool, base, lenien
     assert result["added"] + result["changed"] > 0 and result["removed"] >= 0
     classes = json.loads((base / "data" / "passive_tree" / "classes.json").read_text(encoding="utf-8"))
     assert classes["version"] == "4.5" and classes["fetched_at"] > FETCHED and classes["classes"]
+    assert classes["pob_level_acts"] == [{"level": 1, "quest_points": 0}, {"level": 12, "quest_points": 4},
+                                         {"level": 28, "quest_points": 6}]   # from the synthetic quest file
     assert result["index_entities"] == len(index_names(base))
     assert slugs(base) == ["Contagion", "Leap_Slam", "Unearth"]            # gems are not touched
     passives = next(d for d in tool.status()["datasets"] if d["name"] == "passives")

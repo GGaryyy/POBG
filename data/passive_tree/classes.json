@@ -1,7 +1,7 @@
 {
   "version": "4.5",
   "source_url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json",
-  "fetched_at": "2026-11-11T09:03:09.501833+00:00",
+  "fetched_at": "2026-11-12T07:48:32.304729+00:00",
   "points": {
     "passive": 123,
     "ascendancy": 8
@@ -14,24 +14,34 @@
         {
           "id": "Witch1",
           "name": "Infernalist",
-          "name_zh_tw": "獄火師"
+          "name_zh_tw": "獄火師",
+          "pob_id": "Witch1"
         },
         {
           "id": "Witch2",
           "name": "Blood Mage",
-          "name_zh_tw": "血法師"
+          "name_zh_tw": "血法師",
+          "pob_id": "Witch2"
         },
         {
           "id": "Witch3",
           "name": "Lich",
-          "name_zh_tw": "巫妖"
+          "name_zh_tw": "巫妖",
+          "pob_id": "Witch3"
         },
         {
           "id": "Witch3b",
           "name": "Abyssal Lich",
-          "name_zh_tw": "深淵妖巫"
+          "name_zh_tw": "深淵妖巫",
+          "pob_id": "Witch3b"
         }
-      ]
+      ],
+      "pob_id": 1,
+      "base_attributes": {
+        "str": 7,
+        "dex": 7,
+        "int": 15
+      }
     },
     {
       "name": "Ranger",
@@ -40,7 +50,8 @@
         {
           "id": "Ranger1",
           "name": "Deadeye",
-          "name_zh_tw": "銳眼"
+          "name_zh_tw": "銳眼",
+          "pob_id": "Ranger1"
         },
         {
           "id": "Ranger2",
@@ -50,9 +61,16 @@
         {
           "id": "Ranger3",
           "name": "Pathfinder",
-          "name_zh_tw": "追獵者"
+          "name_zh_tw": "追獵者",
+          "pob_id": "Ranger3"
         }
-      ]
+      ],
+      "pob_id": 2,
+      "base_attributes": {
+        "str": 7,
+        "dex": 15,
+        "int": 7
+      }
     },
     {
       "name": "Warrior",
@@ -61,19 +79,28 @@
         {
           "id": "Warrior1",
           "name": "Titan",
-          "name_zh_tw": "泰坦"
+          "name_zh_tw": "泰坦",
+          "pob_id": "Warrior1"
         },
         {
           "id": "Warrior2",
           "name": "Warbringer",
-          "name_zh_tw": "戰爭使者"
+          "name_zh_tw": "戰爭使者",
+          "pob_id": "Warrior2"
         },
         {
           "id": "Warrior3",
           "name": "Smith of Kitava",
-          "name_zh_tw": "奇塔弗工匠"
+          "name_zh_tw": "奇塔弗工匠",
+          "pob_id": "Warrior3"
         }
-      ]
+      ],
+      "pob_id": 6,
+      "base_attributes": {
+        "str": 15,
+        "dex": 7,
+        "int": 7
+      }
     },
     {
       "name": "Sorceress",
@@ -82,19 +109,28 @@
         {
           "id": "Sorceress1",
           "name": "Stormweaver",
-          "name_zh_tw": "風暴編織者"
+          "name_zh_tw": "風暴編織者",
+          "pob_id": "Sorceress1"
         },
         {
           "id": "Sorceress2",
           "name": "Chronomancer",
-          "name_zh_tw": "時空幻術師"
+          "name_zh_tw": "時空幻術師",
+          "pob_id": "Sorceress2"
         },
         {
           "id": "Sorceress3",
           "name": "Disciple of Varashta",
-          "name_zh_tw": "瓦拉什塔門徒"
+          "name_zh_tw": "瓦拉什塔門徒",
+          "pob_id": "Sorceress3"
         }
-      ]
+      ],
+      "pob_id": 7,
+      "base_attributes": {
+        "str": 7,
+        "dex": 7,
+        "int": 15
+      }
     },
     {
       "name": "Huntress",
@@ -103,19 +139,28 @@
         {
           "id": "Huntress1",
           "name": "Amazon",
-          "name_zh_tw": "亞馬遜"
+          "name_zh_tw": "亞馬遜",
+          "pob_id": "Huntress1"
         },
         {
           "id": "Huntress2",
           "name": "Spirit Walker",
-          "name_zh_tw": "魂靈行者"
+          "name_zh_tw": "魂靈行者",
+          "pob_id": "Huntress2"
         },
         {
           "id": "Huntress3",
           "name": "Ritualist",
-          "name_zh_tw": "儀式行者"
+          "name_zh_tw": "儀式行者",
+          "pob_id": "Huntress3"
         }
-      ]
+      ],
+      "pob_id": 8,
+      "base_attributes": {
+        "str": 7,
+        "dex": 15,
+        "int": 7
+      }
     },
     {
       "name": "Mercenary",
@@ -124,19 +169,28 @@
         {
           "id": "Mercenary1",
           "name": "Tactician",
-          "name_zh_tw": "智勇軍師"
+          "name_zh_tw": "智勇軍師",
+          "pob_id": "Mercenary1"
         },
         {
           "id": "Mercenary2",
           "name": "Witchhunter",
-          "name_zh_tw": "女巫獵人"
+          "name_zh_tw": "女巫獵人",
+          "pob_id": "Mercenary2"
         },
         {
           "id": "Mercenary3",
           "name": "Gemling Legionnaire",
-          "name_zh_tw": "古靈軍團"
+          "name_zh_tw": "古靈軍團",
+          "pob_id": "Mercenary3"
         }
-      ]
+      ],
+      "pob_id": 9,
+      "base_attributes": {
+        "str": 11,
+        "dex": 11,
+        "int": 7
+      }
     },
     {
       "name": "Monk",
@@ -145,19 +199,28 @@
         {
           "id": "Monk1",
           "name": "Martial Artist",
-          "name_zh_tw": "武聖"
+          "name_zh_tw": "武聖",
+          "pob_id": "Monk1"
         },
         {
           "id": "Monk2",
           "name": "Invoker",
-          "name_zh_tw": "祈靈者"
+          "name_zh_tw": "祈靈者",
+          "pob_id": "Monk2"
         },
         {
           "id": "Monk3",
           "name": "Acolyte of Chayula",
-          "name_zh_tw": "夏烏拉侍僧"
+          "name_zh_tw": "夏烏拉侍僧",
+          "pob_id": "Monk3"
         }
-      ]
+      ],
+      "pob_id": 10,
+      "base_attributes": {
+        "str": 7,
+        "dex": 11,
+        "int": 11
+      }
     },
     {
       "name": "Druid",
@@ -166,19 +229,57 @@
         {
           "id": "Druid1",
           "name": "Oracle",
-          "name_zh_tw": "天啟先知"
+          "name_zh_tw": "天啟先知",
+          "pob_id": "Druid1"
         },
         {
           "id": "Druid2",
           "name": "Shaman",
-          "name_zh_tw": "狂徒薩滿"
+          "name_zh_tw": "狂徒薩滿",
+          "pob_id": "Druid2"
         },
         {
           "id": "Druid3",
           "name": "[DNT-UNUSED] Wildfowler",
           "name_zh_tw": "荒野之心"
         }
-      ]
+      ],
+      "pob_id": 11,
+      "base_attributes": {
+        "str": 11,
+        "dex": 7,
+        "int": 11
+      }
+    }
+  ],
+  "pob_level_acts": [
+    {
+      "level": 1,
+      "quest_points": 0
+    },
+    {
+      "level": 12,
+      "quest_points": 4
+    },
+    {
+      "level": 28,
+      "quest_points": 8
+    },
+    {
+      "level": 44,
+      "quest_points": 12
+    },
+    {
+      "level": 51,
+      "quest_points": 16
+    },
+    {
+      "level": 64,
+      "quest_points": 22
+    },
+    {
+      "level": 62,
+      "quest_points": 24
     }
   ]
 }

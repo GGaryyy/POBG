@@ -30,8 +30,8 @@ for example `/pobg:update skill_gems`.
 
 ## `passives`
 
-1. Call `update_data` with `scope: "passives"` and no other argument. It makes 7 requests: the
-   PathOfBuilding-PoE2 tree, two poe2db tree data files and four listing pages.
+1. Call `update_data` with `scope: "passives"` and no other argument. It makes 8 requests: the
+   PathOfBuilding-PoE2 tree and quest rewards, two poe2db tree data files and four listing pages.
 2. Report `records`, `changed`, `added`, `removed` and the tree versions.
 
 ## `items`

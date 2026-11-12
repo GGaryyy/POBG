@@ -4,7 +4,8 @@
 
 POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) server 與 Claude Code plugin，
 讓 AI 助理查到正確的 **Path of Exile 2（流亡黯道 2）** 資料、標明每項事實的出處，並給出每顆寶石與每個天賦都
-經過資料比對的流派建議，支援英文與繁體中文。
+經過資料比對的流派建議，支援英文與繁體中文。流派回答最後附上可貼進
+[Path of Building](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 的匯入碼。
 
 資料是 [poe2db.tw](https://poe2db.tw)（寶石、天賦樹、名詞解釋）、
 [PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 天賦樹，以及一份
@@ -24,7 +25,7 @@ POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) s
 - 「弓能出哪些詞綴？攻擊速度有哪幾階？」
 - 「驟雨之弦有什麼詞綴？」
 - 「給我一個火系泰坦的流派」：回答裡的每顆寶石、天賦、裝備與目標詞綴都會與資料比對，不存在的名稱會被移除，
-  回答結尾附上來源清單。
+  回答結尾附上來源清單與 Path of Building 匯入碼（天賦樹與技能寶石；裝備之後的版本才加入）。
 
 ## 安裝
 
@@ -71,12 +72,13 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 
 有兩個指令可以直接在 AI 用戶端裡維護資料。在 Claude Code 中它們是 plugin 的 skill；其他用戶端則是
 `pobg` server 提供的 MCP prompt（Claude Desktop 的「+」選單、VS Code 的 `/pobg.status`、
-Gemini CLI 的斜線指令）。
+Gemini CLI 的斜線指令）。另有一個指令用來更新你的 Path of Building。
 
 | 指令 | Claude Code | 做什麼 |
 |---|---|---|
 | status | `/pobg:status` | 列出每類資料有幾筆、何時抓的、已經多久。需要時可再檢查線上網站（約 19 個請求）：頁面是否還能解析、天賦樹有沒有新版 |
 | update | `/pobg:update <範圍> [名稱]` | 重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
+| update-pob | `/pobg:update-pob <資料夾>` | 把你的 Path of Building（PoE2，單獨安裝或放在 PoeCharm2 資料夾中）更新到最新版。先比對版本，你同意後才下載到舊資料夾旁邊的**新資料夾**（見下方） |
 | advisor | `/pobg:poe2-advisor` | 不是資料指令：它是 Claude Code 回答 PoE2 問題與撰寫有出處流派時遵循的說明，會自動套用 |
 
 `update` 一定要指定範圍，沒有「全部更新」：
@@ -84,13 +86,24 @@ Gemini CLI 的斜線指令）。
 | 範圍 | 抓什麼 | 每次呼叫的請求數 |
 |---|---|---|
 | `skill_gems`、`spirit_gems`、`support_gems` | 列表頁，然後只抓新增的、列表上有變動的、你指定名稱的、或超過 N 天沒更新的寶石 | 1 + 最多 20 顆（上限 40）；重複呼叫直到沒有剩餘 |
-| `passives` | PathOfBuilding-PoE2 的天賦樹、poe2db 的兩個天賦樹資料檔與四個列表頁；並重建屬性索引 | 7 |
+| `passives` | PathOfBuilding-PoE2 的天賦樹與任務獎勵（匯出匯入碼用的 PoB 等級表）、poe2db 的兩個天賦樹資料檔與四個列表頁；並重建屬性索引 | 8 |
 | `items` | 69 個裝備類別頁（中英；裝備、藥劑、護符、珠寶）上的基底、傳奇與詞綴；加上類別名稱（`Bows`、`Body Armours`）就只更新那幾類 | 每次呼叫最多 20 個請求（即 10 個類別頁的中英兩版，每頁約 600 KB），總共 138 個請求；重複呼叫直到完成，全部抓完並通過檢查才一次寫入 |
 | `glossary` | 所有名詞解釋（英文與中文的 hover 片段），透過列表頁與少數寶石頁找到 | 每次呼叫最多 50 個（一分鐘內），總共約 750 個；重複呼叫直到完成，全部抓完才一次寫入 |
 | `ladder` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
 
 範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、`/pobg:update items Bows`、
 「更新超過 30 天的技能寶石」。
+
+`update-pob` 只是 Claude Code 的 skill。在其他用戶端或自己手動執行時，在本資料夾跑同一支程式：
+
+```
+uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410" --check   # 只比對版本
+uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"           # 更新
+```
+
+它會下載 Path of Building 的正式版檔案（約 380 MB），並與 GitHub 公布的 SHA-256 核對；PoeCharm2 資料夾還會
+下載 PoeCharm2 最新一次提交（沒有公布的雜湊可核對）。存過的 build 與 PoeCharm2 的語言設定會複製過去；
+`Settings.xml` 不會，因為裡面有帳號登入資訊，所以要重新登入。舊資料夾不會被修改或刪除。
 
 注意事項：
 
@@ -118,6 +131,7 @@ Gemini CLI 的斜線指令）。
 | `reference_builds` | 天梯角色在用什麼（職業、主技能、排名、寶石、keystone；不含角色名稱）；流派回答用它說明生成的流派與天梯主流差在哪，而不是用它來決定流派 |
 | `verify_build` | 檢查流派草稿裡的寶石、天賦、裝備與目標詞綴（「戒指：+#%火焰抗性」，要寫完整詞綴；每件裝備最多 3 條前綴、3 條後綴；只寫部分的詞綴會回傳候選）；回傳事實、被移除的名稱與排好的來源清單 |
 | `path_to` | 從職業起點點到目標天賦要依序點哪些節點；對照 123 / 8 點上限，並加總整條路線的屬性（近似路線） |
+| `export_pob` | Path of Building 匯入碼：職業、昇華、`path_to` 的路線與技能組（「技能: 輔助, 輔助」）；查無的名稱、不能輔助該技能的輔助寶石不會放入，改列在 `not_exported`。角色等級、寶石等級與屬性天賦點由資料算出，並列出各屬性的已有／需求。目前不含裝備 |
 | `get_item` | 一件裝備基底（數值、需求、固定詞綴）或傳奇（其詞綴），附來源 |
 | `items_by` | 依裝備類別、種類、需求等級或文字篩選基底與傳奇 |
 | `modifiers_for` | 某類裝備（或某基底、傳奇所屬類別）能出哪些詞綴：依族群分組，列出每一階的等級與數值範圍、前綴或後綴；也包含褻瀆、精髓、腐化與鑲嵌物的效果 |
@@ -127,7 +141,7 @@ Gemini CLI 的斜線指令）。
 | `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、天賦、裝備、名詞解釋、天梯），每次呼叫的請求數有上限 |
 
 Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指令）。只有 `refresh_gem` 與
-`update_data` 會變更資料；其餘十五個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
+`update_data` 會變更資料；其餘十六個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
 
 ## 資料來源與使用範圍
 
@@ -149,7 +163,7 @@ Prompt：`build_guide`（流派流程）、`status` 與 `update`（上面的指�
 請求方式：
 
 - 對 poe2db 與 GitHub 的請求會以
-  `POBG/0.8 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
+  `POBG/0.9 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
   請求前等待 0.8 秒（hover 片段 0.3 秒），最多嘗試三次。`refresh_gem` 同樣等待 0.8 秒，一次只發一個請求。
 - poe2db 的 `robots.txt` 只禁止 `/*/marked` 與 `/*/markdown_history`，兩者都不會被請求。單一天賦節點頁面
   （每頁 1.2 MB）刻意不抓。
@@ -197,6 +211,11 @@ uv run ruff check .
   更新時會被取代；在 clone 下來的 repo 裡則會變成 git 中已修改的檔案。
 - `path_to` 給的是夠好的路線，不保證最短，也不計算武器組天賦點與珠寶。
 - `verify_build` 只檢查名稱是否存在並回傳其事實，不判斷流派強不強。
+- `export_pob` 的匯入碼只有天賦樹與技能寶石，沒有裝備，所以 PoB 算出的傷害與防禦只反映天賦與寶石，攻擊技能
+  在你加入武器前會顯示為停用。角色等級由配點算出（123 點為 100 級，也可指定等級），每顆技能寶石設為該等級用得了的最高級，路線上的屬性天賦點
+  優先補足寶石的屬性需求；天賦補不足的會標明「要靠裝備」。百分比增加屬性的天賦不計入。天賦樹取自 PathOfBuilding-PoE2
+  的開發分支，可能比它最新的正式版新：比資料舊的 PoB 會略過它不認得的天賦與寶石，也可能拒絕它沒有的天賦樹版本或昇華
+  （用 `update-pob` 更新）。
 - 天梯是抽樣（數種排行各取前段，共約 600 個角色），不是完整天梯。
 - 詞綴是隨機的。`modifiers_for` 列的是某類裝備「可能」出的詞綴；流派回答依重要性列出目標詞綴，不代表裝備一定有。
   不包含出現權重、製作、通貨，也不計算傷害與防禦總值。
