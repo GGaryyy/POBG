@@ -40,14 +40,15 @@ servers, and POBG runs on your computer.
 
 ## What you can ask
 
-- "What does Leap Slam cost at level 10, and which supports work with it?" / 「躍擊 10 等的消耗是多少？」
-- "Which passives give attack speed?" / 「哪些天賦有攻擊速度？」
-- "Explain Critical Hits." / 「解釋暴擊」
+- "What does Leap Slam cost at level 10, and which supports work with it?"
+- "Which passives give attack speed?"
+- "Explain Critical Hits."
 - "How many passive points does a Witch need to reach Blood Magic and Resolute Technique?"
-- "What modifiers can a bow roll, and what are the attack speed tiers?" / 「弓能出哪些詞綴？」
-- "What does Quill Rain do?" / 「驟雨之弦有什麼詞綴？」
-- "Give me a level 90 lightning Invoker build with full gear and a PoB code." /
-  「給我一個 90 級閃電祈靈者流派，包含完整裝備以及 PoB 匯入碼」
+- "What modifiers can a bow roll, and what are the attack speed tiers?"
+- "What does Quill Rain do?"
+- "Give me a level 90 lightning Invoker build with full gear and a PoB code."
+
+You can ask in Traditional Chinese too; see the [繁體中文 README](README.zh-TW.md) for examples.
 
 ## What a build answer contains
 

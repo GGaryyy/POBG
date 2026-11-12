@@ -1,0 +1,1931 @@
+{
+ "charts": [
+  {
+   "id": "advisor",
+   "title": {
+    "zh": "/pobg:poe2-advisor：有出處的流派回答",
+    "en": "/pobg:poe2-advisor: a cited build answer"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "玩家要一個流派",
+     "en": "The player asks for a build"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "套用流程：poe2-advisor skill、build_guide prompt 或 build_workflow 工具",
+     "en": "Apply the workflow: the poe2-advisor skill, the build_guide prompt or the build_workflow tool"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "步驟 2：由資料找候選。每個選擇都要有資料上的理由，不能是「天梯都在用」\nlookup_entity、gems_by、supports_for、passives_with_stat、get_gem、get_passive",
+     "en": "Step 2: gather candidates from the data. Every choice needs a reason from the records, never 'ladder characters use it'\nlookup_entity, gems_by, supports_for, passives_with_stat, get_gem, get_passive"
+    },
+    {
+     "id": "C2",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "裝備：items_by、get_item 選基底或傳奇，modifiers_for 選目標詞綴\n每件最多 3 條前綴 + 3 條後綴，依重要性排列",
+     "en": "Gear: items_by and get_item for a base or unique, modifiers_for for target modifiers\nAt most 3 prefixes + 3 suffixes per item, in order of importance"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 4,
+     "col": 0,
+     "zh": "步驟 3：verify_build\n一次送出所有寶石、天賦、裝備與目標詞綴",
+     "en": "Step 3: verify_build\nAll gems, passives, items and target modifiers in one call"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 5,
+     "col": 0,
+     "zh": "有 unverified 的名稱？",
+     "en": "Any unverified names?"
+    },
+    {
+     "id": "F",
+     "kind": "action",
+     "row": 5,
+     "col": 1,
+     "zh": "步驟 4（最多兩輪）\n刪除該名稱，或用 suggestions、重新搜尋取代",
+     "en": "Step 4 (at most two rounds)\nDrop the name, or replace it from its suggestions or a new search"
+    },
+    {
+     "id": "H",
+     "kind": "action",
+     "row": 6,
+     "col": 0,
+     "zh": "步驟 5：path_to\n職業或昇華 + 已驗證的天賦 → 路線、順序、點數",
+     "en": "Step 5: path_to\nClass or ascendancy + verified passives → route, order, points"
+    },
+    {
+     "id": "I",
+     "kind": "decision",
+     "row": 7,
+     "col": 0,
+     "zh": "over：超過 123 點或昇華 8 點？",
+     "en": "over: more than 123 points, or 8 ascendancy points?"
+    },
+    {
+     "id": "J",
+     "kind": "action",
+     "row": 7,
+     "col": 1,
+     "zh": "拿掉 added_points 最大的天賦",
+     "en": "Drop the passives with the largest added_points"
+    },
+    {
+     "id": "K",
+     "kind": "action",
+     "row": 8,
+     "col": 0,
+     "zh": "步驟 6：reference_builds\n讀天梯快照，只用來說明與主流的差異；不含角色名稱",
+     "en": "Step 6: reference_builds\nReads the ladder snapshot, only to say how the build differs. No character names"
+    },
+    {
+     "id": "L",
+     "kind": "action",
+     "row": 9,
+     "col": 0,
+     "zh": "步驟 7：撰寫回答\n數字、消耗、標籤、效果只用 verified 的事實\n目標詞綴是要找的目標；不計算傷害",
+     "en": "Step 7: write the answer\nNumbers, costs, tags and effects from verified facts only\nTarget modifiers are goals to look for. Damage is not calculated"
+    },
+    {
+     "id": "M",
+     "kind": "action",
+     "row": 10,
+     "col": 0,
+     "zh": "步驟 8：結尾附上 sources_markdown，原樣貼上（內含被移除的名稱）",
+     "en": "Step 8: end with sources_markdown, unchanged (it lists the removed names)"
+    },
+    {
+     "id": "N",
+     "kind": "action",
+     "row": 11,
+     "col": 0,
+     "zh": "步驟 9：export_pob\n職業、targets、技能組、裝備；使用者指定等級時傳入 character_level",
+     "en": "Step 9: export_pob\nClass, targets, skill groups, gear, and character_level when the user asked for a level"
+    },
+    {
+     "id": "O",
+     "kind": "decision",
+     "row": 12,
+     "col": 0,
+     "zh": "屬性或精魂的 need 大於 have？",
+     "en": "Attributes or Spirit: need above have?"
+    },
+    {
+     "id": "P",
+     "kind": "action",
+     "row": 12,
+     "col": 1,
+     "zh": "換寶石、減少常駐技能或保留精魂的輔助寶石，或在裝備加上屬性、精魂詞綴",
+     "en": "Other gems, fewer persistent skills or Spirit-reserving supports, or attribute and Spirit modifiers on gear"
+    },
+    {
+     "id": "Q",
+     "kind": "action",
+     "row": 13,
+     "col": 0,
+     "zh": "回答附上：匯入碼、how_to_import、notes、not_exported、\n屬性與精魂的已有／需求、PoB 配置選項與各自的依據",
+     "en": "The answer shows: the code, how_to_import, notes, not_exported,\nhave / need for attributes and Spirit, PoB Configuration options with their evidence"
+    },
+    {
+     "id": "R",
+     "kind": "end",
+     "row": 14,
+     "col": 0,
+     "zh": "玩家把匯入碼貼進 PoB：匯入/匯出 → 貼上 → 匯入",
+     "en": "The player pastes the code into PoB: Import/Export Build → paste → Import"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "C2",
+     "route": "v"
+    },
+    {
+     "from": "C2",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "有",
+     "en": "yes"
+    },
+    {
+     "from": "F",
+     "to": "D",
+     "route": "vh"
+    },
+    {
+     "from": "E",
+     "to": "H",
+     "route": "v",
+     "zh": "沒有，或已修兩輪（仍未通過的捨棄）",
+     "en": "none, or two rounds done (what still fails is dropped)"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "v"
+    },
+    {
+     "from": "I",
+     "to": "J",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "J",
+     "to": "H",
+     "route": "vh"
+    },
+    {
+     "from": "I",
+     "to": "K",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "K",
+     "to": "L",
+     "route": "v"
+    },
+    {
+     "from": "L",
+     "to": "M",
+     "route": "v"
+    },
+    {
+     "from": "M",
+     "to": "N",
+     "route": "v"
+    },
+    {
+     "from": "N",
+     "to": "O",
+     "route": "v"
+    },
+    {
+     "from": "O",
+     "to": "P",
+     "route": "h",
+     "zh": "是，可以修",
+     "en": "yes, fixable"
+    },
+    {
+     "from": "P",
+     "to": "N",
+     "route": "vh"
+    },
+    {
+     "from": "O",
+     "to": "Q",
+     "route": "v",
+     "zh": "否；修不了就明白說出缺什麼",
+     "en": "no. If it cannot be fixed, say plainly what is missing"
+    },
+    {
+     "from": "Q",
+     "to": "R",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "export-pob",
+   "title": {
+    "zh": "export_pob 裡面算了什麼",
+    "en": "What export_pob works out"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "export_pob 的輸入：職業或昇華、targets、技能組、裝備\n可選：character_level、attribute、config",
+     "en": "export_pob input: class or ascendancy, targets, skill groups, gear\nOptional: character_level, attribute, config"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "天賦路線：path_to\nPoB 沒有 id 的昇華被拿掉，路線重算",
+     "en": "Passive route: path_to\nAn ascendancy PoB has no id for is dropped and the route is made again"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "技能組：逐一檢查名稱；輔助寶石必須能輔助該技能",
+     "en": "Skill groups: each name is checked. A support must be able to support the skill"
+    },
+    {
+     "id": "X",
+     "kind": "action",
+     "row": 2,
+     "col": 1,
+     "zh": "不通過的名稱、輔助寶石、詞綴不放入匯入碼，列在 not_exported",
+     "en": "Names, supports and modifiers that fail stay out of the code and are listed in not_exported"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "裝備：基底與傳奇對照本地資料\n稀有詞綴必須是該類裝備能出的完整詞綴：3 前綴 + 3 後綴、同族群一條\n數值取最高階的上限；副手規則依 PoB",
+     "en": "Gear: bases and uniques against the local data\nA rare's modifiers must be whole modifiers the item class can roll: 3 prefixes + 3 suffixes, one per family\nValues at the upper end of the best tier. Off-hand rules follow PoB"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "有指定 character_level？",
+     "en": "Was character_level given?"
+    },
+    {
+     "id": "F",
+     "kind": "action",
+     "row": 4,
+     "col": 1,
+     "zh": "使用指定的等級；點數需要更高等級時加註",
+     "en": "Use that level, with a note when the points need a higher one"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "用掉的天賦點 → PoB 的等級公式與章節表（123 點為 100 級）",
+     "en": "Points spent → PoB's level formula and act table (123 points is level 100)"
+    },
+    {
+     "id": "H",
+     "kind": "action",
+     "row": 6,
+     "col": 0,
+     "zh": "寶石等級：等級表中需求不高於角色等級的最高一列，最高 20\n輔助寶石沒有等級",
+     "en": "Gem levels: the highest level-table row the character level allows, at most 20\nSupport gems have no level"
+    },
+    {
+     "id": "I",
+     "kind": "action",
+     "row": 7,
+     "col": 0,
+     "zh": "屬性\n需求 = 各技能寶石需求的最大值、輔助「+N」的總和、裝備需求的最大值，三者取最大\n已有 = 職業基礎值 + 天賦與裝備上的固定屬性",
+     "en": "Attributes\nneed = the highest of: each skill gem's requirement, the supports' +N summed, the highest gear requirement\nhave = class base + fixed attributes on passives and gear"
+    },
+    {
+     "id": "J",
+     "kind": "action",
+     "row": 8,
+     "col": 0,
+     "zh": "路線上的屬性天賦點優先補足需求，或依指定的 attribute",
+     "en": "Attribute passives on the route cover the requirements first, or follow attribute"
+    },
+    {
+     "id": "K",
+     "kind": "action",
+     "row": 9,
+     "col": 0,
+     "zh": "精魂\n需求 =（常駐技能保留量 + 輔助的額外保留）× 保留倍率\n已有 = 所有精魂任務獎勵 + 權杖基礎精魂 + 裝備與天賦的固定精魂\n只給範圍或沒給保留量的技能列入 unknown",
+     "en": "Spirit\nneed = (persistent skill's reservation + supports' extra) × reservation multipliers\nhave = every Spirit quest reward + a sceptre's base Spirit + fixed Spirit on gear and passives\nRange-only or missing reservations are listed in unknown"
+    },
+    {
+     "id": "L",
+     "kind": "decision",
+     "row": 10,
+     "col": 0,
+     "zh": "config 開啟？（預設開啟）",
+     "en": "Is config on? (on by default)"
+    },
+    {
+     "id": "M",
+     "kind": "action",
+     "row": 11,
+     "col": 0,
+     "zh": "逐項找依據，有才開啟\n球：流派會獲得　　敵人狀態：流派會造成\n感電、冰緩、點燃：該元素的傷害技能，或攻擊流派的主手武器\n「無法……」的句子排除該技能組　　曝曬、近期暴擊",
+     "en": "Each option needs evidence in the build\nCharges it gains. Enemy states it inflicts\nShock, Chill, Ignite: a damaging skill of that element, or an attack build's main-hand weapon\nA 'cannot …' line rules it out for its skill group. Exposure, Crit Recently"
+    },
+    {
+     "id": "N",
+     "kind": "action",
+     "row": 12,
+     "col": 0,
+     "zh": "寫成 PoB 的 XML：Build、Tree、Skills、Items、Config、Notes",
+     "en": "Written as PoB's XML: Build, Tree, Skills, Items, Config, Notes"
+    },
+    {
+     "id": "O",
+     "kind": "action",
+     "row": 13,
+     "col": 0,
+     "zh": "zlib 壓縮 → urlsafe base64",
+     "en": "zlib → urlsafe base64"
+    },
+    {
+     "id": "P",
+     "kind": "end",
+     "row": 14,
+     "col": 0,
+     "zh": "回傳 code、how_to_import、notes、not_exported、summary\n不寫檔、不連網",
+     "en": "Returns code, how_to_import, notes, not_exported, summary\nNo file written, no request made"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "X",
+     "route": "h"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "X",
+     "route": "hv"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "有",
+     "en": "yes"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "沒有",
+     "en": "no"
+    },
+    {
+     "from": "F",
+     "to": "H",
+     "route": "vh"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "v"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "v"
+    },
+    {
+     "from": "I",
+     "to": "J",
+     "route": "v"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "v"
+    },
+    {
+     "from": "K",
+     "to": "L",
+     "route": "v"
+    },
+    {
+     "from": "L",
+     "to": "M",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "L",
+     "to": "N",
+     "route": "loop-r",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "M",
+     "to": "N",
+     "route": "v"
+    },
+    {
+     "from": "N",
+     "to": "O",
+     "route": "v"
+    },
+    {
+     "from": "O",
+     "to": "P",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "status",
+   "title": {
+    "zh": "/pobg:status：資料有多舊",
+    "en": "/pobg:status: how old is the data"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "/pobg:status",
+     "en": "/pobg:status"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "data_status：只讀本地檔案，不連網",
+     "en": "data_status: reads local files only, no network"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "每類資料列出：筆數、抓取時間、天數，以及可以用哪個 update 範圍更新",
+     "en": "Per data set: records, fetch time, age in days, and which update scope refreshes it"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "指出過舊的資料，包含天梯快照與它的聯盟",
+     "en": "Point out what is old, including the ladder snapshot and its league"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "詢問使用者：要檢查線上網站嗎？",
+     "en": "Ask the user: check the live sites?"
+    },
+    {
+     "id": "F",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "data_status check_online=true：約 19 個請求，間隔 0.8 秒",
+     "en": "data_status check_online=true: about 19 requests, 0.8 s apart"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 6,
+     "col": 0,
+     "zh": "poe2db：各類頁面是否仍能照 catalog 的描述解析",
+     "en": "poe2db: do the pages of each kind still parse the way the catalog expects"
+    },
+    {
+     "id": "H",
+     "kind": "action",
+     "row": 6,
+     "col": 1,
+     "zh": "GitHub：PathOfBuilding-PoE2 有沒有新的天賦樹版本",
+     "en": "GitHub: is there a newer PathOfBuilding-PoE2 passive tree version"
+    },
+    {
+     "id": "I",
+     "kind": "action",
+     "row": 7,
+     "col": 0,
+     "zh": "回報 problems",
+     "en": "Report problems"
+    },
+    {
+     "id": "J",
+     "kind": "decision",
+     "row": 8,
+     "col": 0,
+     "zh": "有需要更新的資料？",
+     "en": "Anything that should be updated?"
+    },
+    {
+     "id": "L",
+     "kind": "end",
+     "row": 8,
+     "col": 1,
+     "zh": "結束",
+     "en": "Done"
+    },
+    {
+     "id": "K",
+     "kind": "end",
+     "row": 9,
+     "col": 0,
+     "zh": "告訴使用者指令：/pobg:update 加一個範圍",
+     "en": "Name the command: /pobg:update with one scope"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "v",
+     "zh": "要",
+     "en": "yes"
+    },
+    {
+     "from": "E",
+     "to": "J",
+     "route": "loop-l",
+     "zh": "不要",
+     "en": "no"
+    },
+    {
+     "from": "F",
+     "to": "G",
+     "route": "v"
+    },
+    {
+     "from": "F",
+     "to": "H",
+     "route": "hv"
+    },
+    {
+     "from": "G",
+     "to": "I",
+     "route": "v"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "vh"
+    },
+    {
+     "from": "I",
+     "to": "J",
+     "route": "v"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "v",
+     "zh": "有",
+     "en": "yes"
+    },
+    {
+     "from": "J",
+     "to": "L",
+     "route": "h",
+     "zh": "沒有",
+     "en": "no"
+    }
+   ]
+  },
+  {
+   "id": "update",
+   "title": {
+    "zh": "/pobg:update：先看範圍",
+    "en": "/pobg:update: the scope first"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "/pobg:update 範圍 [名稱]",
+     "en": "/pobg:update scope [names]"
+    },
+    {
+     "id": "B",
+     "kind": "decision",
+     "row": 1,
+     "col": 0,
+     "zh": "第一個字是七個範圍之一嗎？",
+     "en": "Is the first word one of the seven scopes?"
+    },
+    {
+     "id": "C",
+     "kind": "stop",
+     "row": 1,
+     "col": 1,
+     "zh": "不呼叫 update_data，請使用者選一個範圍",
+     "en": "update_data is not called. The user is asked to pick a scope"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "update_data：檢查參數（名稱最多 40 個）",
+     "en": "update_data: arguments are checked (at most 40 names)"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 3,
+     "col": 0,
+     "zh": "同一個資料夾已有 update、refresh 或線上檢查在跑？",
+     "en": "Is an update, refresh or online check already running on this data folder?"
+    },
+    {
+     "id": "F",
+     "kind": "stop",
+     "row": 3,
+     "col": 1,
+     "zh": "回報忙碌中，請稍後再試；不寫入",
+     "en": "Reports busy, try again later. Nothing written"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 4,
+     "col": 0,
+     "zh": "依範圍進入對應的流程（各有一張圖）\nskill_gems、spirit_gems、support_gems → 寶石\npassives → 天賦樹\nitems → 裝備\nglossary → 名詞解釋\nladder → 天梯",
+     "en": "The scope decides the flow (one chart each)\nskill_gems, spirit_gems, support_gems → gems\npassives → passive tree\nitems → items\nglossary → glossary\nladder → ladder",
+     "align": "left"
+    },
+    {
+     "id": "M",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "寫入後重建名稱索引；server 在鎖外重新載入資料",
+     "en": "After writing, the name index is rebuilt and the server reloads the data outside the lock"
+    },
+    {
+     "id": "N",
+     "kind": "end",
+     "row": 6,
+     "col": 0,
+     "zh": "同一個對話立刻看到新資料",
+     "en": "The same conversation sees the new data"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "h",
+     "zh": "不是，或沒寫",
+     "en": "no, or missing"
+    },
+    {
+     "from": "B",
+     "to": "D",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "G",
+     "to": "M",
+     "route": "v"
+    },
+    {
+     "from": "M",
+     "to": "N",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-gems",
+   "title": {
+    "zh": "/pobg:update 三種寶石",
+    "en": "/pobg:update: the three gem scopes"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 skill_gems、spirit_gems 或 support_gems\n可加寶石名稱，或「超過 N 天」",
+     "en": "The scope is skill_gems, spirit_gems or support_gems\nOptionally gem names, or 'older than N days'"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "update_data dry_run=true：抓列表頁，1 個請求",
+     "en": "update_data dry_run=true: fetches the listing page, 1 request"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "挑出要抓的寶石：新增的、列表上有變動的、指定名稱的、超過 N 天沒更新的\n15 分鐘內抓過的寶石不再抓",
+     "en": "Select the gems to fetch: new, changed on the listing, named by you, older than N days\nA gem fetched in the last 15 minutes is not fetched again"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "告訴使用者：selected、reasons、added、removed",
+     "en": "Tell the user: selected, reasons, added, removed"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "selected 等於 0？",
+     "en": "Is selected 0?"
+    },
+    {
+     "id": "F",
+     "kind": "end",
+     "row": 4,
+     "col": 1,
+     "zh": "這類資料已是最新，結束",
+     "en": "This data set is up to date. Stop"
+    },
+    {
+     "id": "G",
+     "kind": "decision",
+     "row": 5,
+     "col": 0,
+     "zh": "selected 超過 60？",
+     "en": "Is selected above 60?"
+    },
+    {
+     "id": "H",
+     "kind": "action",
+     "row": 5,
+     "col": 1,
+     "zh": "請使用者確認：每顆寶石一個請求\n不同意就結束，不寫入",
+     "en": "Ask the user to confirm: one request per gem\nWithout a yes it stops and nothing is written"
+    },
+    {
+     "id": "I",
+     "kind": "action",
+     "row": 6,
+     "col": 0,
+     "zh": "update_data dry_run=false\n每次最多 20 顆（上限 40），每頁間隔 0.8 秒",
+     "en": "update_data dry_run=false\nAt most 20 gems per call (40 at most), 0.8 s between pages"
+    },
+    {
+     "id": "J",
+     "kind": "decision",
+     "row": 7,
+     "col": 0,
+     "zh": "頁面還能解析、驗證通過？",
+     "en": "Do the pages still parse and pass validation?"
+    },
+    {
+     "id": "K",
+     "kind": "stop",
+     "row": 7,
+     "col": 1,
+     "zh": "中止，不寫入任何東西\n建議用 status 檢查線上網站",
+     "en": "Stops, nothing is written\nSuggests status with the online check"
+    },
+    {
+     "id": "L",
+     "kind": "action",
+     "row": 8,
+     "col": 0,
+     "zh": "寫回該類寶石的資料檔\n下載失敗的單一頁面列為 skipped，下次再抓",
+     "en": "Writes that gem kind's data file\nA single page that fails to download is listed as skipped and picked up next time"
+    },
+    {
+     "id": "M",
+     "kind": "decision",
+     "row": 9,
+     "col": 0,
+     "zh": "left 大於 0，且未滿 10 次呼叫？",
+     "en": "Is left above 0, with fewer than 10 calls made?"
+    },
+    {
+     "id": "N",
+     "kind": "end",
+     "row": 10,
+     "col": 0,
+     "zh": "回報 updated、added、removed、skipped",
+     "en": "Report updated, added, removed, skipped"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "G",
+     "to": "I",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "vh",
+     "zh": "同意",
+     "en": "confirmed"
+    },
+    {
+     "from": "I",
+     "to": "J",
+     "route": "v"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "J",
+     "to": "L",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "L",
+     "to": "M",
+     "route": "v"
+    },
+    {
+     "from": "M",
+     "to": "I",
+     "route": "loop-l",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "M",
+     "to": "N",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    }
+   ]
+  },
+  {
+   "id": "update-passives",
+   "title": {
+    "zh": "/pobg:update passives",
+    "en": "/pobg:update passives"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 passives（不接受其他參數）",
+     "en": "The scope is passives (no other argument)"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "一次呼叫，共 8 個請求\nGitHub：tree.json（節點、連線、職業起點、昇華）\nGitHub：QuestRewards.lua（PoB 等級用的章節表、精魂任務獎勵）\npoe2db：天賦樹資料檔 data_us、data_tw（每個節點的中文名稱與屬性）\npoe2db：Keystone、Notable 列表頁，中英共 4 頁",
+     "en": "One call, 8 requests\nGitHub: tree.json (nodes, connections, class starts, ascendancies)\nGitHub: QuestRewards.lua (PoB's act table for the level, Spirit quest rewards)\npoe2db: tree data files data_us, data_tw (Chinese name and stats of every node)\npoe2db: Keystone and Notable listings, English and Chinese, 4 pages",
+     "align": "left"
+    },
+    {
+     "id": "D2",
+     "kind": "decision",
+     "row": 2,
+     "col": 0,
+     "zh": "QuestRewards.lua 下載成功？",
+     "en": "Was QuestRewards.lua downloaded?"
+    },
+    {
+     "id": "D3",
+     "kind": "action",
+     "row": 2,
+     "col": 1,
+     "zh": "照常更新天賦樹；匯入碼改用備用的等級算法並加註",
+     "en": "The tree is still updated. Build codes fall back for the level, with a note"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "組出節點、邊與 classes.json",
+     "en": "Build nodes, edges and classes.json"
+    },
+    {
+     "id": "H",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "驗證通過？",
+     "en": "Does validation pass?"
+    },
+    {
+     "id": "I",
+     "kind": "stop",
+     "row": 4,
+     "col": 1,
+     "zh": "中止，不寫入",
+     "en": "Stops, nothing written"
+    },
+    {
+     "id": "J",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "寫入節點、邊、classes.json；重建屬性索引與名稱索引",
+     "en": "Writes nodes, edges and classes.json. Rebuilds the stat index and the name index"
+    },
+    {
+     "id": "K",
+     "kind": "end",
+     "row": 6,
+     "col": 0,
+     "zh": "回報 records、changed、added、removed 與天賦樹版本",
+     "en": "Report records, changed, added, removed and the tree versions"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "D2",
+     "route": "v"
+    },
+    {
+     "from": "D2",
+     "to": "D3",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "D2",
+     "to": "G",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "D3",
+     "to": "G",
+     "route": "vh"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "v"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "H",
+     "to": "J",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-items",
+   "title": {
+    "zh": "/pobg:update items",
+    "en": "/pobg:update items"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 items\n可加裝備類別名稱，例如 Bows",
+     "en": "The scope is items\nOptionally item class names such as Bows"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "決定要抓的頁面\n全部：69 個類別頁 × 中英 = 138 個請求\n指定類別：只抓那幾類與其屬性子頁",
+     "en": "Decide the pages\nAll: 69 class pages in two languages = 138 requests\nNamed classes: only those and their attribute pages"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "update_data：這次呼叫最多 20 個請求\n（10 個類別頁的中英兩版，每頁約 600 KB）",
+     "en": "update_data: at most 20 requests this call\n(10 class pages in both languages, about 600 KB each)"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "進度暫存在 output/cache 30 分鐘，中斷後接續而不是重來",
+     "en": "Progress is kept under output/cache for 30 minutes, so an interrupted run continues"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "done：全部頁面都抓到了？",
+     "en": "done: is every page fetched?"
+    },
+    {
+     "id": "F",
+     "kind": "stop",
+     "row": 4,
+     "col": 1,
+     "zh": "已滿 8 次呼叫：請使用者 30 分鐘內再下一次指令\n到此為止沒有寫入",
+     "en": "8 calls made: ask the user to run the command again within 30 minutes\nNothing written so far"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "解析基底、傳奇與頁面內嵌的詞綴資料；中英對齊、計算階級",
+     "en": "Parse bases, uniques and the modifier data in the page. Align English and Chinese, compute tiers"
+    },
+    {
+     "id": "H",
+     "kind": "decision",
+     "row": 6,
+     "col": 0,
+     "zh": "筆數與詞綴資料通過檢查？",
+     "en": "Do the counts and modifier data pass the checks?"
+    },
+    {
+     "id": "I",
+     "kind": "stop",
+     "row": 6,
+     "col": 1,
+     "zh": "中止，不寫入",
+     "en": "Stops, nothing written"
+    },
+    {
+     "id": "J",
+     "kind": "action",
+     "row": 7,
+     "col": 0,
+     "zh": "一次寫入基底、傳奇、詞綴\n只更新部分類別時與原有資料合併",
+     "en": "Writes bases, uniques and modifiers together\nMerged with the existing data when only some classes were updated"
+    },
+    {
+     "id": "K",
+     "kind": "end",
+     "row": 8,
+     "col": 0,
+     "zh": "回報 bases、uniques、modifiers",
+     "en": "Report bases, uniques, modifiers"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "否，已滿 8 次",
+     "en": "no, 8 calls made"
+    },
+    {
+     "from": "E",
+     "to": "C",
+     "route": "loop-l",
+     "zh": "否，未滿 8 次",
+     "en": "no, under 8 calls"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "v"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "H",
+     "to": "J",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-glossary",
+   "title": {
+    "zh": "/pobg:update glossary",
+    "en": "/pobg:update glossary"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 glossary（不接受其他參數）",
+     "en": "The scope is glossary (no other argument)"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "update_data：這次呼叫最多 50 個請求，約一分鐘內",
+     "en": "update_data: at most 50 requests this call, under a minute"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "透過列表頁與少數寶石頁找到名詞，再抓每個名詞的中英 hover 片段\n全部約 750 個請求",
+     "en": "Terms are found through the listings and a few gem pages, then each term's English and Chinese hover snippet is fetched\nAbout 750 requests in all"
+    },
+    {
+     "id": "D",
+     "kind": "decision",
+     "row": 3,
+     "col": 0,
+     "zh": "連續 5 次網路錯誤？",
+     "en": "Five network errors in a row?"
+    },
+    {
+     "id": "E",
+     "kind": "stop",
+     "row": 3,
+     "col": 1,
+     "zh": "這次呼叫放棄，進度保留",
+     "en": "This call gives up. Progress is kept"
+    },
+    {
+     "id": "F",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "done：全部抓完了？",
+     "en": "done: is the whole glossary fetched?"
+    },
+    {
+     "id": "G",
+     "kind": "stop",
+     "row": 4,
+     "col": 1,
+     "zh": "已滿 20 次呼叫：請使用者 30 分鐘內再下一次指令，會從停下的地方接續",
+     "en": "20 calls made: ask the user to run the command again within 30 minutes. It continues where it stopped"
+    },
+    {
+     "id": "H",
+     "kind": "decision",
+     "row": 5,
+     "col": 0,
+     "zh": "抓到的名詞不少於原有的 90%，中文內容不少於原有的 50%？",
+     "en": "At least 90% of the known terms reached, and Chinese text for at least 50% of those that had it?"
+    },
+    {
+     "id": "I",
+     "kind": "stop",
+     "row": 5,
+     "col": 1,
+     "zh": "不寫入",
+     "en": "Not written"
+    },
+    {
+     "id": "J",
+     "kind": "action",
+     "row": 6,
+     "col": 0,
+     "zh": "逐欄位合併後一次寫入；抓不到的名詞保留原本的內容",
+     "en": "Merged field by field and written at once. Terms it could not reach keep their previous text"
+    },
+    {
+     "id": "K",
+     "kind": "end",
+     "row": 7,
+     "col": 0,
+     "zh": "回報 records、refreshed、changed、added、kept_without_refresh",
+     "en": "Report records, refreshed, changed, added, kept_without_refresh"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "D",
+     "to": "F",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "F",
+     "to": "G",
+     "route": "h",
+     "zh": "否，已滿 20 次",
+     "en": "no, 20 calls made"
+    },
+    {
+     "from": "F",
+     "to": "B",
+     "route": "loop-l",
+     "zh": "否，未滿 20 次",
+     "en": "no, under 20 calls"
+    },
+    {
+     "from": "F",
+     "to": "H",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "H",
+     "to": "J",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "J",
+     "to": "K",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-ladder",
+   "title": {
+    "zh": "/pobg:update ladder",
+    "en": "/pobg:update ladder"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 ladder（不接受其他參數）",
+     "en": "The scope is ladder (no other argument)"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "一次呼叫，最多 14 個請求到 poe.ninja，間隔 0.8 秒",
+     "en": "One call, at most 14 requests to poe.ninja, 0.8 s apart"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "讀目前聯盟與數種排序各前 100 名，共約 600 個角色",
+     "en": "Reads the current league and the top 100 of several sort orders, about 600 characters"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "只留職業、等級、主技能、寶石、keystone、聯盟、排名\n角色與帳號名稱在寫入前丟棄",
+     "en": "Keeps class, level, main skill, gems, keystones, league, rank\nCharacter and account names are discarded before writing"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "快照看起來正常？\n至少 100 筆、九成有職業、半數有技能；同聯盟時不少於上一份的一半",
+     "en": "Does the snapshot look right?\nAt least 100 rows, 90% with a class, half with a skill. Same league: not below half the previous one"
+    },
+    {
+     "id": "F",
+     "kind": "stop",
+     "row": 4,
+     "col": 1,
+     "zh": "拒絕寫入，保留舊快照",
+     "en": "Refused. The old snapshot stays"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "取代天梯快照",
+     "en": "Replaces the ladder snapshot"
+    },
+    {
+     "id": "H",
+     "kind": "end",
+     "row": 6,
+     "col": 0,
+     "zh": "回報 records、league；聯盟換了還有 previous_league",
+     "en": "Report records and league, and previous_league when the league changed"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-pob",
+   "title": {
+    "zh": "/pobg:update-pob：更新你的 Path of Building",
+    "en": "/pobg:update-pob: update your Path of Building"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "/pobg:update-pob 資料夾",
+     "en": "/pobg:update-pob folder"
+    },
+    {
+     "id": "B",
+     "kind": "decision",
+     "row": 1,
+     "col": 0,
+     "zh": "有給資料夾嗎？",
+     "en": "Was a folder given?"
+    },
+    {
+     "id": "C",
+     "kind": "stop",
+     "row": 1,
+     "col": 1,
+     "zh": "請使用者提供後停止；不會搜尋硬碟",
+     "en": "Ask for it and stop. The disk is never searched"
+    },
+    {
+     "id": "D",
+     "kind": "decision",
+     "row": 2,
+     "col": 0,
+     "zh": "路徑含有雙引號、反引號或錢字號？",
+     "en": "Does the path contain a double quote, a backtick or a dollar sign?"
+    },
+    {
+     "id": "E",
+     "kind": "stop",
+     "row": 2,
+     "col": 1,
+     "zh": "不執行任何東西\n請使用者改資料夾名稱，或自己執行指令",
+     "en": "Nothing is run\nRename the folder, or run the command yourself"
+    },
+    {
+     "id": "F",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "第一步：加 --check 執行\n2 個請求到 GitHub，不寫入",
+     "en": "First run: with --check\n2 requests to GitHub, writes nothing"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 4,
+     "col": 0,
+     "zh": "辨識資料夾\n有 manifest.xml：單獨的 Path of Building\n有 PoeCharm3.exe：PoeCharm2，PoB 在裡面",
+     "en": "Recognise the folder\nmanifest.xml: Path of Building alone\nPoeCharm3.exe: PoeCharm2 with PoB inside"
+    },
+    {
+     "id": "H",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "回報 installed 與 latest\nPoeCharm2 另回報最新提交與日期",
+     "en": "Report installed and latest\nFor PoeCharm2 also its latest commit and date"
+    },
+    {
+     "id": "I",
+     "kind": "decision",
+     "row": 6,
+     "col": 0,
+     "zh": "up_to_date？",
+     "en": "up_to_date?"
+    },
+    {
+     "id": "J",
+     "kind": "end",
+     "row": 6,
+     "col": 1,
+     "zh": "已是最新，結束",
+     "en": "Already current. Stop"
+    },
+    {
+     "id": "K",
+     "kind": "action",
+     "row": 7,
+     "col": 0,
+     "zh": "說明更新會做什麼\n下載 PoB 正式版（約 380 MB）並核對 SHA-256\nPoeCharm2 另下載約 30 MB，沒有公布的雜湊可核對\n解壓到舊資料夾旁的新資料夾",
+     "en": "Explain what the update does\nDownloads PoB's release (about 380 MB), checked against its SHA-256\nPoeCharm2 also about 30 MB, with no published checksum\nUnpacks into a new folder next to the old one"
+    },
+    {
+     "id": "L",
+     "kind": "decision",
+     "row": 8,
+     "col": 0,
+     "zh": "使用者同意？",
+     "en": "Does the user agree?"
+    },
+    {
+     "id": "M",
+     "kind": "stop",
+     "row": 8,
+     "col": 1,
+     "zh": "結束，什麼都沒下載",
+     "en": "Stop. Nothing downloaded"
+    },
+    {
+     "id": "N",
+     "kind": "action",
+     "row": 9,
+     "col": 0,
+     "zh": "第二步：不加 --check 執行\n可能要幾分鐘，逾時設 10 分鐘",
+     "en": "Second run: without --check\nCan take minutes, with a 10-minute timeout"
+    },
+    {
+     "id": "O",
+     "kind": "action",
+     "row": 10,
+     "col": 0,
+     "zh": "下載到暫存工作資料夾\nPoB 不得超過公布的大小，PoeCharm2 上限 200 MB",
+     "en": "Downloads into a temporary work folder\nPoB never more than its published size, PoeCharm2 at most 200 MB"
+    },
+    {
+     "id": "P",
+     "kind": "decision",
+     "row": 11,
+     "col": 0,
+     "zh": "SHA-256 與 GitHub 公布的相符？",
+     "en": "Does the SHA-256 match what GitHub publishes?"
+    },
+    {
+     "id": "Q",
+     "kind": "stop",
+     "row": 11,
+     "col": 1,
+     "zh": "報錯並清掉暫存\n舊資料夾不變",
+     "en": "Error, work folder removed\nThe old folder is unchanged"
+    },
+    {
+     "id": "R",
+     "kind": "action",
+     "row": 12,
+     "col": 0,
+     "zh": "解壓：拒絕會跳出目錄的路徑，限制解壓後的大小",
+     "en": "Unpacks: refuses paths that leave the folder, bounds the unpacked size"
+    },
+    {
+     "id": "S",
+     "kind": "action",
+     "row": 13,
+     "col": 0,
+     "zh": "複製存過的 build（Builds）與 PoeCharm2 的語言設定\n不讀也不複製 Settings.xml",
+     "en": "Copies saved builds (Builds) and PoeCharm2's language setting\nSettings.xml is never opened or copied"
+    },
+    {
+     "id": "T",
+     "kind": "action",
+     "row": 14,
+     "col": 0,
+     "zh": "改名成新資料夾；防毒掃描擋住時重試 5 次",
+     "en": "Renames to the new folder, retried 5 times if a virus scan blocks it"
+    },
+    {
+     "id": "U",
+     "kind": "end",
+     "row": 15,
+     "col": 0,
+     "zh": "回報 new_folder、version、builds_copied、checksum、next\n舊資料夾不修改、不刪除；要重新登入",
+     "en": "Report new_folder, version, builds_copied, checksum, next\nThe old folder is never changed or deleted. Sign in again"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "h",
+     "zh": "沒有",
+     "en": "no"
+    },
+    {
+     "from": "B",
+     "to": "D",
+     "route": "v",
+     "zh": "有",
+     "en": "yes"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "D",
+     "to": "F",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "F",
+     "to": "G",
+     "route": "v"
+    },
+    {
+     "from": "G",
+     "to": "H",
+     "route": "v"
+    },
+    {
+     "from": "H",
+     "to": "I",
+     "route": "v"
+    },
+    {
+     "from": "I",
+     "to": "J",
+     "route": "h",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "I",
+     "to": "K",
+     "route": "v",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "K",
+     "to": "L",
+     "route": "v"
+    },
+    {
+     "from": "L",
+     "to": "M",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "L",
+     "to": "N",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "N",
+     "to": "O",
+     "route": "v"
+    },
+    {
+     "from": "O",
+     "to": "P",
+     "route": "v"
+    },
+    {
+     "from": "P",
+     "to": "Q",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "P",
+     "to": "R",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "R",
+     "to": "S",
+     "route": "v"
+    },
+    {
+     "from": "S",
+     "to": "T",
+     "route": "v"
+    },
+    {
+     "from": "T",
+     "to": "U",
+     "route": "v"
+    }
+   ]
+  }
+ ]
+}
