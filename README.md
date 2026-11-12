@@ -30,8 +30,10 @@ Once the server is connected, ask your assistant things like:
 
 ## Install
 
-Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) on `PATH`. The
-first start creates a Python environment from the versions pinned in `uv.lock`: four direct
+Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.4 or newer on
+`PATH` (`uv --version`; upgrade with `uv self update`). Older versions still trust the eMudhra /
+emSign certificates whose keys were exposed in October 2026, so a download from PyPI could be
+intercepted. The first start creates a Python environment from the versions pinned in `uv.lock`: four direct
 dependencies (`mcp`, `networkx`, `requests`, `beautifulsoup4`), about 40 packages with
 their own dependencies.
 

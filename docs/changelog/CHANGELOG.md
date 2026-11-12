@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+- The READMEs and `docs/clients.md` now require uv 0.13.4 or newer. Older uv versions still
+  trust the eMudhra / emSign intermediate certificates whose private keys were exposed in
+  October 2026, so the packages uv downloads from PyPI at first start could be intercepted.
+  Checked on 2026-11-12: the locked `certifi` (2026.10.23) and the server's own connections
+  reject those certificates, and every file hash in `uv.lock` matches PyPI. No code or
+  dependency changed.
+
 ## [0.8.0] - 2026-11-11
 
 Gear data (Phase 16a, `docs/plan_gear_data.md`).

@@ -28,7 +28,9 @@ POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) s
 
 ## 安裝
 
-需求：`PATH` 上要有 [uv](https://docs.astral.sh/uv/getting-started/installation/)。第一次啟動會依
+需求：`PATH` 上要有 [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.4 以上
+（用 `uv --version` 查看，`uv self update` 升級）。較舊的版本仍信任 2026 年 10 月金鑰外洩的
+eMudhra / emSign 憑證，從 PyPI 下載套件時可能被攔截。第一次啟動會依
 `uv.lock` 鎖定的版本建立 Python 環境：四個直接相依套件（`mcp`、`networkx`、`requests`、
 `beautifulsoup4`），連同它們的相依共約 40 個套件。
 
