@@ -3,6 +3,68 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-11-12
+
+Path of Building export, part 2: gear (`docs/plan_pob_export.md`, "第二段").
+
+### Added
+- `export_pob` takes `gear`: one `"slot: item; modifier; modifier"` entry per item (Weapon 1/2,
+  Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1/2, Belt, Charm 1-3, Flask 1/2; English or
+  繁體中文 slots, items and modifiers; at most 16 entries). The item is a base or a unique
+  checked against the local data. A rare's modifiers are checked like `verify_build`'s affixes
+  (what the item class can roll, the whole wording, 3 prefixes + 3 suffixes per item, one per
+  family) and written at the **upper end of their best tier**, a stated ideal (decided
+  2026-11-12; choosing a tier or value is kept for later). A unique keeps its own modifiers;
+  implicits are written too. The code carries PoB's item text (`Rarity`, name, base,
+  `Implicits`, one line per modifier) and an item set with the slots. A rare is named
+  "POBG <slot>": the game names rares at random and PoB does not use the name.
+- Left out and listed in `not_exported`: unknown or ambiguous items, an item class given as an
+  item, an item in a slot it does not fit, a second item in one slot, an off-hand next to a
+  two-handed weapon (a bow keeps its quiver), modifiers the class cannot roll or written in
+  part, over the 3 + 3 cap or a second of one family, modifiers with no English text, and
+  modifiers given for a unique.
+- Gear enters the attribute plan: an item's own requirement is one more source of need, its
+  fixed attributes ("+33 to Dexterity", "+10 to all Attributes") add to what the build has.
+- Notes: gear values are an ideal; an item above the character level; the attack-skill warning
+  only when there is no weapon. Flask and charm slots are written switched on.
+- The code carries PoB Configuration options (decided 2026-11-12: on by default, each one only
+  with a source in the build). Charges (Power, Frenzy, Endurance) when an exported gem or passive
+  says the build gains them; enemy Shocked, Ignited, Chilled, Frozen, Bleeding, Poisoned, Blinded,
+  Dazed and the three Exposures when the build's text says it inflicts them (lines that only
+  consume, benefit from or modify a state, or only change a chance, do not count; a "cannot …"
+  line rules the state or charge out for its skill group); Chill, Shock or Ignite also from a
+  damaging skill (not a buff or aura) or, for an attack build, the weapon of that element, per the
+  glossary; Crit Recently when a stat needs it.
+  `summary.config` gives each option with up to three sources; charges count at their maximum;
+  the notes name poe.ninja's ladder assumptions this build has no source for; `config: false`
+  leaves the Configuration empty. A rule audit over all 1,012 gems and 4,714 passives is in the
+  test report.
+- Spirit is checked like attributes (`summary.spirit`: have / need, and a note when short).
+  Need: as PoB computes it, (each spirit gem's reservation + its supports' "Additional
+  Reservation") × the supports' reservation multipliers, rounded; a support that moves the
+  reservation to Life counts 0. Skills whose reservation the data gives only as a range over gem
+  levels (minion skills) or not at all are listed in `unknown`, not counted. Have: every Spirit
+  quest reward (PoB's default; stored as `pob_spirit_quests` with the level table, no extra
+  request; the note names the game's area levels), a sceptre's base Spirit, and fixed "+# to
+  Spirit" on gear and passives. A level-90 test build reserved 130 of 100, as PoB warned.
+- Off-hand rules follow Path of Building: a quiver only behind a bow, nothing behind a two-handed
+  weapon (traps included), no weapon behind a wand or sceptre, a sceptre but not a spear or wand
+  in the off-hand. "ring" / "charm" without a number take the next free slot.
+
+### Fixed
+- A modifier with two stats (481 normal prefixes such as "% increased Physical Damage" with
+  "+# to Accuracy Rating", 1,029 modifier texts in all, plus 23 base implicits and 29 uniques'
+  lines) was stored as one run-together line, because the collector dropped the page's line
+  break. The stats are now separate lines (a line break inside `text`; separate entries in
+  `implicits` and `mods`), so `modifiers_for` shows them as the game does and the PoB code
+  writes one line per stat. Data re-parsed from the page cache: same records, fetch times kept.
+- Lines the game does not show are not written into the code: unique lines marked "(Hidden)" and
+  untranslated internal stat lines on bases and uniques (109 lines in the data).
+
+### Changed
+- Version 0.10.0; User-Agent `POBG/0.10`. Workflow step 9 and the `poe2-advisor` skill pass the
+  verified gear to `export_pob`.
+
 ## [0.9.0] - 2026-11-12
 
 Path of Building export, part 1 (`docs/plan_pob_export.md`): class, ascendancy, passive tree

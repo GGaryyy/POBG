@@ -147,7 +147,7 @@ Good to know:
 | `reference_builds` | what ladder characters run (class, main skill, rank, gems, keystones — no character names); a build answer uses it to show how the generated build differs from the ladder, not to pick the build |
 | `verify_build` | checks a draft build's gems, passives, items and target modifiers ("Rings: +#% to Fire Resistance": the whole modifier, at most 3 prefixes and 3 suffixes per item; a partial wording comes back with candidates); returns facts, removed names and a finished source list |
 | `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route) |
-| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route and skill groups ("skill: support, support"); names that do not verify, and supports that cannot support the skill, are listed in `not_exported` instead. Character level, gem levels and attribute passives are worked out from the data, with have / need per attribute. No gear yet |
+| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route, skill groups ("skill: support, support") and gear ("slot: item; modifier; modifier"); names that do not verify, supports that cannot support the skill and modifiers the item cannot roll are listed in `not_exported` instead. Character level, gem levels, attribute passives and gear values are worked out from the data, with have / need per attribute |
 | `get_item` | one gear base (properties, requirements, implicit) or unique item (its modifiers), with sources |
 | `items_by` | bases and uniques by item class, kind, required level or text |
 | `modifiers_for` | what an item class (or a base or unique's class) can roll: modifiers grouped by family, every tier's level and value range, prefix or suffix; also desecrated, essence, corrupted and socketable effects |
@@ -181,7 +181,7 @@ normally after a game patch. A running server makes no network request unless `r
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `POBG/0.9 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
+  `POBG/0.10 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
@@ -238,13 +238,27 @@ data), `docs/` (client guide, flow diagrams, changelog). See `ROADMAP.md` for wh
   passive points or jewels.
 - `verify_build` checks that names exist and returns their facts. It does not judge whether a
   build is strong.
-- `export_pob` codes hold the passive tree and skill gems, not gear, so PoB's damage and defence
-  figures for them cover the tree and gems only, and attack skills show as disabled until you add
-  a weapon. The character level comes from the points spent (123 points is level 100; you can ask
+- **Gear in `export_pob` codes is an ideal.** Every modifier is written at the upper end of its
+  best tier (e.g. "+(100—119) to maximum Life" becomes "+119 to maximum Life"), so PoB's damage
+  and defence figures show what the build reaches with perfect rolls. Modifiers are random and
+  real items roll lower; edit the values in PoB's Items tab. Choosing a tier or value is planned
+  for later. A rare's name is a plain label ("POBG Ring 1"): the game names rares at random and
+  PoB does not use the name. Quality, runes and soul cores, sockets and jewels are not exported;
+  13 bases and 11 uniques have no PoB counterpart of the same name. Without a weapon, attack
+  skills show as disabled.
+- In `export_pob` codes the character level comes from the points spent (123 points is level 100; you can ask
   for a level), each skill gem is set to the highest level that character can use, and the
-  route's attribute passives go to the gems' attribute requirements first; what the tree cannot
-  cover is reported as "must come from gear". Passives that give increased (percentage)
-  attributes are not counted. The passive tree comes from
+  route's attribute passives go to the attribute requirements of the gems and gear first; what the
+  tree and gear cannot cover is reported. Spirit is checked the same way: what the persistent
+  skills and their supports reserve against the quest rewards the level has reached plus fixed
+  Spirit on gear and passives (% increases are not counted).
+- PoB's damage depends on its Configuration tab. `export_pob` switches on only the options this
+  build has a source for in its own gems, passives and gear (a charge it gains, a state it
+  inflicts, a stat that needs a recent Critical Hit; or the glossary rule that Lightning, Cold or
+  Fire hits Shock, Chill or Ignite), lists each with its source, and counts charges at their
+  maximum. poe.ninja's ladder exports assume a fixed set of states for every character, so a
+  ladder figure can still be higher for that reason; the notes name the difference. Passives that give increased (percentage) attributes
+  are not counted. The passive tree comes from
   PathOfBuilding-PoE2's development branch, which can be ahead of its latest release: a PoB that
   is older than the data skips passives and gems it does not know, and may refuse a tree version
   or ascendancy it does not have (update it with `update-pob`).

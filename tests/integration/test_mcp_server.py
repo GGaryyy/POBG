@@ -163,7 +163,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.9.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.10.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
@@ -333,14 +333,17 @@ def test_export_pob_schema_and_description():
     tool = next(t for t in asyncio.run(mcp_server.server.list_tools()) if t.name == "export_pob")
     assert tool.input_schema["required"] == ["class_name"]
     assert set(tool.input_schema["properties"]) == {"class_name", "targets", "skills", "ascendancy", "main_skill",
-                                                    "title", "attribute", "character_level", "lang"}
+                                                    "title", "attribute", "character_level", "gear",
+                                                    "config", "lang"}
     assert "not_exported" in tool.description and "skill: support, support" in tool.description
+    assert "slot: item; modifier; modifier" in tool.description and "top of each best tier" in tool.description
+    assert "summary.config" in tool.description
     assert tool.annotations.read_only_hint is True and tool.annotations.open_world_hint is False
     assert len(tool.description) <= 1024
 
 
 @pytest.mark.parametrize("args, message", [
-    ({"class_name": "Witch"}, "at least one target passive or one skill"),
+    ({"class_name": "Witch"}, "at least one target passive, skill or gear entry"),
     ({"class_name": "Paladin", "skills": ["Unearth"]}, "unknown class 'Paladin'"),
     ({"class_name": "Witch", "skills": [": Unearth"]}, "must start with a skill gem"),
 ])

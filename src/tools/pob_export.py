@@ -27,6 +27,10 @@ GEM_LEVEL = 20
 SUPPORT_LEVEL = 1             # PoE2 support gems have no levels; PoB shows them as 1
 GEM_QUALITY = 0
 ATTRIBUTES = ("str", "dex", "int")   # PoB's AttributeOverride lists, in this order
+RANGE = re.compile(r"\((-?\d+(?:\.\d+)?)\s*(?:—|–|-)\s*(-?\d+(?:\.\d+)?)\)")   # "(80—89)" in modifier text
+ITEM_SET_ID = "1"
+CONFIG_SET_ID = "1"
+ACTIVATED_SLOTS = ("Flask", "Charm")
 NOT_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 SKILL_SET_TITLE = "POBG"
 MAX_CODE_LEN = 200_000        # decode_code refuses anything longer
@@ -57,6 +61,16 @@ class PobSkillGroup:
     gems: tuple[PobGem, ...]
 
 
+@dataclass(frozen=True)
+class PobItem:
+    slot: str                      # PoB slot name, e.g. "Weapon 1", "Ring 2"
+    rarity: str                    # NORMAL, RARE or UNIQUE
+    name: str                      # unique name, or a plain label for a rare (PoB does not use it)
+    base: str                      # base type name, which PoB looks the item up by
+    implicits: tuple[str, ...] = ()
+    explicits: tuple[str, ...] = ()
+
+
 @dataclass
 class PobBuild:
     title: str
@@ -72,6 +86,8 @@ class PobBuild:
     attributes: dict[str, list[str]] = field(default_factory=dict)   # "str"/"dex"/"int" -> attribute node ids
     level: int = 1                 # the level PoB's automatic mode works out (pob_level), or the one asked for
     auto_level: bool = True        # False keeps a level the caller asked for
+    items: list[PobItem] = field(default_factory=list)
+    config: list[str] = field(default_factory=list)   # PoB configuration options switched on (check boxes)
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +130,49 @@ def build_xml(build: PobBuild) -> str:
                 "level": str(SUPPORT_LEVEL if gem.support else gem.level), "quality": str(GEM_QUALITY), "enabled": "true",
                 "enableGlobal1": "true", "enableGlobal2": "false", "count": "1",
             })
+    if build.items:
+        _items_section(root, build.items)
+    if build.config:
+        config = ET.SubElement(root, "Config", {"activeConfigSet": CONFIG_SET_ID})
+        config_set = ET.SubElement(config, "ConfigSet", {"id": CONFIG_SET_ID, "title": "Default"})
+        for name in build.config:
+            ET.SubElement(config_set, "Input", {"name": name, "boolean": "true"})
     if build.notes:
         ET.SubElement(root, "Notes").text = xml_text(build.notes)
     return ET.tostring(root, encoding="unicode", xml_declaration=True)
+
+
+def item_text(item: PobItem) -> str:
+    """An item as PoB writes it when it saves a build (Item.lua BuildRaw): rarity, name, base,
+    the implicit count, then one modifier per line. A normal item has no separate name line."""
+    implicits, explicits = _stat_lines(item.implicits), _stat_lines(item.explicits)
+    head = [item.base] if item.rarity == "NORMAL" else [item.name, item.base]
+    lines = [f"Rarity: {item.rarity}", *(" ".join(xml_text(line).split()) for line in head),
+             f"Implicits: {len(implicits)}", *implicits, *explicits]
+    return "\n".join(lines)
+
+
+def _stat_lines(texts: tuple[str, ...]) -> list[str]:
+    """One PoB line per stat: a modifier text with several stats is one line each."""
+    lines = [xml_text(line).strip() for text in texts for line in text.split("\n")]
+    return [line for line in lines if line]
+
+
+def upper_value(text: str) -> str:
+    """A modifier with every "(low—high)" range replaced by its upper end, as written."""
+    return RANGE.sub(lambda m: m.group(2), text)
+
+
+def _items_section(root: ET.Element, items: list[PobItem]) -> None:
+    section = ET.SubElement(root, "Items", {"activeItemSet": ITEM_SET_ID, "useSecondWeaponSet": "false"})
+    for item_id, item in enumerate(items, 1):
+        ET.SubElement(section, "Item", {"id": str(item_id)}).text = item_text(item)
+    item_set = ET.SubElement(section, "ItemSet", {"id": ITEM_SET_ID, "useSecondWeaponSet": "false"})
+    for item_id, item in enumerate(items, 1):
+        slot = {"name": item.slot, "itemId": str(item_id)}
+        if item.slot.startswith(ACTIVATED_SLOTS):
+            slot["active"] = "true"            # PoB applies a flask or charm only when its slot is switched on
+        ET.SubElement(item_set, "Slot", slot)
 
 
 def xml_text(value: str) -> str:

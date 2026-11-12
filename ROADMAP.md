@@ -25,14 +25,14 @@ client connects without friction.
 
 The data covers gems, the passive tree, the glossary and (0.8.0) gear, flask, charm and jewel
 bases, uniques and modifiers. Phase 1 is done; Path of Building export part 1 (class, ascendancy,
-passive tree, skill gems) is in 0.9.0; part 2 adds gear.
+passive tree, skill gems) is in 0.9.0 and part 2 (gear) in 0.10.0. Crafting and currency are next.
 
 | # | Phase | What | Why |
 |---|---|---|---|
 | 1 | Gear and modifier data (done in 0.8.0) | Equipment bases, modifiers and tiers (incl. desecrated, essence, corrupted, socketable effects), unique items, jewels, flasks and charms | Gear and its modifiers decide damage and defences; it changes every league |
 | 1 | Gem and ascendancy gaps (checked in 0.8.0) | Lineage supports were already covered (77 of 77); socketables came with the modifiers; ascendancy pages add nothing the tree data lacks; 13 gems on the meta gem page are on no gem listing and were left out | Completes what a build can name |
 | 2 | Export to Path of Building, part 1 (done in 0.9.0) | `export_pob`: class, ascendancy, passive route from `path_to` and skill groups as a Path of Building code; `update-pob` keeps the user's PoB current | The advice can be opened, checked and continued in PoB. The passive node ids are already PoB's |
-| 2 | Export to Path of Building, part 2: gear | Bases, uniques and target modifiers as PoB items. PoB needs exact numbers and the data has tier ranges, so which value to write (best tier, middle tier or the user's choice) must be decided first and stated as an assumption | PoB's damage and defence figures need gear |
+| 2 | Export to Path of Building, part 2: gear (done in 0.10.0) | Bases, uniques and target modifiers as PoB items, each modifier at the upper end of its best tier (a stated ideal) | PoB's damage and defence figures need gear |
 | 3 | Crafting and currency | Crafting methods, currency, essences, catalysts, omens, liquid emotions | How to obtain the gear, after the gear itself is known |
 
 Also open:
@@ -45,6 +45,7 @@ Also open:
 | Ladder depth | The snapshot is about 600 characters from the top of several rankings; poe.ninja's layout is undocumented and has changed once already, so the fetcher needs watching |
 | New passive tree versions | `status` reports a newer version, but adopting it needs a catalog change and a release; the 1.0 release will add classes, weapons and acts |
 | One-click install for Claude Desktop | An `.mcpb` bundle, once its support for uv projects is verified |
+| Choose gear values | Let the user pick a modifier tier or value for exported gear instead of the best tier's upper end (kept for later, 2026-11-12) |
 | Save a build into PoB's folder | An opt-in command that writes the build into a PoB `Builds` folder the user names, so it appears in PoB's build list without pasting. Not done in 0.9.0: some users do not want files written (decided 2026-11-12) |
 | Open PoB from a link | `pob2://` links open a build in PoB, but only from an upload to a build site (pobb.in, poe2db), which makes the build public |
 

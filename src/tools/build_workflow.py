@@ -62,12 +62,17 @@ BUILD_WORKFLOW = """\
 8. End the answer with `sources_markdown` from the last verify_build call, unchanged. It already lists
    the names that were not found. Add `source_markdown` from reference_builds below it.
 9. Give a Path of Building code: call export_pob with the class (or ascendancy), the verified passives
-   as `targets` and one "skill: support, support" entry per skill group, main skill first; pass
-   `character_level` when the user asked for a build at a level. The tool works out the character
+   as `targets`, one "skill: support, support" entry per skill group, main skill first, and one
+   "slot: item; modifier; modifier" entry per verified item in `gear` (a rare's verified target
+   modifiers; nothing after a unique); pass `character_level` when the user asked for a build at
+   a level. Gear values are written at the top of each modifier's best tier: say the PoB numbers
+   are an ideal, since modifiers are random. The tool works out the character
    level, each gem's level and the attribute passives from the data: do not work them out yourself.
    Put `code` in a code block after the sources, with `how_to_import` and `notes`, say what is in
-   `not_exported`, and report `summary.attributes`: where `need` is above `have`, say that attribute
-   must come from gear, or change the gems."""
+   `not_exported`, and report `summary.attributes` and `summary.spirit`: where `need` is above `have`,
+   fix the build (other gems, fewer persistent skills or Spirit-reserving supports, attribute or Spirit
+   modifiers on gear) and export again, or say plainly what is missing. List the PoB Configuration
+   options in `summary.config` with their evidence: PoB's damage assumes them."""
 
 SERVER_INSTRUCTIONS = (
     "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary), English and Traditional "

@@ -52,7 +52,7 @@ def gem_records(spec: Spec) -> dict[str, list[dict]]:
     herald = gem(spec, "Herald_of_Ash", "spirit_gem", name="Herald of Ash", tier=4, tags=["Spirit", "Fire"],
                  tag_slugs=["Persistent_Skills", "Fire"], requires_weapons=["Any Martial Weapon"],
                  keyword_slugs=[], supported_by=[],
-                 level_effects=[{"Level": "1", "Requires Level": "0", "Str": "4", "Dex": "4"}])
+                 level_effects=[{"Level": "1", "Requires Level": "0", "Str": "4", "Dex": "4"}], cost="30 Spirit")
     added = gem(spec, "Added_Fire_Damage", "support_gem", name="Added Fire Damage", tier=1, requires_stats="+5 Int",
                 tags=["Support", "Fire"], tag_slugs=["Support", "Fire"], requires_weapons=None, keyword_slugs=[])
     faster = gem(spec, "Faster_Attacks", "support_gem", name="Faster Attacks", tier=2,
@@ -244,6 +244,7 @@ def classes_doc() -> dict:
             "fetched_at": FETCHED, "points": {"passive": 123, "ascendancy": 8},
             # PoB's act table for its automatic level (the first two acts of the real one)
             "pob_level_acts": [{"level": 1, "quest_points": 0}, {"level": 12, "quest_points": 4}],
+            "pob_spirit_quests": [{"level": 11, "spirit": 30}, {"level": 36, "spirit": 30}],
             "classes": [cls("Witch", "女巫", 1, ("Infernalist", "獄火師")),
                         cls("Sorceress", "女術者", 7, ("Stormweaver", "風暴編織者")),
                         cls("Warrior", "戰士", 6, ("Titan", "泰坦"))]}

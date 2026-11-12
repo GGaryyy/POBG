@@ -54,6 +54,7 @@ TAB_COUNT_RE = re.compile(r"/\s*(\d+)\s*$")
 LEVEL_RE = re.compile(r"Level\s+(\d+)")
 ATTRIBUTE_RE = re.compile(r"(\d+)\s+(Str|Dex|Int)\b")
 TAG_RE = re.compile(r'data-tag="([^"]+)"')
+LINE_BREAK = "\n"          # between the stat lines of one modifier in its stored text
 ATTRIBUTE_SUFFIXES = ("str", "dex", "int")
 AFFIX_BY_GENERATION_ID = {"1": "prefix", "2": "suffix"}   # ModGenerationTypeID; `gen` names them per language
 MIN_MOD_TEXT_RATIO = 0.95
@@ -136,7 +137,7 @@ def _parse_base(card: Tag) -> dict:
         "name": _text(link),
         "properties": [_text(p) for p in card.select(".property")],
         "requirements": requirement,
-        "implicits": [_text(m) for m in card.select(".implicitMod")],
+        "implicits": _mod_lines(card.select(".implicitMod")),
         "effects": [_text(m) for m in card.select(EFFECT_SELECTOR)],
     }
 
@@ -152,8 +153,8 @@ def _parse_unique(card: Tag) -> dict:
                                           or clean_text(link.get_text("")) or None),
         "base": _text(card.select_one(".uniqueTypeLine")),
         "requirements": _text(card.select_one(".requirements")),
-        "implicits": [_text(m) for m in card.select(".implicitMod")],
-        "mods": [_text(m) for m in card.select(".explicitMod")],
+        "implicits": _mod_lines(card.select(".implicitMod")),
+        "mods": _mod_lines(card.select(".explicitMod")),
     }
 
 
@@ -161,6 +162,22 @@ def _text(node: Tag | None) -> str | None:
     if node is None:
         return None
     return clean_text(node.get_text("")) or None
+
+
+def stat_lines(node: Tag) -> list[str]:
+    """The stat lines of a modifier node. One modifier can hold several stats, separated by <br>
+    on the page (e.g. "% increased Physical Damage" and "+# to Accuracy Rating"); each is its
+    own line, as the game and Path of Building show it."""
+    for text in node.find_all(string=True):          # a line break in the page source is not a new stat
+        if LINE_BREAK in text:
+            text.replace_with(text.replace(LINE_BREAK, " "))
+    for br in node.find_all("br"):
+        br.replace_with(LINE_BREAK)
+    return [line for line in (clean_text(part) for part in node.get_text("").split(LINE_BREAK)) if line]
+
+
+def _mod_lines(nodes: list[Tag]) -> list[str]:
+    return [line for node in nodes for line in stat_lines(node)]
 
 
 def _mod_object(html: str, spec: Spec) -> dict | None:
@@ -191,7 +208,7 @@ def _mod_row(row: dict, group: str) -> dict:
         "source_slug": slug_from_href(source.get("href")) if source else None,
         "level": _int(row.get("Level")),
         "family": "+".join(row.get("ModFamilyList") or []) or None,
-        "text": clean_text(make_soup(str(row.get("str") or "")).get_text("")) or None,
+        "text": LINE_BREAK.join(stat_lines(make_soup(str(row.get("str") or "")))) or None,
         "tags": TAG_RE.findall(" ".join(str(t) for t in row.get("mod_no") or [])),
     }
 

@@ -279,3 +279,27 @@ def test_one_family_with_several_modifiers_gets_tiers_per_modifier():
     tiered = ci._with_tiers(rows)
     assert [(r["tier"], r["tiers"]) for r in tiered] == [(2, 2), (1, 2), (1, 1)]
     assert ci.modifier_template("+(10—15)% to Fire Resistance") == ci.modifier_template("+45% to fire resistance") == "#% to fire resistance"
+
+
+def test_a_modifier_with_two_stats_keeps_them_on_separate_lines():
+    row = {"Name": "Hybrid", "Level": "10", "ModGenerationTypeID": "1", "ModFamilyList": ["LocalPhysAcc"], "mod_no": [],
+           "str": "<span class='mod-value'>(15<span class=\"ndash\">—</span>19)</span>% increased <a href=\"x\">Physical</a> "
+                  "Damage<br><span class='mod-value'>+(16<span class=\"ndash\">—</span>20)</span> to Accuracy Rating"}
+    assert ci._mod_row(row, "normal")["text"] == ("(15—19)% increased Physical Damage\n"
+                                                             "+(16—20) to Accuracy Rating")
+    assert ci.modifier_template("(15—19)% increased Physical Damage\n+(16—20) to Accuracy Rating") == (
+        "#% increased physical damage # to accuracy rating")
+    single = {**row, "str": "<span>+(5—8)</span> to Dexterity"}
+    assert ci._mod_row(single, "normal")["text"] == "+(5—8) to Dexterity"
+
+
+def test_item_cards_split_lines_inside_one_modifier_node():
+    soup = ci.make_soup('<div><span class="explicitMod">+10 to Strength<br/>+10 to Dexterity</span>'
+                                   '<span class="explicitMod"> 5% increased Rarity </span><span class="explicitMod"></span></div>')
+    assert ci._mod_lines(soup.select(".explicitMod")) == ["+10 to Strength", "+10 to Dexterity",
+                                                                     "5% increased Rarity"]
+
+
+def test_a_line_break_in_the_page_source_is_not_a_new_stat():
+    soup = ci.make_soup('<span class="explicitMod">+10 to\nStrength<br>+5 to\n Dexterity</span>')
+    assert ci.stat_lines(soup) == ["+10 to Strength", "+5 to Dexterity"]

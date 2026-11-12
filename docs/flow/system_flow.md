@@ -1,6 +1,6 @@
 # System Flow
 
-Updated 2026-11-12 (0.9.0: Path of Building codes and the PoB updater; 0.8.0: gear data).
+Updated 2026-11-12 (0.10.0: gear in Path of Building codes; 0.9.0: PoB codes and the PoB updater).
 
 ## System flow
 
@@ -87,7 +87,7 @@ flowchart LR
     LK --> BT
     COM -->|class, main skill, rank only| BT
     BT --> MCP
-    BT -->|export_pob: class ids, route, gem ids| PE
+    BT -->|export_pob: class ids, route, gem ids, items at best-tier values| PE
     PE -->|code, no file| MCP
     MT --> MCP
     MT -->|one scope per call| CG

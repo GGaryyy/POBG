@@ -44,6 +44,7 @@ LANGS = ("en", "zh-tw")
 _NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 NESTED_TABLE = re.compile(r"\{[^{}]*\}")                        # a table inside a quest (e.g. Options)
 QUEST_FIELD = re.compile(r'\["(\w+)"\]\s*=\s*"?([^",\n]*)"?')
+SPIRIT_REWARD = re.compile(r"^\+(\d+) to Spirit$")
 CRUEL_OFFSET = 3                                                  # Cruel acts follow the three normal ones
 
 Fetcher = Callable[[str], str]
@@ -75,20 +76,35 @@ def load_pob2_tree(spec: Spec, *, fetch: Fetcher, cache_dir: Path = POB2_CACHE_D
         raise PassiveBuildError(f"PoB2 tree {version} is not valid JSON: {exc}") from exc
 
 
-def load_quest_acts(spec: Spec, *, fetch: Fetcher, cache_dir: Path = POB2_CACHE_DIR, offline: bool = False) -> list[dict]:
-    """PoB's act table for its automatic character level, from its QuestRewards.lua; [] when the
-    file is not available offline or does not parse (the export then falls back to level 1)."""
+def load_quest_rewards(spec: Spec, *, fetch: Fetcher, cache_dir: Path = POB2_CACHE_DIR, offline: bool = False) -> dict:
+    """From PoB's QuestRewards.lua: {"acts": its act table for the automatic character level,
+    "spirit": the Spirit quest rewards}. Both are [] when the file is not available or does not
+    parse (the export then says level 1 and does not judge Spirit)."""
+    empty = {"acts": [], "spirit": []}
     source = spec.source("pob2_tree")
     url = source.get("quest_rewards_url")
     if not url:
-        return []
-    try:   # the level table is an extra: without it the tree is still collected
+        return empty
+    try:   # these tables are an extra: without them the tree is still collected
         text = cached_fetch(url, cache_dir / f"QuestRewards_{source['version']}.lua", fetch, offline)
     except requests.RequestException as exc:
         print(f"[WARN] PoB quest rewards not fetched ({type(exc).__name__}); exported codes will say level 1",
               file=sys.stderr)
-        return []
-    return quest_acts(text) if text else []
+        return empty
+    return {"acts": quest_acts(text), "spirit": quest_spirit(text)} if text else empty
+
+
+def quest_spirit(text: str) -> list[dict]:
+    """[{"level", "spirit"}]: each quest reward of the form "+N to Spirit" with its area level, the
+    level a character has reached when it can have the reward."""
+    rewards = []
+    for block in quest_blocks(text):
+        fields = dict(QUEST_FIELD.findall(block))
+        match = SPIRIT_REWARD.match(fields.get("Stat", "").strip())
+        level = fields.get("AreaLevel", "").strip()
+        if match and level.isdigit():
+            rewards.append({"level": int(level), "spirit": int(match.group(1))})
+    return rewards
 
 
 def quest_blocks(text: str) -> list[str]:
@@ -345,7 +361,7 @@ def pob_class_ids(tree: dict) -> dict[str, dict]:
 
 
 def classes_doc(tree_data: dict, nodes: list[dict], fetched_at: str, pob_ids: dict | None = None,
-                pob_acts: list[dict] | None = None) -> dict:
+                pob_quests: dict | None = None) -> dict:
     """Classes that start somewhere on our tree, with their ascendancies, in both languages, and
     PoB's ids for them (`pob_id`) where the PoB2 tree has them. `pob_level_acts` is PoB's act
     table for its automatic character level."""
@@ -365,8 +381,9 @@ def classes_doc(tree_data: dict, nodes: list[dict], fetched_at: str, pob_ids: di
            "fetched_at": fetched_at,
            "points": {"passive": points.get("totalPoints"), "ascendancy": points.get("ascendancyPoints")},
            "classes": classes}
-    if pob_acts is not None:
-        doc["pob_level_acts"] = pob_acts
+    if pob_quests is not None:
+        doc["pob_level_acts"] = pob_quests["acts"]
+        doc["pob_spirit_quests"] = pob_quests["spirit"]   # Spirit quest rewards by the level they come at
     return doc
 
 
@@ -506,20 +523,20 @@ def build(spec: Spec, *, fetch: Fetcher, offline: bool = False,
     summary["connections_dropped"] = dropped
     summary["built_at"] = now_iso()
     summary["pob_classes"] = pob_class_ids(tree)
-    summary["pob_level_acts"] = load_quest_acts(spec, fetch=fetch, cache_dir=pob2_cache, offline=offline)
+    summary["pob_quests"] = load_quest_rewards(spec, fetch=fetch, cache_dir=pob2_cache, offline=offline)
     for node in nodes.values():   # every source of the node was read in this build
         node["fetched_at"] = summary["built_at"]
     return list(nodes.values()), edges, summary
 
 
 def write_passives(spec: Spec, out_dir: Path, nodes: list[dict], edges: list[dict], tree_data: dict,
-                   built_at: str, pob_ids: dict | None = None, pob_acts: list[dict] | None = None) -> dict:
+                   built_at: str, pob_ids: dict | None = None, pob_quests: dict | None = None) -> dict:
     """Write nodes, edges and classes.json under out_dir. Returns the paths and the class counts."""
     source = spec.source("pob2_tree")
     nodes_path = out_dir / Path(source["nodes_file"]).relative_to("data")
     edges_path = out_dir / Path(source["edges_file"]).relative_to("data")
     classes_path = out_dir / Path(spec.source("passive_tree_data")["classes_file"]).relative_to("data")
-    classes = classes_doc(tree_data, nodes, built_at, pob_ids, pob_acts)
+    classes = classes_doc(tree_data, nodes, built_at, pob_ids, pob_quests)
     write_jsonl(nodes_path, nodes)
     write_jsonl(edges_path, edges)
     atomic_write_text(classes_path, json.dumps(classes, ensure_ascii=False, indent=2) + "\n")
@@ -547,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[ERROR] PoB2 tree schema changed? {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
     written = write_passives(spec, args.out_dir, nodes, edges, tree_data, summary["built_at"],
-                             summary.pop("pob_classes"), summary.pop("pob_level_acts"))
+                             summary.pop("pob_classes"), summary.pop("pob_quests"))
     summary["classes"], summary["ascendancies"] = written["classes"], written["ascendancies"]
     print("=== collect_passives summary ===")
     for key, value in summary.items():

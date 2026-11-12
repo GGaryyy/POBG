@@ -11,6 +11,7 @@ code. The MCP server calls these functions; nothing here calls an LLM or the net
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 from collections import Counter
@@ -44,10 +45,12 @@ from src.tools.pob_export import (
     GEM_QUALITY,
     PobBuild,
     PobGem,
+    PobItem,
     PobSkillGroup,
     build_xml,
     encode_code,
     pob_level,
+    upper_value,
 )
 
 # ---------------------------------------------------------------------------
@@ -93,6 +96,98 @@ ATTRIBUTE_FAMILIES = {   # stat families of fixed attribute lines on passives
 }
 SUPPORT_NEED = re.compile(r"\+(\d+)\s+(Str|Dex|Int)\b")
 MAX_CHARACTER_LEVEL = 100
+MAX_EVIDENCE = 3            # pieces of evidence kept per configuration option
+MAX_EVIDENCE_LEN = 160
+LEVEL_TABLE_COLUMNS = {"Level", "Requires Level", "Str", "Dex", "Int", "Mana", "Cost", "Base Damage", "Life", "Spirit",
+                       "Cooldown", "Uses", "Damage Effectiveness"}
+MAX_GEAR = 16             # gear entries in one export
+MAX_GEAR_LEN = 600        # one "slot: item; modifier; modifier" entry
+GEAR_SEPARATOR = re.compile(r"\s*[;；]\s*")
+RARE_NAME = "POBG {slot}"  # a rare's name is random in the game and unused by PoB: a plain label, not a fake name
+# Hands as Path of Building's ItemsTab:IsItemValidForSlot has them (without Giant's Blood and the
+# other keystones that widen the off-hand). Spears, wands and sceptres are one-handed but only a
+# sceptre of those goes in the off-hand; a quiver only behind a bow; nothing behind a two-hander.
+OFFHAND_WEAPONS = ("One Hand Maces", "One Hand Axes", "One Hand Swords", "Claws", "Daggers", "Flails")
+ONE_HANDED = (*OFFHAND_WEAPONS, "Spears", "Wands", "Sceptres")
+TWO_HANDED = ("Bows", "Crossbows", "Quarterstaves", "Staves", "Two Hand Maces", "Two Hand Axes", "Two Hand Swords",
+              "Talismans", "Traps")
+OFFHAND_ONLY = ("Shields", "Bucklers", "Foci", "Sceptres")
+NO_WEAPON_OFFHAND = ("Wands", "Sceptres")     # main hands that take no weapon in the off-hand
+SLOT_CLASSES = {   # PoB slot -> item classes that go there
+    "Weapon 1": (*ONE_HANDED, *TWO_HANDED),
+    "Weapon 2": (*OFFHAND_ONLY, "Quivers", *OFFHAND_WEAPONS),
+    "Helmet": ("Helmets",), "Body Armour": ("Body Armours",), "Gloves": ("Gloves",), "Boots": ("Boots",),
+    "Amulet": ("Amulets",), "Ring 1": ("Rings",), "Ring 2": ("Rings",), "Belt": ("Belts",),
+    "Charm 1": ("Charms",), "Charm 2": ("Charms",), "Charm 3": ("Charms",),
+    "Flask 1": ("Life Flasks",), "Flask 2": ("Mana Flasks",),
+}
+SLOT_ALIASES = {
+    **{slot.casefold(): slot for slot in SLOT_CLASSES},
+    "weapon": "Weapon 1", "main hand": "Weapon 1", "off hand": "Weapon 2", "offhand": "Weapon 2",
+    "body": "Body Armour", "ring": "Ring", "charm": "Charm", "life flask": "Flask 1", "mana flask": "Flask 2",
+    "武器": "Weapon 1", "主手": "Weapon 1", "副手": "Weapon 2", "頭盔": "Helmet", "頭部": "Helmet", "胸甲": "Body Armour",
+    "手套": "Gloves", "鞋子": "Boots", "項鍊": "Amulet", "戒指": "Ring", "戒指 1": "Ring 1", "戒指 2": "Ring 2",
+    "戒指1": "Ring 1", "戒指2": "Ring 2", "腰帶": "Belt", "護符": "Charm", "護符 1": "Charm 1", "護符 2": "Charm 2",
+    "護符 3": "Charm 3", "護符1": "Charm 1", "護符2": "Charm 2", "護符3": "Charm 3", "生命藥劑": "Flask 1",
+    "魔力藥劑": "Flask 2", "藥劑 1": "Flask 1", "藥劑 2": "Flask 2", "藥劑1": "Flask 1", "藥劑2": "Flask 2",
+}
+NUMBERED_SLOTS = {"Ring": ("Ring 1", "Ring 2"), "Charm": ("Charm 1", "Charm 2", "Charm 3")}   # "ring" = the next free one
+NO_GEAR_FACT, NO_WEAPON_FACT = 1, 2     # positions in TEXT[lang]["pob_facts"]
+HIDDEN_LINE = "(Hidden)"      # unique lines the game does not show; PoB cannot read them
+SPIRIT_COST = re.compile(r"^(\d+) Spirit\b")                           # a spirit gem's `cost`
+SPIRIT_RANGE = re.compile(r"\)\s*Spirit\b")                            # "(90 — 30) Spirit": by gem level, not per level here
+SPIRIT_MULTIPLIER = re.compile(r"Reservation Multiplier: (\d+)%")
+SPIRIT_TO_LIFE = re.compile(r"Reserve Life instead of Spirit", re.I)
+BASE_SPIRIT = re.compile(r"^Spirit: (\d+)$")                             # a sceptre's base property
+SPIRIT_EXTRA = re.compile(r"Additional Reservation: (\d+) Spirit\b")    # a support's `main_stat`
+SPIRIT_LINE = re.compile(r"^\+(\d+) to Spirit$")                        # a fixed Spirit line on gear
+SPIRIT_FAMILY = "spirit"                                               # the passive stat family "+# to Spirit"
+# -- PoB configuration: an option is switched on only with evidence in this build's own text -----------
+CHARGE_OPTIONS = {"power": "usePowerCharges", "frenzy": "useFrenzyCharges", "endurance": "useEnduranceCharges"}
+STATE_OPTIONS = {   # PoB option -> words that inflict the state
+    "conditionEnemyShocked": "shock|shocks", "conditionEnemyIgnited": "ignite|ignites",
+    "conditionEnemyChilled": "chill|chills", "conditionEnemyFrozen": "freeze|freezes",
+    "conditionEnemyBleeding": "bleeding|bleed|bleeds", "conditionEnemyPoisoned": "poison|poisons",
+    "conditionEnemyBlinded": "blind|blinds", "conditionEnemyDazed": "daze|dazes",
+}
+EXPOSURE_OPTIONS = {"lightning": "conditionEnemyLightningExposure", "cold": "conditionEnemyColdExposure",
+                    "fire": "conditionEnemyFireExposure"}
+ELEMENT_OPTIONS = {   # glossary: hits of this element can inflict the state ("Lightning damage from Hits ...")
+    "lightning": ("conditionEnemyShocked", "Shock"), "cold": ("conditionEnemyChilled", "Chill"),
+    "fire": ("conditionEnemyIgnited", "Ignite"),
+}
+CRIT_RECENTLY = "conditionCritRecently"
+CONFIG_ORDER = (*CHARGE_OPTIONS.values(), CRIT_RECENTLY, *STATE_OPTIONS, *EXPOSURE_OPTIONS.values())
+NINJA_OPTIONS = ("conditionCritRecently", "conditionEnemyBleeding", "conditionEnemyBlinded", "conditionEnemyChilled",
+                 "conditionEnemyColdExposure", "conditionEnemyDazed", "conditionEnemyIgnited",
+                 "conditionEnemyLightningExposure")   # what poe.ninja's PoB exports switch on for every character
+NOT_EVIDENCE = re.compile(r"\b(cannot|can't|unable to|never|immune|instead|would gain|if you have at least|haven't|"
+                          r"have not|is calculated)\b", re.I)
+CHARGE_GAIN = r"\b(gain|gains|grant|grants|generate|generates)\b[^.;]*?\b{kind} charges?\b"
+CHARGE_TRIGGERED = (r"\b(when|whenever|if|on) (you |supported skills? )?(gain|generat)|\bconsum\w* (all |your |\w+ )?{kind} charge"
+                    r"|\bper {kind} charge|\b{kind} charges? consumed|\bmaximum {kind} charges")
+STATE_CAUSE = (r"\b(inflicts?|inflicting|causes?|causing|applies|apply)\s+(?:\w+\s+){{0,2}}?(?:{w})\b"
+               r"|\bchance to (?:inflict |cause |apply )?(?:{w})\b"
+               r"|(?:^|, but )(?:always )?(?:supported skills |minions from supported skills |minions |this skill "
+               r"|companions )?(?:{w})s? (?:enemies|the target|targets|them|on hit|on critical|when hitting)\b"
+               r"|\band (?:{w})(?:s|ing)? (?:enemies|them)\b")
+STATE_BENEFIT = (r"\b(?:against|vs\.?|on) (?:\w+ ){{0,2}}(?:{w})\w* (?:enemies|enemy|targets?)"
+                 r"|\b(?:increased|reduced|more|less) chance to (?:inflict |cause |apply )?(?:{w})|\baggravat"
+                 r"|\byou inflict (?:{w})|(?:{w})\w* enemies you (?:kill|hit)"
+                 r"|(?:{w})\w* (?:enemies|enemy) (?:take|have|are|deal)|\bwhile (?:\w+ )?(?:{w})|\bto be (?:{w})"
+                 r"|(?:{w})\w* (?:you inflict|inflicted|caused by|it inflicts|it applies|applied to you)"
+                 r"|\bconsum\w* (?:the |their |your |\w+ )?(?:{w})"
+                 r"|\b(?:inflicted|its|their|refresh\w*|it) (?:{w})|\b(?:when|by|on) (?:it )?inflict\w*|\bto you\b")
+EXPOSURE_CAUSE = re.compile(r"\b(inflicts?|inflicting|applies|apply)\s+(?:(lightning|cold|fire|elemental)\s+)?exposure\b", re.I)
+CRIT_RECENT = re.compile(r"(if you've|if you have) dealt a critical hit recently|critically hit recently|crit recently", re.I)
+DAMAGE_TAGS = {"attack", "spell", "projectile", "minion", "melee", "strike", "slam", "grenade", "trap", "totem"}
+NON_HIT_TAGS = {"curse", "buff", "aura", "herald", "persistent", "mark"}   # spell-tagged but they do not hit themselves
+NOT_A_BLOCK = re.compile(r"\bcannot (?:support|consume|be)\b", re.I)   # rules about the support, not the skill
+CANNOT = re.compile(r"\b(cannot|can't)\b", re.I)
+GEAR_ELEMENT = re.compile(r"\badds \d+ to \d+ (lightning|cold|fire) damage", re.I)
+INTERNAL_LINE = re.compile(r"^[a-z]")   # untranslated stat ids ("local weapon implicit hidden …"): game text never starts lower-case
+GEAR_ATTRIBUTE = re.compile(r"^\+(\d+) to (Strength|Dexterity|Intelligence|all Attributes|Strength and Dexterity|"
+                            r"Strength and Intelligence|Dexterity and Intelligence)$")
 ATTRIBUTE_ALIASES = {"str": "str", "strength": "str", "力量": "str", "dex": "dex", "dexterity": "dex",
                      "敏捷": "dex", "int": "int", "intelligence": "int", "智慧": "int"}
 TEXT = {
@@ -111,9 +206,13 @@ TEXT = {
         "ninja": "poe.ninja PoE2 builds",
         "pob_title": "{name} (POBG)",
         "pob_notes": ("Generated by POBG from poe2db and PathOfBuilding-PoE2 data (passive tree {tree}) on {date}.\n"
-                      "No gear: the numbers PoB shows come from the passive tree and gems only.\n"
+                      "{gear}\n"
                       "Character level {level}; skill gems at the highest level it can use (at most {max}), quality "
-                      "{quality}; attack skills need a weapon added in Items."),
+                      "{quality}."),
+        "pob_notes_no_gear": "No gear: the numbers PoB shows come from the passive tree and gems only; attack "
+                             "skills need a weapon added in Items.",
+        "pob_notes_gear": "Gear modifiers are at the upper end of their best tier: an ideal, real items roll lower. "
+                          "Edit them in Items.",
         "pob_facts": [
             "Character level {level}. Each skill gem is set to the highest level (at most {max}) a level-{level} "
             "character can use, from its level table, quality {quality}; support gems have no level.",
@@ -127,9 +226,38 @@ TEXT = {
         "pob_attribute": "{count} attribute passives on the route are set to cover the gems' requirements "
                          "first: {parts}. Change any of them in PoB's tree.",
         "pob_attribute_asked": "{count} attribute passives on the route are set as asked: {parts}.",
-        "pob_short": "{attribute}: {have} of the {need} the gems require; the missing {gap} must come from gear "
-                     "or more passives. Only fixed attributes are counted, not % increases or reduced "
+        "pob_gear": ("Gear modifiers are written at the upper end of their best tier: an ideal, not what an item "
+                     "will roll (modifiers are random); edit the values in PoB's Items tab. Quality, runes and "
+                     "soul cores, sockets and jewels are not included, and a base or line PoB does not know is "
+                     "skipped or marked unsupported there. Flasks and charms are switched on; charms 2 and 3 "
+                     "need a belt with enough charm slots."),
+        "pob_item_level": "{item} requires level {needed}, above the character level {level}.",
+        "pob_short": "{attribute}: {have} of the {need} the gems and gear require; the missing {gap} must come "
+                     "from gear or more passives. Only fixed attributes are counted, not % increases or reduced "
                      "requirements.",
+        "pob_spirit": "Spirit: the persistent skills and their supports reserve {need}, the character has {have}; "
+                      "{gap} short. Drop a persistent skill or a support that reserves Spirit, or get Spirit "
+                      "from gear. Quest rewards, a sceptre's Spirit and fixed Spirit are counted, not % increases.",
+        "pob_config_on": "PoB Configuration switched on, each from this build's own gems, passives or gear: {names}. "
+                         "PoB's damage figures assume these states.",
+        "pob_config_none": "No PoB Configuration option has evidence in this build: the damage is with no states.",
+        "pob_config_off": "PoB Configuration left empty as asked: the damage is with no states.",
+        "pob_config_charges": "Charges are counted at their maximum; set a lower count in PoB's Configuration tab.",
+        "pob_config_ladder": "poe.ninja's ladder exports switch these on for every character, but this build has no "
+                             "source for them, so they are off here: {names}. Compare ladder damage with that in mind.",
+        "config_labels": {
+            "usePowerCharges": "Power Charges", "useFrenzyCharges": "Frenzy Charges",
+            "useEnduranceCharges": "Endurance Charges", "conditionCritRecently": "Crit Recently",
+            "conditionEnemyShocked": "enemy Shocked", "conditionEnemyIgnited": "enemy Ignited",
+            "conditionEnemyChilled": "enemy Chilled", "conditionEnemyFrozen": "enemy Frozen",
+            "conditionEnemyBleeding": "enemy Bleeding", "conditionEnemyPoisoned": "enemy Poisoned",
+            "conditionEnemyBlinded": "enemy Blinded", "conditionEnemyDazed": "enemy Dazed",
+            "conditionEnemyLightningExposure": "Lightning Exposure", "conditionEnemyColdExposure": "Cold Exposure",
+            "conditionEnemyFireExposure": "Fire Exposure"},
+        "pob_spirit_unknown": "Spirit reserved by {names} is not counted: the data gives it as a range over gem "
+                              "levels (minion skills) or not at all. Check Spirit in PoB.",
+        "pob_spirit_quests": "Spirit counts every Spirit quest reward, as PoB does by default; in the game they come "
+                             "at area levels {levels}.",
         "pob_level_low": "The route spends {points} passive points, which needs level {needed}; the code is set to "
                          "level {level} as asked.",
         "pob_no_attribute": "{count} attribute passives on the route give nothing until an attribute is "
@@ -157,8 +285,10 @@ TEXT = {
         "ninja": "poe.ninja PoE2 流派",
         "pob_title": "{name}（POBG）",
         "pob_notes": ("由 POBG 依 poe2db 與 PathOfBuilding-PoE2 資料產生（天賦樹 {tree}），{date}。\n"
-                      "不含裝備：PoB 顯示的數字只反映天賦與寶石。\n"
-                      "角色等級 {level}；技能寶石為該等級可用的最高級（上限 {max}）、品質 {quality}；攻擊技能需在物品頁加入武器。"),
+                      "{gear}\n"
+                      "角色等級 {level}；技能寶石為該等級可用的最高級（上限 {max}）、品質 {quality}。"),
+        "pob_notes_no_gear": "不含裝備：PoB 顯示的數字只反映天賦與寶石；攻擊技能需在物品頁加入武器。",
+        "pob_notes_gear": "裝備詞綴為最高階的上限，是理想值，實際裝備通常較低，可在物品頁修改。",
         "pob_facts": [
             "角色等級 {level}。每顆技能寶石依其等級表設為 {level} 級角色用得了的最高級（上限 {max}）、品質 {quality}；"
             "輔助寶石沒有等級。",
@@ -171,8 +301,29 @@ TEXT = {
         "pob_over_asc": "這條路線用了 {used} 點昇華天賦，超過可用的 {limit} 點。",
         "pob_attribute": "路線上的 {count} 個屬性天賦點優先補足寶石的屬性需求：{parts}。可在 PoB 的天賦樹上個別更改。",
         "pob_attribute_asked": "路線上的 {count} 個屬性天賦點依指定設為：{parts}。",
-        "pob_short": ("{attribute}：寶石需要 {need}，目前 {have}；還差 {gap}，要靠裝備或更多天賦補足。"
+        "pob_gear": ("裝備詞綴以最高階的上限寫入：這是理想值，不是實際會出現的數值（詞綴是隨機的），可在 PoB 的物品頁修改。"
+                     "不含品質、符文與靈魂核心、插槽與珠寶；PoB 不認得的基底或詞綴，會在 PoB 中被略過或標示為不支援。"
+                     "藥劑與護符已設為啟用；護符 2、3 需要腰帶有足夠的護符欄位。"),
+        "pob_item_level": "{item} 需要 {needed} 級，高於角色等級 {level}。",
+        "pob_short": ("{attribute}：寶石與裝備需要 {need}，目前 {have}；還差 {gap}，要靠裝備或更多天賦補足。"
                       "只計入固定屬性，不含百分比增加與需求降低。"),
+        "pob_spirit": "精魂：常駐技能與其輔助寶石共保留 {need}，角色只有 {have}，還差 {gap}。請拿掉一個常駐技能或會保留精魂的"
+                      "輔助寶石，或從裝備取得精魂。計入任務獎勵、權杖的精魂與固定精魂，不含百分比增加。",
+        "pob_config_on": "PoB 配置已開啟（每一項都依本流派自己的寶石、天賦或裝備）：{names}。PoB 的傷害以這些狀態計算。",
+        "pob_config_none": "本流派沒有任何 PoB 配置項目的依據：傷害以無任何狀態計算。",
+        "pob_config_off": "依指定不寫入 PoB 配置：傷害以無任何狀態計算。",
+        "pob_config_charges": "球類以最大顆數計算，可在 PoB 配置頁改成較少的顆數。",
+        "pob_config_ladder": "poe.ninja 的天梯匯出對每個角色都開啟這些項目，但本流派沒有來源，所以這裡沒開：{names}。"
+                             "和天梯傷害比較時請考慮這點。",
+        "config_labels": {
+            "usePowerCharges": "暴擊球", "useFrenzyCharges": "狂怒球", "useEnduranceCharges": "耐力球",
+            "conditionCritRecently": "近期暴擊", "conditionEnemyShocked": "敵人感電", "conditionEnemyIgnited": "敵人點燃",
+            "conditionEnemyChilled": "敵人冰緩", "conditionEnemyFrozen": "敵人冰凍", "conditionEnemyBleeding": "敵人流血",
+            "conditionEnemyPoisoned": "敵人中毒", "conditionEnemyBlinded": "敵人致盲", "conditionEnemyDazed": "敵人暈眩",
+            "conditionEnemyLightningExposure": "閃電曝曬", "conditionEnemyColdExposure": "冰冷曝曬",
+            "conditionEnemyFireExposure": "火焰曝曬"},
+        "pob_spirit_unknown": "{names} 保留的精魂未計入：資料中是隨寶石等級變化的範圍（召喚物技能）或沒有記載。請在 PoB 確認精魂。",
+        "pob_spirit_quests": "精魂已計入所有精魂任務獎勵（與 PoB 預設相同）；遊戲中它們分別在區域等級 {levels} 取得。",
         "pob_level_low": "這條路線用了 {points} 點天賦，需要 {needed} 級；匯入碼依指定設為 {level} 級。",
         "pob_no_attribute": "路線上的 {count} 個屬性天賦點在 PoB 中選定屬性前不提供任何屬性（技能寶石沒有指出屬性；"
                             "可傳入 `attribute`）。",
@@ -629,23 +780,28 @@ class BuildTools:
     def export_pob(self, class_name: str, targets: list[str] | None = None, skills: list[str] | None = None,
                    ascendancy: str | None = None, main_skill: str | None = None, title: str | None = None,
                    attribute: str | None = None, character_level: int | None = None,
-                   lang: str | None = None) -> dict:
+                   gear: list[str] | None = None, config: bool = True, lang: str | None = None) -> dict:
         """A Path of Building build code for a class, the route to `targets` and skill groups
         ("skill: support, support"). Only names that match local data go in; everything left out
         is listed in `not_exported` with the reason. Character level, gem levels and the
         attribute passives are worked out from the data. Writes nothing and needs no network."""
         names = _names(targets, "targets")
         groups_in = _names(skills, "skills", MAX_SKILL_GROUPS, MAX_GROUP_LEN)
-        if not (names or groups_in):
-            raise BadArgument("give at least one target passive or one skill")
+        gear_in = _names(gear, "gear", MAX_GEAR, MAX_GEAR_LEN)
+        if not (names or groups_in or gear_in):
+            raise BadArgument("give at least one target passive, skill or gear entry")
         _require(class_name, "class_name")
         _cap(class_name, "class_name")
         _cap(ascendancy, "ascendancy")
         _cap(main_skill, "main_skill", MAX_NAME_LEN)
         _cap(title, "title", MAX_TITLE_LEN)
         wanted_attribute, asked_level = _attribute(attribute), _character_level(character_level)
-        lang = _lang(lang) or ("zh-tw" if is_cjk("".join([class_name, ascendancy or "", *names, *groups_in])) else "en")
+        if not isinstance(config, bool):
+            raise BadArgument("config must be true or false")
+        lang = _lang(lang) or ("zh-tw" if is_cjk("".join([class_name, ascendancy or "", *names, *groups_in, *gear_in]))
+                               else "en")
         parsed = [_parse_group(entry) for entry in groups_in]   # format errors before any work
+        parsed_gear = [_parse_gear(entry) for entry in gear_in]
         not_exported: list[dict] = []
         route = self._export_route(class_name, names, ascendancy, lang, not_exported)
         acts = (self.lookup.classes_doc or {}).get("pob_level_acts") or []
@@ -654,7 +810,10 @@ class BuildTools:
         groups, unchecked = self._export_groups(groups_in, parsed, not_exported, level)
         main_group = self._main_group(main_skill, groups, not_exported)
         main_colour = groups[main_group - 1]["colour"] if groups else None
-        plan = self._attribute_plan(route, groups, wanted_attribute, main_colour)
+        items = self._export_gear(gear_in, parsed_gear, not_exported)
+        plan = self._attribute_plan(route, groups, wanted_attribute, main_colour, items)
+        spirit = self._spirit_plan(level, route["nodes"], groups, items)
+        options = self._config_plan(route["nodes"], groups, items) if config else {}
         text = TEXT[lang]
         tree = self.lookup.spec.source("pob2_tree")["version"]
         facts = {"tree": tree, "level": level, "max": GEM_LEVEL, "quality": GEM_QUALITY}
@@ -664,9 +823,27 @@ class BuildTools:
             class_name=route["class"], class_id=route["class_id"], ascendancy_name=route["ascendancy"],
             ascendancy_id=route["ascendancy_id"], tree_version=tree, nodes=route["nodes"],
             groups=[g["group"] for g in groups], main_group=main_group, attributes=plan["nodes"],
-            level=level, auto_level=asked_level is None,
-            notes=text["pob_notes"].format(date=datetime.now(timezone.utc).date().isoformat(), **facts))
-        notes = self._export_notes(text, facts, route["points"], plan, unchecked)
+            level=level, auto_level=asked_level is None, items=[i["item"] for i in items], config=list(options),
+            notes=text["pob_notes"].format(date=datetime.now(timezone.utc).date().isoformat(),
+                                           gear=text["pob_notes_gear" if items else "pob_notes_no_gear"], **facts)
+                  + "\n" + _config_note(text, options))
+        notes = self._export_notes(text, facts, route["points"], plan, unchecked,
+                                   skip=(*([NO_GEAR_FACT] if items else []),
+                                         *([NO_WEAPON_FACT] if any(i["item"].slot == "Weapon 1" for i in items) else [])),
+                                   after_facts=_config_notes(text, options, config))
+        if spirit["have"] is not None and spirit["need"] > spirit["have"]:
+            notes.append(text["pob_spirit"].format(gap=spirit["need"] - spirit["have"], have=spirit["have"],
+                                                   need=spirit["need"]))
+        if spirit.get("unknown"):
+            notes.append(text["pob_spirit_unknown"].format(names=", ".join(spirit["unknown"])))
+        quests = (self.lookup.classes_doc or {}).get("pob_spirit_quests") or []
+        if any(q["level"] > level for q in quests) and any(g["spirit"] for g in groups):
+            notes.append(text["pob_spirit_quests"].format(levels=", ".join(str(q["level"]) for q in quests)))
+        if items:
+            notes.append(text["pob_gear"])
+        for i in items:
+            if i["requires_level"] and i["requires_level"] > level:
+                notes.append(text["pob_item_level"].format(item=i["label"], needed=i["requires_level"], level=level))
         if asked_level and needed_level and needed_level > asked_level:
             notes.append(text["pob_level_low"].format(points=route["points"]["passive"]["used"], needed=needed_level,
                                                       level=asked_level))
@@ -680,15 +857,21 @@ class BuildTools:
                         "gems": sum(len(g["group"].gems) for g in groups),
                         "main_skill": groups[main_group - 1]["label"] if groups else None,
                         "character_level": level, "attributes": plan["attributes"],
-                        "attribute_passives": plan["assigned"]},
+                        "attribute_passives": plan["assigned"], "spirit": spirit,
+                        "config": [{"option": name, "label": text["config_labels"][name], "evidence": why}
+                                   for name, why in options.items()],
+                        "gear": [{"slot": i["item"].slot, "item": i["label"], "rarity": i["item"].rarity,
+                                  "modifiers": i["modifiers"]} for i in items]},
             "groups": [{"skill": g["label"], "level": g["group"].gems[0].level,
-                        "gems": [gem.name for gem in g["group"].gems]} for g in groups],
+                        "gems": [gem.name for gem in g["group"].gems],
+                        **({"spirit": g["spirit"]} if g["spirit"] else {})} for g in groups],
             "not_exported": not_exported,
             "notes": notes,
             "how_to_import": text["pob_how"],
         }
 
-    def _attribute_plan(self, route: dict, groups: list[dict], wanted: str | None, main_colour: str | None) -> dict:
+    def _attribute_plan(self, route: dict, groups: list[dict], wanted: str | None, main_colour: str | None,
+                        items: list[dict] | None = None) -> dict:
         """Which attribute each attribute passive on the route gets, and have / need per attribute.
         `need` follows Path of Building (CalcSetup.lua, CalcPerform.lua): every skill gem is one
         requirement, all support gems together are another (their additions summed over every
@@ -696,14 +879,20 @@ class BuildTools:
         the route's other passives plus the attribute passives assigned here. Each attribute
         passive goes to the attribute furthest below its need (ties: the main skill's); when every
         need is met the rest go to the main skill's attribute, or to the attribute the gems need
-        most when that skill names none. `wanted` overrides."""
+        most when that skill names none. `wanted` overrides. Gear counts both ways: an item's own
+        requirement is one more source of need, its fixed attributes add to have."""
         passives = self.lookup.passives
         free = [i for i in route["nodes"] if passives.get(i, {}).get("type") == ATTRIBUTE_TYPE]
+        items = items or []
         need = {a: max(max((g["needs"].get(a, 0) for g in groups), default=0),
-                       sum(g["support_adds"].get(a, 0) for g in groups)) for a in ATTRIBUTES}
+                       sum(g["support_adds"].get(a, 0) for g in groups),
+                       max((i["requires"].get(a, 0) for i in items), default=0)) for a in ATTRIBUTES}
         entry = next((c for c in (self.lookup.classes_doc or {}).get("classes", []) if c["name"] == route["class"]), {})
         base = entry.get("base_attributes")
         have = self._tree_attributes([i for i in route["nodes"] if i not in free])
+        for item in items:
+            for a in ATTRIBUTES:
+                have[a] += item["adds"].get(a, 0)
         if base:
             have = {a: have[a] + base[a] for a in ATTRIBUTES}
         order = sorted(ATTRIBUTES, key=lambda a: a != main_colour)        # the main skill's attribute first
@@ -720,6 +909,69 @@ class BuildTools:
         return {"nodes": {a: ids for a, ids in assigned.items() if ids}, "free": len(free), "asked": wanted,
                 "assigned": {a: len(ids) for a, ids in assigned.items() if ids},
                 "attributes": {a: {"have": have[a] if base else None, "need": need[a]} for a in ATTRIBUTES}}
+
+    def _spirit_plan(self, level: int, node_ids: list[str], groups: list[dict], items: list[dict]) -> dict:
+        """Spirit the persistent skills reserve against what the character has. `need`: each spirit
+        gem's reservation plus its supports' additional reservation. `have`: the Spirit quest
+        rewards (all of them, as PoB counts them by default), a weapon's base Spirit and fixed
+        "+# to Spirit" on the exported gear and the route's passives (None when the local data has
+        no quest rewards). Skills whose reservation the data does not give per level are listed in
+        `unknown` and not counted."""
+        need = sum(g["spirit"] for g in groups)
+        unknown = [g["label"] for g in groups if not g["spirit_known"]]
+        quests = (self.lookup.classes_doc or {}).get("pob_spirit_quests")
+        if not quests:
+            return {"have": None, "need": need, **({"unknown": unknown} if unknown else {})}
+        have = sum(q["spirit"] for q in quests)        # PoB counts every Spirit quest reward by default
+        have += sum(i["spirit"] for i in items)
+        have += sum(int(m.group(1)) for i in items for line in (*i["item"].implicits, *i["item"].explicits)
+                    if (m := SPIRIT_LINE.match(line.strip())))
+        have += sum(int(row["value"]) for node_id in node_ids for row in self._node_stats().get(node_id, [])
+                    if row["family"] == SPIRIT_FAMILY and row["kind"] == "flat" and row.get("value") is not None)
+        return {"have": have, "need": need, **({"unknown": unknown} if unknown else {})}
+
+    def _config_plan(self, node_ids: list[str], groups: list[dict], items: list[dict]) -> dict[str, list[dict]]:
+        """PoB configuration options this build has evidence for, each with up to three pieces of
+        evidence. Evidence is text of the exported gems, the route's passives and the exported gear
+        (a charge the build gains, a state it inflicts, a stat that needs a recent Critical Hit),
+        and the glossary rule that hits of an element inflict that element's ailment."""
+        found: dict[str, list[dict]] = {}
+
+        def add(option: str, source: str, name: str, line: str) -> None:
+            entries = found.setdefault(option, [])
+            if len(entries) < MAX_EVIDENCE and not any(e["name"] == name for e in entries):
+                entries.append({"source": source, "name": name, "text": line[:MAX_EVIDENCE_LEN]})
+
+        for group in groups:
+            blocked = set()                       # "Supported Skills cannot inflict Shock": not for this group
+            for _, _, record in group["records"]:
+                for line in _gem_lines(record):
+                    blocked |= _blocked_options(line)
+            for name, kind, record in group["records"]:
+                tags = {str(t).casefold() for t in record.get("tags") or []}
+                for line in _gem_lines(record):
+                    for option in _line_options(line, tags):
+                        if option not in blocked:
+                            add(option, "gem", name, line)
+                if kind != "support_gem" and tags & DAMAGE_TAGS and not tags & NON_HIT_TAGS:   # buffs never hit
+                    for element, (option, keyword) in ELEMENT_OPTIONS.items():
+                        if element in tags and option not in blocked:
+                            add(option, "glossary", keyword, f"{element.title()} damage from Hits ({name})")
+        attacks = any("attack" in {str(t).casefold() for t in (g["records"][0][2].get("tags") or [])} for g in groups)
+        for node_id in node_ids:
+            node = self.lookup.passives.get(node_id, {})
+            for line in node.get("stats") or []:
+                for option in _line_options(line, set()):
+                    add(option, "passive", node.get("name") or node_id, line)
+        for item in items:
+            for line in (*item["item"].implicits, *item["item"].explicits):
+                for option in _line_options(line, set()):
+                    add(option, "gear", item["label"], line)
+                element = GEAR_ELEMENT.search(line)
+                if element and attacks and item["item"].slot == "Weapon 1":   # only attacks use the weapon
+                    option, keyword = ELEMENT_OPTIONS[element.group(1).casefold()]
+                    add(option, "glossary", keyword, f"{element.group(1)} damage from Hits ({item['label']})")
+        return {option: found[option] for option in CONFIG_ORDER if option in found}
 
     def _tree_attributes(self, node_ids: list[str]) -> dict[str, int]:
         """Fixed attributes ("+10 to Strength", "+5 to all Attributes") the given passives give."""
@@ -805,8 +1057,10 @@ class BuildTools:
             groups.append(exported)
         return groups, unchecked
 
-    def _export_notes(self, text: dict, facts: dict, points: dict, plan: dict, unchecked: list[str]) -> list[str]:
-        notes = [line.format(**facts) for line in text["pob_facts"]]
+    def _export_notes(self, text: dict, facts: dict, points: dict, plan: dict, unchecked: list[str],
+                      skip: tuple[int, ...] = (), after_facts: list[str] | None = None) -> list[str]:
+        notes = [line.format(**facts) for index, line in enumerate(text["pob_facts"]) if index not in skip]
+        notes += after_facts or []
         for kind, key in (("passive", "pob_over"), ("ascendancy", "pob_over_asc")):
             if points[kind].get("over"):
                 notes.append(text[key].format(used=points[kind]["used"], limit=points[kind]["limit"]))
@@ -825,6 +1079,101 @@ class BuildTools:
         if unchecked:
             notes.append(text["pob_unchecked"].format(names=", ".join(unchecked)))
         return notes
+
+    def _export_gear(self, gear_in: list[str], parsed: list[tuple[str, str, list[str]]],
+                     not_exported: list[dict]) -> list[dict]:
+        """One dict per exported item (item, label, requires, requires_level, adds). A rare's target
+        modifiers are checked like verify_build's affixes (what the class can roll, 3 prefixes +
+        3 suffixes, one per family) and written at the upper end of their best tier."""
+        items, used = [], set()
+        for entry, (slot, name, affixes) in zip(gear_in, parsed):
+            numbered = NUMBERED_SLOTS.get(slot)
+            if numbered:                                    # "ring", "charm": the next free numbered slot
+                slot = next((s for s in numbered if s not in used), numbered[0])
+            if slot in used:
+                not_exported.append({"input": entry, "expected": "gear", "suggestions": [],
+                                     "reason": f"{slot} already has an item in this export"})
+                continue
+            exported = self._gear_item(entry, slot, name, affixes, not_exported)
+            if exported is not None:
+                used.add(slot)
+                items.append(exported)
+        weapon = next((i for i in items if i["item"].slot == "Weapon 1"), None)
+        offhand = next((i for i in items if i["item"].slot == "Weapon 2"), None)
+        problem = _offhand_problem(weapon["item_class"] if weapon else None, offhand["item_class"]) if offhand else None
+        if problem:
+            items.remove(offhand)
+            not_exported.append({"input": offhand["input"], "expected": "gear", "suggestions": [], "reason": problem})
+        return items
+
+    def _gear_item(self, entry: str, slot: str, name: str, affixes: list[str], not_exported: list[dict]) -> dict | None:
+        try:
+            kind, record = self.items._resolve(name)
+        except AmbiguousItem as exc:
+            not_exported.append({"input": entry, "expected": "gear", "reason": str(exc),
+                                 "suggestions": [{"slug": option} for option in exc.options]})
+            return None
+        except NotFound:
+            unknown = self._unknown_item(name)
+            not_exported.append({**unknown, "input": entry, "expected": "gear",
+                                 "reason": f"{unknown['reason']} ({name}); the item was left out"})
+            return None
+        item_class = record.get("item_class")
+        if item_class not in SLOT_CLASSES[slot]:
+            not_exported.append({"input": entry, "expected": "gear", "suggestions": [],
+                                 "reason": f"{record['name']} is {item_class or 'of no known class'}, "
+                                           f"which does not go in {slot}"})
+            return None
+        implicits = _item_lines(record.get("implicits"))
+        if kind == "unique":
+            for text in affixes:
+                not_exported.append({"input": text, "expected": "affix", "suggestions": [],
+                                     "reason": f"{record['name']} is a unique: its modifiers are fixed"})
+            base = record.get("base") or ""
+            if not base:
+                not_exported.append({"input": entry, "expected": "gear", "suggestions": [],
+                                     "reason": f"{record['name']} has no base type in the local data"})
+                return None
+            item = PobItem(slot, "UNIQUE", record["name"], base, implicits, _item_lines(record.get("mods")))
+            modifiers = len(item.explicits)
+        else:
+            texts = self._gear_modifiers(slot, record["name"], affixes, not_exported)
+            item = PobItem(slot, "RARE" if texts else "NORMAL", RARE_NAME.format(slot=slot), record["name"],
+                           implicits, _item_lines(texts))
+            modifiers = len(texts)
+        return {"item": item, "input": entry, "label": record["name"], "item_class": item_class, "modifiers": modifiers,
+                "spirit": self._base_spirit(record["name"] if kind != "unique" else record.get("base")),
+                "requires": {a: v for a, v in (record.get("requires") or {}).items() if a in ATTRIBUTES},
+                "requires_level": record.get("requires_level"), "adds": _gear_attributes(implicits + item.explicits)}
+
+    def _base_spirit(self, base: str | None) -> int:
+        """A base's own Spirit property ("Spirit: 100" on sceptres); PoB adds it to the character."""
+        record = next((b for b in self.items.bases.values() if b.get("name") == base), None) if base else None
+        return next((int(m.group(1)) for p in (record or {}).get("properties") or [] if (m := BASE_SPIRIT.match(p))), 0)
+
+    def _gear_modifiers(self, slot: str, base: str, affixes: list[str], not_exported: list[dict]) -> list[str]:
+        """The best-tier text of each verified modifier (one modifier can be several stat lines)."""
+        kept, lines = [], []
+        for text in affixes:
+            fact = self.affix_fact(f"{base}: {text}")
+            if fact.get("expected") == "affix":
+                not_exported.append({**fact, "input": text})
+                continue
+            fact = {**fact, "item": slot, "input": text}          # the 3 + 3 count is per item, not per base
+            problem = _affix_conflict(fact, kept)
+            if problem:
+                not_exported.append({"input": text, "expected": "affix", "reason": problem, "suggestions": []})
+                continue
+            if any(_same_modifier(fact, other) for other in kept):
+                continue
+            best = (fact.get("best") or {}).get("text")
+            if not best:
+                not_exported.append({"input": text, "expected": "affix", "suggestions": [],
+                                     "reason": "the modifier has no English text in the local data"})
+                continue
+            kept.append(fact)
+            lines.append(best)
+        return lines
 
     def _pob_ids(self, cls: str, ascendancy: str | None) -> tuple[int, str | None]:
         """PoB's class integer id and ascendancy internal id (None when PoB has none for it)."""
@@ -855,6 +1204,12 @@ class BuildTools:
             return None
         gem_level, needs = gem_level_and_needs(main["record"], level)
         gems, seen, adds = [replace(main["gem"], level=gem_level)], set(), {}
+        records = [(main["name"], main["kind"], main["record"])]
+        cost = str(main["record"].get("cost") or "")
+        base_spirit = _number(SPIRIT_COST, cost)
+        persistent = "persistent" in {str(t).casefold() for t in main["record"].get("tags") or []}
+        spirit_known = bool(base_spirit) or not (SPIRIT_RANGE.search(cost) or persistent)
+        spirit, multiplier, to_life = base_spirit, 1.0, False
         allowed = self._support_slugs(main["slug"])
         for name in supports:
             record = self._pob_gem_record(name)
@@ -866,11 +1221,18 @@ class BuildTools:
                 continue
             seen.add(record["slug"])
             gems.append(record["gem"])
+            records.append((record["name"], record["kind"], record["record"]))
             for key, value in support_needs(record["record"]).items():
                 adds[key] = adds.get(key, 0) + value
+            if base_spirit:                    # a support reserves extra Spirit only on a skill that reserves it
+                spirit += _number(SPIRIT_EXTRA, record["record"].get("main_stat"))
+                multiplier *= _number(SPIRIT_MULTIPLIER, record["record"].get("main_stat")) / 100 or 1
+                to_life |= bool(SPIRIT_TO_LIFE.search(str(record["record"].get("description") or "")))
         return {"group": PobSkillGroup(label=main["name"], gems=tuple(gems)), "label": main["name"],
                 "slug": main["slug"], "colour": main["colour"], "checked": allowed is not None, "needs": needs,
-                "support_adds": adds}
+                "support_adds": adds, "records": records,
+                # PoB: (base + additional reservation) x the supports' multipliers, rounded
+                "spirit": 0 if to_life else math.floor(spirit * multiplier + 0.5), "spirit_known": spirit_known}
 
     def _support_problem(self, name: str, record: dict | None, main: dict, allowed: set[str] | None,
                          count: int) -> dict | None:
@@ -1090,6 +1452,55 @@ def _attribute(value: str | None) -> str | None:
     return key
 
 
+def _parse_gear(entry: str) -> tuple[str, str, list[str]]:
+    """'Slot: item; modifier; modifier' → (PoB slot, item, modifiers)."""
+    parts = AFFIX_SEPARATOR.split(entry, maxsplit=1)
+    if len(parts) != 2 or not clean_text(parts[0]):
+        raise BadArgument(f"a gear entry is 'slot: item; modifier; modifier', e.g. "
+                          f"'Ring 1: Ruby Ring; +# to maximum Life'; got {entry[:MAX_ECHO_LEN]!r}")
+    slot = SLOT_ALIASES.get(clean_text(parts[0]).casefold())
+    if slot is None:
+        raise BadArgument(f"unknown gear slot {clean_text(parts[0])[:MAX_ECHO_LEN]!r}; slots: {', '.join(SLOT_CLASSES)}")
+    item, *affixes = [clean_text(p) for p in GEAR_SEPARATOR.split(parts[1])]
+    if not item:
+        raise BadArgument(f"a gear entry needs an item after the slot; got {entry[:MAX_ECHO_LEN]!r}")
+    for name in [item, *affixes]:
+        if len(name) > MAX_NAME_LEN:
+            raise BadArgument(f"a name in gear is longer than {MAX_NAME_LEN} characters")
+    return slot, item, [a for a in affixes if a]
+
+
+def _item_lines(texts: list[str] | None) -> tuple[str, ...]:
+    """Stat lines for PoB from stored modifier texts: one line per stat (a modifier's text can
+    hold several), every range at its upper end, lines the game hides left out."""
+    lines = [line.strip() for text in texts or [] if text for line in upper_value(text).split("\n")]
+    return tuple(line for line in lines if line and HIDDEN_LINE not in line and not INTERNAL_LINE.match(line))
+
+
+def _offhand_problem(weapon: str | None, offhand: str) -> str | None:
+    """Why the off-hand item cannot sit next to the main-hand class (None: no weapon), or None."""
+    if offhand == "Quivers":
+        return None if weapon == "Bows" else "a quiver goes in Weapon 2 only with a bow in Weapon 1"
+    if weapon == "Bows":
+        return "a bow in Weapon 1 takes only a quiver in Weapon 2"
+    if weapon in TWO_HANDED:
+        return f"Weapon 1 holds a two-handed item ({weapon}); Weapon 2 stays empty"
+    if offhand in OFFHAND_WEAPONS and weapon in NO_WEAPON_OFFHAND:
+        return f"with {weapon} in Weapon 1, Weapon 2 takes a shield, buckler, focus or sceptre, not a weapon"
+    return None
+
+
+def _gear_attributes(lines: tuple[str, ...]) -> dict[str, int]:
+    """Fixed attributes on an item's lines ("+30 to Dexterity", "+10 to all Attributes")."""
+    totals: dict[str, int] = {}
+    for line in lines:
+        match = GEAR_ATTRIBUTE.match(line.strip())
+        if match:
+            for key in ATTRIBUTE_FAMILIES[match.group(2).casefold()]:
+                totals[key] = totals.get(key, 0) + int(match.group(1))
+    return totals
+
+
 def _character_level(value: int | None) -> int | None:
     if value is None:
         return None
@@ -1122,6 +1533,78 @@ def support_needs(record: dict) -> dict[str, int]:
     """What a support gem adds to its skill's attribute requirements ("+5 Int")."""
     found = SUPPORT_NEED.findall(str(record.get("requires_stats") or ""))
     return {ATTRIBUTE_COLUMNS[column]: int(value) for value, column in found}
+
+
+def _gem_lines(record: dict) -> list[str]:
+    """A gem's own text: description, stat lines and the extra columns of its level table (some
+    gems state an effect only there, e.g. "Gain a Frenzy Charge when you Freeze ...")."""
+    columns = (record.get("level_effects") or [{}])[0]
+    extra = [key for key in columns if key not in LEVEL_TABLE_COLUMNS]
+    lines = [record.get("description"), *(record.get("extra_properties") or []), record.get("main_stat"), *extra]
+    return [sentence for line in lines if line for sentence in _sentences(str(line))]
+
+
+def _sentences(text: str) -> list[str]:
+    return [" ".join(part.split()) for part in re.split(r"(?<=[.!?])\s+|\n", text) if part.strip()]
+
+
+def _line_options(line: str, tags: set[str]) -> list[str]:
+    """The configuration options one line of the build's text is evidence for."""
+    if NOT_EVIDENCE.search(line):
+        return []
+    found = [option for kind, option in CHARGE_OPTIONS.items()
+             if re.search(CHARGE_GAIN.format(kind=kind), line, re.I)
+             and not re.search(CHARGE_TRIGGERED.format(kind=kind), line, re.I)]
+    for option, words in STATE_OPTIONS.items():
+        if re.search(STATE_CAUSE.format(w=words), line, re.I) and not re.search(STATE_BENEFIT.format(w=words), line, re.I):
+            found.append(option)
+    exposure = EXPOSURE_CAUSE.search(line)
+    if exposure:
+        element = (exposure.group(2) or "").casefold()
+        if element == "elemental" or "elemental resistances" in line.casefold():
+            elements = list(EXPOSURE_OPTIONS)
+        elif element in EXPOSURE_OPTIONS:
+            elements = [element]
+        else:
+            elements = [e for e in EXPOSURE_OPTIONS if e in tags]
+        found += [EXPOSURE_OPTIONS[e] for e in elements]
+    if CRIT_RECENT.search(line):
+        found.append(CRIT_RECENTLY)
+    return found
+
+
+def _blocked_options(line: str) -> set[str]:
+    """Options a "cannot …" line rules out for its skill group (e.g. a support whose skills
+    cannot inflict Shock, or cannot generate Frenzy Charges)."""
+    if not CANNOT.search(line) or NOT_A_BLOCK.search(line):
+        return set()
+    blocked = {option for kind, option in CHARGE_OPTIONS.items() if re.search(rf"\b{kind} charges?\b", line, re.I)}
+    blocked |= {option for option, words in STATE_OPTIONS.items() if re.search(rf"\b(?:{words})\w*", line, re.I)}
+    return blocked
+
+
+def _config_note(text: dict, options: dict) -> str:
+    """The line for PoB's Notes tab."""
+    if not options:
+        return text["pob_config_none"]
+    return text["pob_config_on"].format(names=", ".join(text["config_labels"][o] for o in options))
+
+
+def _config_notes(text: dict, options: dict, asked: bool) -> list[str]:
+    if not asked:
+        return [text["pob_config_off"]]
+    notes = [_config_note(text, options)]
+    if any(o in CHARGE_OPTIONS.values() for o in options):
+        notes.append(text["pob_config_charges"])
+    missing = [text["config_labels"][o] for o in NINJA_OPTIONS if o not in options]
+    if missing:
+        notes.append(text["pob_config_ladder"].format(names=", ".join(missing)))
+    return notes
+
+
+def _number(pattern: re.Pattern, text) -> int:
+    match = pattern.search(str(text or ""))
+    return int(match.group(1)) if match else 0
 
 
 def _whole(value) -> int | None:

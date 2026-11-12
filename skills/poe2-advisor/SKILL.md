@@ -71,15 +71,26 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
    below it.
 9. Give a Path of Building code: call `export_pob` with the class (or ascendancy), the verified
    passives as `targets` (the same as for `path_to`) and one `"skill: support, support"` entry
-   per skill group, main skill first. Pass `character_level` when the user asked for a build at
-   a level (123 passive points is level 100). The tool works out from the data, and you must not:
+   per skill group, main skill first, and the verified gear in `gear`: one
+   `"slot: item; modifier; modifier"` per item, e.g. `"Ring 1: Ruby Ring; +# to maximum Life"`
+   (slots: Weapon 1/2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1/2, Belt, Charm 1-3,
+   Flask 1/2; a unique takes no modifiers). Each modifier is written at the top of its best tier,
+   so say the PoB numbers are an ideal: real items roll lower. Pass `character_level` when the
+   user asked for a build at a level (123 passive points is level 100). The tool works out from the data, and you must not:
    the character level (from the points spent), each skill gem's level (the highest that level
    can use, from the gem's level table) and which attribute each attribute passive gets (toward
    the gems' requirements first). Put `code` in a code block after the sources, followed by
-   `how_to_import` and `notes`: the code has no gear yet, so PoB's numbers cover the passive
-   tree and gems only. Say what `not_exported` left out and why. Report `summary.attributes`:
-   where `need` is above `have`, the gems' Strength / Dexterity / Intelligence requirement is
-   not met by the tree, so say it must come from gear, or pick gems the build can use. An older
+   `how_to_import` and `notes`. Say what `not_exported` left out and why. Report `summary.attributes`:
+   where `need` is above `have`, the Strength / Dexterity / Intelligence the gems and gear
+   require is not met by the tree and the exported gear, so say what is missing and where it
+   could come from (more attribute modifiers on gear, other gems). `summary.spirit` works the
+   same way for persistent skills: each spirit gem reserves Spirit and some supports add to it;
+   when `need` is above `have`, drop a persistent skill or such a support (or add Spirit on
+   gear) and export again, so the code does not open in PoB with a warning.
+   The code also switches on PoB Configuration options (charges, enemy Shocked / Bleeding /
+   Exposure and so on) for which the build itself has evidence; `summary.config` names each with
+   its source gem, passive or item. List them: PoB's damage figure assumes these states. When
+   comparing with a ladder character, say which of poe.ninja's assumed states this build lacks. An older
    PoB skips or refuses what it does not have: suggest `/pobg:update-pob`.
 
 ## Notes

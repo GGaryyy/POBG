@@ -57,11 +57,13 @@ def test_route_and_skills_become_a_code(tools):
                               "points": {"passive": {"used": 4, "limit": 123, "over": False},
                                          "ascendancy": {"used": 0, "limit": 8, "over": False}},
                               "skill_groups": 2, "gems": 3, "main_skill": "Unearth",
-                              "character_level": 5, "attribute_passives": {},
+                              "character_level": 5, "attribute_passives": {}, "gear": [],
+                              "spirit": {"have": 60, "need": 30},
+                              "config": [],                         # the synthetic Herald of Ash has no damage tag
                               "attributes": {"str": {"have": 7, "need": 4}, "dex": {"have": 7, "need": 4},
                                              "int": {"have": 15, "need": 9}}}
     assert res["groups"] == [{"skill": "Unearth", "level": 2, "gems": ["Unearth", "Added Fire Damage"]},
-                             {"skill": "Herald of Ash", "level": 1, "gems": ["Herald of Ash"]}]
+                             {"skill": "Herald of Ash", "level": 1, "gems": ["Herald of Ash"], "spirit": 30}]
     assert xml_of(res).find("Build").attrib["className"] == "Witch"
     assert spec["title"] == "Witch (POBG)"
 
@@ -208,7 +210,7 @@ def test_a_skill_missing_from_the_graph_is_unchecked_not_rejected(tmp_path):
     res = tools.export_pob("Witch", skills=["Unearth: Added Fire Damage", "Herald of Ash: Added Fire Damage"])
     assert [name for name, _ in gems_of(res)[0]] == ["Unearth", "Added Fire Damage"]
     assert [e["input"] for e in res["not_exported"]] == ["Added Fire Damage"]      # Herald of Ash: checked, rejected
-    assert "not checked for Unearth:" in res["notes"][-1]
+    assert any("not checked for Unearth:" in line for line in res["notes"])
 
 
 # -- main skill ------------------------------------------------------------------------------------------
@@ -293,7 +295,7 @@ def test_what_the_passives_cannot_cover_is_reported(attr_tools):
     res = attr_tools.export_pob("Witch", ["Heart of Ice"], ["Unearth: Added Fire Damage"], character_level=10)
     assert res["groups"][0]["level"] == 3                                           # level 3 needs level 10
     assert res["summary"]["attributes"]["int"] == {"have": 25, "need": 30}          # PoB: max(gem 30, supports 5)
-    assert "Intelligence: 25 of the 30 the gems require; the missing 5 must come from gear" in res["notes"][-1]
+    assert "Intelligence: 25 of the 30 the gems and gear require; the missing 5 must come from gear" in res["notes"][-1]
     assert "Only fixed attributes are counted" in res["notes"][-1]
 
 
@@ -311,7 +313,7 @@ def test_a_skill_without_a_colour_sends_the_rest_to_the_most_needed_attribute(at
     herald["level_effects"] = [{"Level": "1", "Requires Level": "0", "Str": "4", "Dex": "12"}]
     res = attr_tools.export_pob("Witch", ["Heart of Ice"], ["Herald of Ash"])     # short 5 Dex, two passives
     assert overrides_of(res) == {"strNodes": "", "dexNodes": "110,111", "intNodes": ""}
-    assert res["notes"][-1].startswith("2 attribute passives on the route are set to cover")
+    assert any(line.startswith("2 attribute passives on the route are set to cover") for line in res["notes"])
 
 
 def test_ties_go_to_the_main_skill_attribute(attr_tools):
@@ -406,6 +408,168 @@ def test_gem_level_and_needs_reads_the_level_table():
     assert bt.support_needs({"requires_stats": "(4 — 157) Dex"}) == {} and bt.support_needs({}) == {}
 
 
+# -- spirit ---------------------------------------------------------------------------------------------
+
+def test_spirit_reserved_against_what_the_level_has(tools):
+    low = tools.export_pob("Witch", skills=["Unearth", "Herald of Ash"])                 # PoB counts every quest reward
+    assert low["summary"]["spirit"] == {"have": 60, "need": 30}
+    assert not any(line.startswith("Spirit:") for line in low["notes"])
+    assert any(line.startswith("Spirit counts every Spirit quest reward, as PoB does by default; in the game they come "
+                               "at area levels 11, 36.") for line in low["notes"])
+    high = tools.export_pob("Witch", skills=["Herald of Ash"], character_level=90)
+    assert high["summary"]["spirit"]["have"] == 60
+    assert not any(line.startswith("Spirit counts every") for line in high["notes"])
+
+
+def test_spirit_short_gets_a_note(tmp_path):
+    tools = make_tools(tmp_path)
+    tools.lookup._gem_record("spirit_gem", "Herald_of_Ash")["cost"] = "90 Spirit"
+    res = tools.export_pob("Witch", skills=["Herald of Ash"])
+    assert res["summary"]["spirit"] == {"have": 60, "need": 90}
+    assert any(line.startswith("Spirit: the persistent skills and their supports reserve 90, the character has 60; "
+                               "30 short.") for line in res["notes"])
+
+
+def test_reservation_multiplier_life_reservation_and_unknown_costs(tmp_path):
+    tools = make_tools(tmp_path)
+    tools.lookup.graph = None
+    added = tools.lookup._gem_record("support_gem", "Added_Fire_Damage")
+    added["main_stat"] = "Reservation Multiplier: 130%"
+    assert tools.export_pob("Witch", skills=["Herald of Ash: Added Fire Damage"])["summary"]["spirit"]["need"] == 39
+    added["main_stat"] = "Reservation Multiplier: 135%"           # 30 x 1.35 = 40.5: PoB rounds a half up
+    assert tools.export_pob("Witch", skills=["Herald of Ash: Added Fire Damage"])["summary"]["spirit"]["need"] == 41
+    added.update(main_stat=None, description="Supports Persistent Skills, making them Reserve Life instead of Spirit .")
+    assert tools.export_pob("Witch", skills=["Herald of Ash: Added Fire Damage"])["summary"]["spirit"]["need"] == 0
+    unearth = tools.lookup._gem_record("skill_gem", "Unearth")
+    unearth.update(cost="(90 — 30) Spirit", tags=["Minion", "Persistent"])
+    res = tools.export_pob("Witch", skills=["Unearth", "Herald of Ash"])
+    assert res["summary"]["spirit"] == {"have": 60, "need": 30, "unknown": ["Unearth"]}
+    assert any(line.startswith("Spirit reserved by Unearth is not counted") for line in res["notes"])
+
+
+def test_supports_add_reservation_only_on_skills_that_reserve_spirit(tmp_path):
+    tools = make_tools(tmp_path)
+    tools.lookup.graph = None                                              # so both skills take the support
+    tools.lookup._gem_record("support_gem", "Added_Fire_Damage")["main_stat"] = "Additional Reservation: 20 Spirit"
+    res = tools.export_pob("Witch", skills=["Herald of Ash: Added Fire Damage", "Unearth: Added Fire Damage"],
+                           character_level=40)
+    assert res["summary"]["spirit"] == {"have": 60, "need": 50}
+    assert [g.get("spirit") for g in res["groups"]] == [50, None]
+
+
+def test_spirit_from_passives_counts_and_no_quest_data_leaves_have_unknown(tmp_path):
+    tools = make_tools(tmp_path)
+    res = tools.export_pob("Infernalist", ["Beidat's Will"], ["Herald of Ash"])          # the node gives +10 Spirit
+    assert res["summary"]["spirit"] == {"have": 70, "need": 30}
+    doc = copy.deepcopy(routing_classes_doc())
+    doc.pop("pob_spirit_quests")
+    bare = make_tools(tmp_path / "bare", classes=doc).export_pob("Witch", skills=["Herald of Ash"])
+    assert bare["summary"]["spirit"] == {"have": None, "need": 30}
+    assert not any(line.startswith("Spirit:") for line in bare["notes"])
+
+
+# -- PoB configuration -------------------------------------------------------------------------------------
+
+def config_of(result):
+    node = xml_of(result).find("Config/ConfigSet")
+    return [] if node is None else [i.attrib["name"] for i in node.findall("Input")]
+
+
+@pytest.fixture
+def cfg_tools(tmp_path):
+    tools = make_tools(tmp_path)
+    unearth = tools.lookup._gem_record("skill_gem", "Unearth")
+    unearth.update(description="Raise a corpse. Grants you a Power Charge on Hit.", extra_properties=["Blinds Enemies"],
+                   tags=["Spell", "Minion", "Lightning"])
+    tools.lookup._gem_record("support_gem", "Added_Fire_Damage").update(
+        description="Supported Skills deal more damage against Bleeding Enemies.", extra_properties=[],
+        main_stat=None, tags=["Support", "Fire"])
+    tools.lookup.passives["105"]["stats"] = ["10% chance to Daze on Hit"]
+    return tools
+
+
+def test_options_come_with_their_evidence(cfg_tools):
+    res = cfg_tools.export_pob("Witch", ["Heart of Ice"], ["Unearth: Added Fire Damage"])
+    assert config_of(res) == ["usePowerCharges", "conditionEnemyShocked", "conditionEnemyBlinded", "conditionEnemyDazed"]
+    evidence = {c["option"]: c["evidence"] for c in res["summary"]["config"]}
+    assert evidence["usePowerCharges"] == [{"source": "gem", "name": "Unearth", "text": "Grants you a Power Charge on Hit."}]
+    assert evidence["conditionEnemyShocked"][0] == {"source": "glossary", "name": "Shock",
+                                                    "text": "Lightning damage from Hits (Unearth)"}
+    assert evidence["conditionEnemyDazed"][0]["source"] == "passive" and evidence["conditionEnemyDazed"][0]["name"] == "Heart of Ice"
+    assert "conditionEnemyBleeding" not in evidence                     # "against Bleeding Enemies" only benefits
+    assert "conditionEnemyIgnited" not in evidence                      # a support's element tag is not damage
+    assert {c["label"] for c in res["summary"]["config"]} == {"Power Charges", "enemy Shocked", "enemy Blinded",
+                                                              "enemy Dazed"}
+
+
+def test_config_notes_and_the_notes_tab(cfg_tools):
+    res = cfg_tools.export_pob("Witch", ["Heart of Ice"], ["Unearth"])
+    assert any(n.startswith("PoB Configuration switched on, each from this build's own gems, passives or gear: "
+                            "Power Charges, enemy Shocked, enemy Blinded, enemy Dazed.") for n in res["notes"])
+    assert "Charges are counted at their maximum; set a lower count in PoB's Configuration tab." in res["notes"]
+    ladder = next(n for n in res["notes"] if n.startswith("poe.ninja's ladder exports"))
+    assert "Crit Recently, enemy Bleeding" in ladder and "enemy Blinded" not in ladder and "enemy Dazed" not in ladder
+    assert "Power Charges, enemy Shocked" in xml_of(res).find("Notes").text
+    zh = cfg_tools.export_pob("女巫", ["冰之心"], ["掘屍"])
+    assert any(n.startswith("PoB 配置已開啟") and "暴擊球" in n for n in zh["notes"])
+
+
+def test_a_skill_left_out_is_no_evidence(cfg_tools):
+    cfg_tools.lookup._gem_record("support_gem", "Faster_Attacks").update(description="Grants a Frenzy Charge on Hit.")
+    res = cfg_tools.export_pob("Witch", skills=["Unearth: Faster Attacks"])           # Faster Attacks cannot support it
+    assert "useFrenzyCharges" not in config_of(res)
+
+
+def test_gear_lines_and_weapon_elements_are_evidence(tmp_path):
+    tools = make_tools(tmp_path)
+    tools.lookup._gem_record("skill_gem", "Unearth").update(description="Raise a corpse.", extra_properties=[], tags=[])
+    gear = [{"label": "Ring", "item": bt.PobItem("Ring 1", "RARE", "x", "Ruby Ring", (), ("5% chance to Poison on Hit",))},
+            {"label": "Bow", "item": bt.PobItem("Weapon 1", "RARE", "x", "Bow", (), ("Adds 5 to 9 Fire Damage",))}]
+    plan = tools._config_plan([], [], gear)                               # no attack: the weapon's element is unused
+    assert list(plan) == ["conditionEnemyPoisoned"]
+    attack = {"records": [("Leap Slam", "skill_gem", {"tags": ["Attack"], "description": "Jump."})]}
+    plan = tools._config_plan([], [attack], gear)
+    assert list(plan) == ["conditionEnemyIgnited", "conditionEnemyPoisoned"]
+    offhand = [{"label": "Quiver", "item": bt.PobItem("Weapon 2", "RARE", "x", "Quiver", (), ("Adds 5 to 9 Fire Damage",))}]
+    assert list(tools._config_plan([], [attack], offhand)) == []           # only the main hand's element
+    assert plan["conditionEnemyPoisoned"][0] == {"source": "gear", "name": "Ring", "text": "5% chance to Poison on Hit"}
+
+
+def test_buffs_do_not_hit_and_cannot_lines_block_their_group(tmp_path):
+    tools = make_tools(tmp_path)
+    tools.lookup.graph = None
+    tools.lookup._gem_record("spirit_gem", "Herald_of_Ash").update(tags=["Buff", "Aura", "Persistent", "Lightning"],
+                                                                   description="An aura.", extra_properties=[])
+    assert "conditionEnemyShocked" not in config_of(tools.export_pob("Witch", skills=["Herald of Ash"]))
+    tools.lookup._gem_record("skill_gem", "Contagion").update(tags=["Spell", "Curse", "Cold"], description="A curse.",
+                                                              extra_properties=[])        # spell-tagged, does not hit
+    assert "conditionEnemyChilled" not in config_of(tools.export_pob("Witch", skills=["Contagion"]))
+    tools.lookup._gem_record("skill_gem", "Unearth").update(tags=["Spell", "Lightning"], description="Zap.",
+                                                            extra_properties=[])
+    tools.lookup._gem_record("support_gem", "Added_Fire_Damage").update(
+        description="Supported Skills Cannot inflict Shock", extra_properties=[], main_stat=None)
+    assert "conditionEnemyShocked" in config_of(tools.export_pob("Witch", skills=["Unearth"]))
+    blocked = tools.export_pob("Witch", skills=["Unearth: Added Fire Damage"])
+    assert "conditionEnemyShocked" not in config_of(blocked)
+
+
+def test_no_evidence_and_config_off_write_no_config(tmp_path):
+    tools = make_tools(tmp_path)
+    for kind, slug in (("skill_gem", "Unearth"), ("spirit_gem", "Herald_of_Ash")):
+        tools.lookup._gem_record(kind, slug).update(description="Nothing.", extra_properties=[], tags=[])
+    res = tools.export_pob("Witch", skills=["Unearth", "Herald of Ash"])
+    assert config_of(res) == [] and res["summary"]["config"] == []
+    assert any(n.startswith("No PoB Configuration option has evidence") for n in res["notes"])
+    off = make_tools(tmp_path / "b").export_pob("Witch", skills=["Unearth"], config=False)
+    assert config_of(off) == [] and any(n.startswith("PoB Configuration left empty as asked") for n in off["notes"])
+
+
+@pytest.mark.parametrize("value", ["yes", 1, None])
+def test_config_must_be_a_boolean(tools, value):
+    with pytest.raises(BadArgument, match="config must be true or false"):
+        tools.export_pob("Witch", skills=["Unearth"], config=value)
+
+
 # -- routes PoB can build ---------------------------------------------------------------------------------
 
 def test_routes_do_not_pass_through_another_class_start(tools):
@@ -440,7 +604,7 @@ def test_writes_no_file(tmp_path):
 # -- errors ------------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("kwargs, message", [
-    ({"class_name": "Witch"}, "at least one target passive or one skill"),
+    ({"class_name": "Witch"}, "at least one target passive, skill or gear entry"),
     ({"class_name": "Nobody", "targets": ["Heart of Ice"]}, "unknown class"),
     ({"class_name": "", "targets": ["Heart of Ice"]}, "class_name must not be empty"),
     ({"class_name": "Witch", "skills": "Unearth"}, "skills must be a list"),

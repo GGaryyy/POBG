@@ -1,7 +1,7 @@
 {
   "version": "4.5",
   "source_url": "https://poe2db.tw/data/passive-skill-tree/4.5/data_tw.json",
-  "fetched_at": "2026-11-12T07:48:32.304729+00:00",
+  "fetched_at": "2026-11-12T09:04:16.071308+00:00",
   "points": {
     "passive": 123,
     "ascendancy": 8
@@ -280,6 +280,20 @@
     {
       "level": 62,
       "quest_points": 24
+    }
+  ],
+  "pob_spirit_quests": [
+    {
+      "level": 11,
+      "spirit": 30
+    },
+    {
+      "level": 36,
+      "spirit": 30
+    },
+    {
+      "level": 61,
+      "spirit": 40
     }
   ]
 }

@@ -655,16 +655,28 @@ def test_quest_acts_gives_nothing_for_what_it_cannot_use(text):
     assert cp.quest_acts(text) == []
 
 
-def test_load_quest_acts_from_the_cache_and_offline_without_it(tmp_path):
-    assert cp.load_quest_acts(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == []
+def test_load_quest_rewards_from_the_cache_and_offline_without_it(tmp_path):
+    assert cp.load_quest_rewards(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == {"acts": [], "spirit": []}
     (tmp_path / f"QuestRewards_{VERSION}.lua").write_text(QUESTS, encoding="utf-8")
-    assert cp.load_quest_acts(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == cp.quest_acts(QUESTS)
+    assert cp.load_quest_rewards(mini_spec(), fetch=no_network, cache_dir=tmp_path, offline=True) == {
+        "acts": cp.quest_acts(QUESTS), "spirit": []}
+
+
+def test_quest_spirit_reads_spirit_rewards_with_their_level():
+    text = """return {
+\t{ ["Act"] = 1, ["Stat"] = "+30 to Spirit", ["AreaLevel"] = 11, ["useConfig"] = true },
+\t{ ["Act"] = 1, ["Stat"] = "+10% to Cold Resistance", ["AreaLevel"] = 2 },
+\t{ ["Act"] = 5, ["Options"] = { "a" }, ["Stat"] = "+40 to Spirit", ["AreaLevel"] = 61 },
+\t{ ["Act"] = 3, ["Stat"] = "+30 to Spirit" },
+}"""
+    assert cp.quest_spirit(text) == [{"level": 11, "spirit": 30}, {"level": 61, "spirit": 40}]
+    assert cp.quest_spirit("return {}") == []
 
 
 def test_a_failed_quest_download_gives_no_table_instead_of_stopping(tmp_path, capsys):
     def down(url):
         raise requests.ConnectionError("404")
-    assert cp.load_quest_acts(mini_spec(), fetch=down, cache_dir=tmp_path) == []
+    assert cp.load_quest_rewards(mini_spec(), fetch=down, cache_dir=tmp_path) == {"acts": [], "spirit": []}
     assert "quest rewards not fetched" in capsys.readouterr().err
 
 
@@ -691,8 +703,10 @@ def test_free_nodes_are_marked_no_point():
 
 
 def test_classes_doc_stores_the_act_table(nodes):
-    doc = cp.classes_doc(mini_tree_data(), list(nodes.values()), "t", None, [{"level": 1, "quest_points": 0}])
-    assert doc["pob_level_acts"] == [{"level": 1, "quest_points": 0}]
+    quests = {"acts": [{"level": 1, "quest_points": 0}, {"level": 12, "quest_points": 4}],
+              "spirit": [{"level": 11, "spirit": 30}]}
+    doc = cp.classes_doc(mini_tree_data(), list(nodes.values()), "t", None, quests)
+    assert doc["pob_level_acts"] == quests["acts"] and doc["pob_spirit_quests"] == quests["spirit"]
     assert "pob_level_acts" not in cp.classes_doc(mini_tree_data(), list(nodes.values()), "t")
 
 

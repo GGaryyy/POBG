@@ -6,7 +6,18 @@ import zlib
 import pytest
 
 from src.tools import pob_export as pe
-from src.tools.pob_export import BadCode, PobBuild, PobGem, PobSkillGroup, build_xml, decode_code, encode_code
+from src.tools.pob_export import (
+    BadCode,
+    PobBuild,
+    PobGem,
+    PobItem,
+    PobSkillGroup,
+    build_xml,
+    decode_code,
+    encode_code,
+    item_text,
+    upper_value,
+)
 
 ICE_SHOT = PobGem("Ice Shot", "Metadata/Items/Gem/SkillGemIceShot", "IceShot")   # PoB's own key has "Gem"
 PIERCE = PobGem("Pierce I", "Metadata/Items/Gems/SupportGemPierce", "PierceSupport", support=True)
@@ -157,3 +168,61 @@ def test_gem_level_and_level_mode_are_written():
     root = parsed(sample(groups=[PobSkillGroup("Ice Shot", (gem, PIERCE))], level=15, auto_level=False))
     assert [g.attrib["level"] for g in root.findall("Skills/SkillSet/Skill/Gem")] == ["5", "1"]
     assert root.find("Build").attrib["characterLevelAutoMode"] == "false"
+
+
+@pytest.mark.parametrize("text, upper", [
+    ("+(100—119) to maximum Life", "+119 to maximum Life"),
+    ("Adds (62—84) to (95—145) Fire Damage", "Adds 84 to 145 Fire Damage"),
+    ("(0.5—1.2)% of Damage Leeched", "1.2% of Damage Leeched"),
+    ("(-10—-5)% to Chaos Resistance", "-5% to Chaos Resistance"),
+    ("+(5-8) to Dexterity", "+8 to Dexterity"),
+    ("+(5–8) to Dexterity", "+8 to Dexterity"),
+    ("100% increased Attack Speed", "100% increased Attack Speed"),
+])
+def test_upper_value_takes_the_upper_end_of_every_range(text, upper):
+    assert upper_value(text) == upper
+
+
+def test_item_text_for_each_rarity():
+    rare = PobItem("Ring 1", "RARE", "POBG Ring 1", "Ruby Ring", ("+30% to Fire Resistance",), ("+119 to maximum Life",))
+    assert item_text(rare) == ("Rarity: RARE\nPOBG Ring 1\nRuby Ring\nImplicits: 1\n+30% to Fire Resistance\n"
+                               "+119 to maximum Life")
+    assert item_text(PobItem("Helmet", "NORMAL", "x", "Leatherbound Hood")) == ("Rarity: NORMAL\nLeatherbound Hood\n"
+                                                                              "Implicits: 0")
+    odd = PobItem("Amulet", "UNIQUE", "Odd\x01 Name", "Gold Amulet", (), ("line one\nline two",))
+    assert item_text(odd) == "Rarity: UNIQUE\nOdd Name\nGold Amulet\nImplicits: 0\nline one\nline two"   # one per stat
+
+
+def test_a_modifier_with_two_stats_is_two_lines_and_implicits_count_lines():
+    item = PobItem("Weapon 1", "NORMAL", "x", "Broadsword", ("+1 to Level\n+2 to Spirit",),
+                   ("79% increased Physical Damage\n+200 to Accuracy Rating", " ", "19% increased Attack Speed"))
+    assert item_text(item).splitlines() == ["Rarity: NORMAL", "Broadsword", "Implicits: 2", "+1 to Level", "+2 to Spirit",
+                                            "79% increased Physical Damage", "+200 to Accuracy Rating",
+                                            "19% increased Attack Speed"]
+
+
+def test_flask_and_charm_slots_are_switched_on():
+    items = [PobItem("Flask 1", "NORMAL", "x", "Life Flask"), PobItem("Charm 2", "NORMAL", "x", "Ruby Charm"),
+             PobItem("Belt", "NORMAL", "x", "Fine Belt")]
+    slots = {s.attrib["name"]: s.attrib.get("active") for s in parsed(sample(items=items)).findall("Items/ItemSet/Slot")}
+    assert slots == {"Flask 1": "true", "Charm 2": "true", "Belt": None}
+
+
+def test_items_and_their_slots_go_into_the_build():
+    ring = PobItem("Ring 2", "NORMAL", "x", "Ruby Ring")
+    bow = PobItem("Weapon 1", "NORMAL", "x", "Shortbow")
+    root = parsed(sample(items=[bow, ring]))
+    assert [i.text.splitlines()[1] for i in root.findall("Items/Item")] == ["Shortbow", "Ruby Ring"]
+    assert [(s.attrib["name"], s.attrib["itemId"]) for s in root.findall("Items/ItemSet/Slot")] == [
+        ("Weapon 1", "1"), ("Ring 2", "2")]
+    assert parsed(sample()).find("Items") is None
+
+
+def test_config_section_lists_the_options_switched_on():
+    root = parsed(sample(config=["usePowerCharges", "conditionEnemyShocked"]))
+    config = root.find("Config")
+    assert config.attrib == {"activeConfigSet": "1"}
+    assert config.find("ConfigSet").attrib == {"id": "1", "title": "Default"}
+    assert [i.attrib for i in config.findall("ConfigSet/Input")] == [
+        {"name": "usePowerCharges", "boolean": "true"}, {"name": "conditionEnemyShocked", "boolean": "true"}]
+    assert parsed(sample()).find("Config") is None
