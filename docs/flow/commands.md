@@ -85,9 +85,9 @@ scope. The update changes the copy of `data/` the server runs from.
 
 ![/pobg:update glossary](img/update-glossary.en.svg)
 
-### `ladder`
+### `ninja`
 
-![/pobg:update ladder](img/update-ladder.en.svg)
+![/pobg:update ninja](img/update-ninja.en.svg)
 
 ## `/pobg:update-pob <folder>`: update your Path of Building
 

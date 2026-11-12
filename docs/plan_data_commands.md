@@ -252,3 +252,18 @@ so a missing Chinese hover erased the Chinese text. Fixed by the field-by-field 
 Chinese-coverage gate above; the real glossary update that was running with the old code was
 stopped before it wrote anything (checked: the file was byte-identical to the committed one).
 The other findings and what was done with them are in `docs/reports/code_review_2026-11-11.md`.
+
+## 追加（2026-11-13）：`ladder` 範圍改名為 `ninja`
+
+使用者回饋：`update` 的範圍名稱 `ladder` 不直觀，改成 `ninja` 一看就知道是 poe.ninja 的資料。
+
+- `update_data` 與 `/pobg:update` 的範圍值由 `ladder` 改為 `ninja`；`data_status` 中該資料集的 `name` 與
+  `update_scope` 也跟著改為 `ninja`（各資料集的名稱一向等於它的範圍名稱）。
+- 不保留 `ladder` 作為別名：repo 尚未公開、沒有既有使用者；輸入 `ladder` 會得到列出七個有效範圍的錯誤訊息。
+- 只改範圍名稱。「天梯快照」這個概念、`reference_builds` 的說明文字、內部函式名稱
+  （`_update_ladder`、`_check_ladder`）與資料檔路徑不變。
+- 涉及：`src/tools/maintenance.py`（常數 `LADDER` 改名 `NINJA`）、`build_workflow.py`、`mcp_server.py`、
+  `build_tools.py` 的提示訊息、`skills/status`、`skills/update`、測試、README、`docs/data*.md`、`docs/tools*.md`、
+  `docs/flow/commands*.md` 與流程圖資料（圖檔 `update-ladder.*` 改為 `update-ninja.*`）。
+- 驗收：全部測試通過；`update_data(scope="ninja")` 正常，`scope="ladder"` 回傳範圍錯誤；文件與 skill 中
+  不再把 `ladder` 當作可輸入的範圍。

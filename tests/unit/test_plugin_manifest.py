@@ -153,7 +153,7 @@ def test_status_skill_only_reads():
 def test_update_skill_is_user_invoked_and_requires_a_scope():
     head = frontmatter(UPDATE_SKILL)
     assert head["name"] == "update" and head["disable-model-invocation"] == "true"
-    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ladder>")
+    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja>")
     body = UPDATE_SKILL.split("---", 2)[2]
     assert "$ARGUMENTS" in body and "do not call `update_data`" in body
     assert set(TOOL_LIKE.findall(body)) == {"update_data"}

@@ -157,7 +157,7 @@ def test_ladder_source_and_renderer(tools):
 
 def test_missing_file(svc, tmp_path):
     tools = BuildTools(svc, builds_path=tmp_path / "absent.jsonl")
-    with pytest.raises(ServiceUnavailable, match="scope ladder"):
+    with pytest.raises(ServiceUnavailable, match="scope ninja"):
         tools.reference_builds()
 
 

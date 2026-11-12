@@ -17,7 +17,7 @@ client connects without friction.
 | Bilingual index | English and Traditional Chinese names for gems, every passive node, classes, ascendancies and stat families |
 | Knowledge graph | Stat index ("which passives give X"), supports ↔ skills, glossary mentions |
 | Tools | Eighteen MCP tools: cited lookups, gear (`get_item`, `items_by`, `modifiers_for`), `verify_build` (gems, passives, items, target modifiers), `path_to` (passive route and point cost), `export_pob` (Path of Building code, 0.9.0), `build_workflow`, `data_status`, `update_data` |
-| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time (three gem kinds, passives, items, glossary, ladder) from inside the AI client. `update-pob <folder>` (0.9.0) updates the user's Path of Building, alone or in PoeCharm2, into a new folder |
+| Commands | `status` and `update <scope>` as plugin skills and MCP prompts: see how old the data is and re-fetch one data set at a time (three gem kinds, passives, items, glossary, ninja) from inside the AI client. `update-pob <folder>` (0.9.0) updates the user's Path of Building, alone or in PoeCharm2, into a new folder |
 | Packaging | stdio MCP server started with `uv run`; Claude Code plugin with the `poe2-advisor` skill |
 | Client readiness (0.7.0) | Tool annotations and titles, tool-only fallback for the workflow, portability tests, Windows launcher tested, client guide |
 

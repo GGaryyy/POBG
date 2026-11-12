@@ -27,7 +27,7 @@ the `build_workflow` tool) and, for Claude Code, in
 | `build_workflow` | the step-by-step workflow for a cited build answer, for clients that cannot use MCP prompts |
 | `refresh_gem` | re-fetches one gem page from poe2db and replaces the local record |
 | `data_status` | what the local data holds and how old it is; on request, a check of the live sites |
-| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ladder), a bounded number of requests per call |
+| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the data commands, see
 [data.md](data.md#commands)). Only `refresh_gem` and `update_data` change anything; the other

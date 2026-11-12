@@ -1312,7 +1312,7 @@ class BuildTools:
             if self._builds is None:
                 if not self.builds_path.exists():
                     raise ServiceUnavailable(
-                        "community builds missing; update the ladder data (update_data with scope ladder)")
+                        "community builds missing; update the ladder data (update_data with scope ninja)")
                 try:
                     builds = _read_builds(self.builds_path)
                     modified = self.builds_path.stat().st_mtime

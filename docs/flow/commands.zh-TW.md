@@ -72,9 +72,9 @@ POBG 在 Claude Code 中有四個指令。這份文件畫出每個指令從輸�
 
 ![/pobg:update glossary](img/update-glossary.zh-TW.svg)
 
-### `ladder`
+### `ninja`
 
-![/pobg:update ladder](img/update-ladder.zh-TW.svg)
+![/pobg:update ninja](img/update-ninja.zh-TW.svg)
 
 ## `/pobg:update-pob <資料夾>`：更新你的 Path of Building
 

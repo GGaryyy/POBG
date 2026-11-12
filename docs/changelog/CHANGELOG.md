@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 ## [Unreleased]
 
 ### Changed
+- **The `ladder` update scope is now `ninja`** (`update_data(scope="ninja")`, `/pobg:update ninja`),
+  as the user found `ladder` unclear: `ninja` says where the data comes from. The data set's
+  `name` and `update_scope` in `data_status` change with it. `ladder` is no longer accepted (no
+  alias: the repo had no users yet) and gets the error that lists the seven scopes. The ladder
+  snapshot itself, `reference_builds` and the data file are unchanged
+  (`docs/plan_data_commands.md`).
 - READMEs (English and 繁體中文) rewritten for players who install POBG to use it
   (`docs/plan_readme.md`): a quick start, what a build answer contains, and a new section on
   importing into Path of Building that says which numbers are worked out from the data and
@@ -31,6 +37,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
   drawn by `docs/flow/render_charts.py` (standard library only) from `docs/flow/commands_charts.json`,
   which holds each chart's nodes, routes and both languages' text, so they stay editable.
 - The English README's example questions are English only.
+
+### Fixed
+- The `update_data` tool description said `passives` makes 7 requests; it has made 8 since 0.9.0.
 
 ### Added
 - `docs/flow/commands.md` and `docs/flow/commands.zh-TW.md`: flowcharts of the four

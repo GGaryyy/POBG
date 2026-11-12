@@ -59,11 +59,11 @@ from src.tools.lookup import BASE_DIR, DATA_LOCK, BadArgument, ServiceUnavailabl
 
 GEM_SCOPES = {"skill_gems": "skill_gem", "spirit_gems": "spirit_gem", "support_gems": "support_gem"}
 PASSIVES = "passives"
-LADDER = "ladder"
+NINJA = "ninja"                  # the poe.ninja ladder snapshot
 GLOSSARY = "glossary"
 ITEMS = "items"
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, LADDER)
-WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, LADDER)      # re-fetched as a whole: no names, ages, caps or dry run
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA)
+WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA)      # re-fetched as a whole: no names, ages, caps or dry run
 NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
 MAX_GEMS = 40                    # detail pages per call: keeps one tool call under about a minute
@@ -226,7 +226,7 @@ class DataMaintenance:
     def _ladder_status(self) -> dict:
         path = self.ladder_path
         rows, _ = _rows(path)
-        return {"name": LADDER, "update_scope": LADDER, "league": rows[0].get("league") if rows else None,
+        return {"name": NINJA, "update_scope": NINJA, "league": rows[0].get("league") if rows else None,
                 **_dated(path)}
 
     def _index_status(self) -> dict:
@@ -255,7 +255,7 @@ class DataMaintenance:
                 stack.enter_context(contextlib.redirect_stdout(sys.stderr))
                 if scope == PASSIVES:
                     result = self._update_passives(counting)
-                elif scope == LADDER:
+                elif scope == NINJA:
                     result = self._update_ladder(counting)
                 elif scope == ITEMS:
                     result = self._update_items(counting, names or [])

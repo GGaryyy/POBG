@@ -24,7 +24,7 @@ Path of Building。
 | `passives` | PathOfBuilding-PoE2 的天賦樹與任務獎勵（匯入碼用的 PoB 等級表與精魂獎勵）、poe2db 的兩個天賦樹資料檔與四個列表頁；並重建屬性索引 | 8 |
 | `items` | 69 個裝備類別頁（中英；裝備、藥劑、護符、珠寶）上的基底、傳奇與詞綴；加上類別名稱（`Bows`、`Body Armours`）就只更新那幾類 | 每次呼叫最多 20 個請求（即 10 個類別頁的中英兩版，每頁約 600 KB），總共 138 個請求；重複呼叫直到完成，全部抓完並通過檢查才一次寫入 |
 | `glossary` | 所有名詞解釋（英文與中文的 hover 片段），透過列表頁與少數寶石頁找到 | 每次呼叫最多 50 個（一分鐘內），總共約 750 個；重複呼叫直到完成，全部抓完才一次寫入 |
-| `ladder` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
+| `ninja` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
 
 範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、`/pobg:update items Bows`、
 「更新超過 30 天的技能寶石」。
@@ -71,7 +71,7 @@ uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"    
 | poe2db hover 片段 | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}`（`lang` = `us` / `tw`）與 `…/Poe_Data_GemEffects_hover/{hash}` | 名詞解釋（357 個名詞，英文與中文）；寶石 hover 只用來找中文的名詞連結 | 每個約 1.2 KB，間隔 0.3 秒，重建名詞解釋時才抓 |
 | poe2db 天賦樹資料 | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` 與 `data_tw.json`（版本號取自 `https://poe2db.tw/tw/passive-skill-tree/` 及其在 `cdn.poe2db.tw/js/` 的 script） | 每個天賦節點的中文名稱與屬性文字、職業與昇華名稱、點數上限 | 重建天賦樹時抓 2 個檔案；檢視頁與 script 只在 probe 檢查新版本時讀取 |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json` 與 `…/dev/src/Data/QuestRewards.lua`（probe 另會列出 `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`） | 天賦樹結構：所有節點、連線、名稱、屬性、keystone／notable 標記、職業起點、昇華、座標；PoB 用來算角色等級的章節表與精魂任務獎勵 | 重建天賦樹時抓 2 個檔案 |
-| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`、`https://poe.ninja/poe2/api/builds/{version}/search`、`https://poe.ninja/poe2/api/builds/dictionary/{hash}` | 天梯角色的職業、等級、主技能、寶石、keystone、聯盟、排名。角色名稱與帳號名稱在寫入前就丟棄 | 每份快照約 600 個角色（數種排序各取前 100 名）：執行 `update ladder` 時最多 14 個請求，間隔 0.8 秒。本 repo 內的快照抓於 2026-11-11，聯盟為「Runes of Aldur」 |
+| poe.ninja | `https://poe.ninja/poe2/api/data/index-state`、`https://poe.ninja/poe2/api/builds/{version}/search`、`https://poe.ninja/poe2/api/builds/dictionary/{hash}` | 天梯角色的職業、等級、主技能、寶石、keystone、聯盟、排名。角色名稱與帳號名稱在寫入前就丟棄 | 每份快照約 600 個角色（數種排序各取前 100 名）：執行 `update ninja` 時最多 14 個請求，間隔 0.8 秒。本 repo 內的快照抓於 2026-11-11，聯盟為「Runes of Aldur」 |
 
 請求方式：
 

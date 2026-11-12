@@ -323,13 +323,13 @@ def update_data(scope: str, names: list[str] | None = None, older_than_days: int
                 max_gems: int = DEFAULT_MAX_GEMS, dry_run: bool = False) -> dict:
     """Re-fetch one data set from its source and replace the local records. Call it only when the
     user asks for an update. scope is required, one per call (there is no update for everything):
-    skill_gems, spirit_gems, support_gems, passives, items, glossary or ladder. Gem scopes fetch
+    skill_gems, spirit_gems, support_gems, passives, items, glossary or ninja. Gem scopes fetch
     the listing, then gems that are new, changed, broken, named in `names` or older than
     `older_than_days` (not again within 15 minutes), at most max_gems (1-40) per call; repeat while
     `left` is above 0, at most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional `names`
     (item classes, e.g. Bows) and makes at most 20 requests per call; glossary at most 50 requests
-    per call: repeat both while `done` is false (items at most 8 calls, glossary 20). passives (7
-    requests) and ladder (at most 14) take no other argument. A source that no longer parses
+    per call: repeat both while `done` is false (items at most 8 calls, glossary 20). passives (8
+    requests) and ninja (the poe.ninja ladder snapshot, at most 14) take no other argument. A source that no longer parses
     aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
@@ -359,7 +359,7 @@ def status() -> str:
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
     """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
-    passives, items, glossary or ladder. names: optional gem names or item classes, comma-separated."""
+    passives, items, glossary or ninja. names: optional gem names or item classes, comma-separated."""
     return update_prompt_text(scope, names)
 
 

@@ -131,7 +131,7 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     monkeypatch.setattr(mnt, "fetch_html", lambda *a, **k: pytest.fail("status must not use the network"))
     status = tool.status()
     sets = {d["name"]: d for d in status["datasets"]}
-    assert list(sets) == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder", "entity_index"]
+    assert list(sets) == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja", "entity_index"]
     assert sets["skill_gems"] == {"name": "skill_gems", "update_scope": "skill_gems", "records": 3,
                                   "oldest_fetched_at": FETCHED, "newest_fetched_at": FETCHED,
                                   "oldest_age_days": sets["skill_gems"]["oldest_age_days"]}
@@ -139,13 +139,13 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     assert (sets["spirit_gems"]["records"], sets["support_gems"]["records"]) == (1, 2)
     assert sets["passives"]["records"] == len(read_jsonl(base / NODES)) and sets["passives"]["update_scope"] == "passives"
     assert sets["glossary"]["update_scope"] == "glossary" and sets["glossary"]["records"] == 7
-    assert sets["ladder"] == {"name": "ladder", "update_scope": "ladder", "league": None, "records": 0,
+    assert sets["ninja"] == {"name": "ninja", "update_scope": "ninja", "league": None, "records": 0,
                               "oldest_fetched_at": None, "newest_fetched_at": None, "oldest_age_days": None}
     assert sets["entity_index"]["records"] == len(read_jsonl(base / INDEX)) and sets["entity_index"]["newest_built_at"]
     assert status["version"] == __version__ and status["writable"] is True and status["data_dir"] == str(base / "data")
     assert status["catalog"] == {"spec_version": tool.spec.raw["spec_version"], "verified_at": tool.spec.raw["verified_at"],
                                  "pob2_tree_version": "0_5", "tree_data_version": "4.5"}
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja"]
     assert status["not_updatable"] == {}
     assert {d["name"] for d in status["datasets"] if d["update_scope"]} == set(status["update_scopes"])
 
@@ -160,7 +160,7 @@ def test_status_reads_the_ladder_snapshot(tool, base):
     path = base / "data" / "community_builds" / "poe_ninja_builds.jsonl"
     path.parent.mkdir(parents=True)
     path.write_text(fixture_text("jsonl", "poe_ninja_builds.jsonl"), encoding="utf-8")
-    ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ladder")
+    ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ninja")
     rows = read_jsonl(path)
     assert ladder["records"] == len(rows) and ladder["league"] == rows[0]["league"]
     assert ladder["newest_fetched_at"] == max(r["fetched_at"] for r in rows)
@@ -292,10 +292,11 @@ def test_scope_ignores_case_and_spaces(tool, scope):
 
 
 @pytest.mark.parametrize("scope, message", [
-    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ladder"),
+    ("", "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja"),
     (None, "scope is required"),
     ("all", "there is no update for everything"),
     ("gems", "scope is required"),
+    ("ladder", "scope is required"),                              # renamed to ninja; no alias
     ("x" * 5000, "scope is required"),
     ("weapons", "scope is required"),
     ("entity_index", "scope is required"),
@@ -448,7 +449,7 @@ def test_passives_update_replaces_the_tree_and_the_stat_index(tool, base, lenien
     assert passives["records"] == len(nodes) and passives["tree_data_version"] == "4.5"
 
 
-@pytest.mark.parametrize("scope", ["passives", "glossary", "ladder"])
+@pytest.mark.parametrize("scope", ["passives", "glossary", "ninja"])
 @pytest.mark.parametrize("options", [{"names": ["Blood Magic"]}, {"older_than_days": 3}, {"dry_run": True},
                                      {"max_gems": 5}])
 def test_whole_set_scopes_take_no_gem_options(tool, scope, options):
@@ -647,15 +648,15 @@ def ninja(monkeypatch):
 
 
 def test_ladder_update_writes_a_snapshot_without_names(tool, base, ninja):
-    result = tool.update("ladder")
-    assert result == {"scope": "ladder", "dry_run": False, "records": 120, "league": LEAGUE, "previous_records": 0,
+    result = tool.update("ninja")
+    assert result == {"scope": "ninja", "dry_run": False, "records": 120, "league": LEAGUE, "previous_records": 0,
                       "previous_league": None, "requests": len(ninja.calls)}
     assert result["requests"] == 14                                # index, 10 result pages, 3 dictionaries
     rows = read_jsonl(base / LADDER)
     assert len(rows) == 120 and "Secret" not in (base / LADDER).read_text(encoding="utf-8")
     assert sorted(rows[0]) == ["class", "fetched_at", "keystones", "league", "level", "main_skill", "rank",
                                "skill_gems", "source"]
-    ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ladder")
+    ladder = next(d for d in tool.status()["datasets"] if d["name"] == "ninja")
     assert ladder["records"] == 120 and ladder["league"] == LEAGUE and ladder["oldest_age_days"] == 0
     assert lock_is_free(base)
 
@@ -664,12 +665,12 @@ def test_ladder_update_reports_the_league_it_replaced(tool, base, ninja):
     (base / LADDER).parent.mkdir(parents=True)
     (base / LADDER).write_text(fixture_text("jsonl", "poe_ninja_builds.jsonl"), encoding="utf-8")
     old = read_jsonl(base / LADDER)
-    result = tool.update("ladder")
+    result = tool.update("ninja")
     assert result["previous_records"] == len(old) and result["previous_league"] == old[0]["league"] != LEAGUE
 
 
 def test_ladder_update_prints_nothing_to_stdout_and_no_names_anywhere(tool, ninja, capsys):
-    tool.update("ladder")
+    tool.update("ninja")
     out, err = capsys.readouterr()
     assert out == "" and "Secret" not in err
 
@@ -680,7 +681,7 @@ def test_small_ladder_answer_keeps_the_old_snapshot(tool, base, monkeypatch):
     monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
     before = snapshot(base)
     with pytest.raises(ServiceUnavailable, match=r"returned 40 characters.*format has probably changed. The old snapshot is kept"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert snapshot(base) == before and mnt.MIN_LADDER_ROWS == 100
 
 
@@ -690,7 +691,7 @@ def test_ladder_answer_without_class_names_keeps_the_old_snapshot(tool, base, mo
     monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
     before = snapshot(base)
     with pytest.raises(ServiceUnavailable, match="120 characters, 0 with a class"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert snapshot(base) == before
 
 
@@ -701,7 +702,7 @@ def test_ladder_network_error_keeps_the_old_snapshot(tool, base, monkeypatch):
     monkeypatch.setattr(mnt.ladder, "_get_json", down)
     before = snapshot(base)
     with pytest.raises(ServiceUnavailable, match="network error: poe.ninja unreachable. Nothing was written"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert snapshot(base) == before
 
 
@@ -711,7 +712,7 @@ def test_ladder_answer_in_an_unexpected_shape_keeps_the_old_snapshot(tool, base,
     monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
     before = snapshot(base)
     with pytest.raises(ServiceUnavailable, match=r"unexpected shape \(RuntimeError: No build leagues"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert snapshot(base) == before
 
 
@@ -959,7 +960,7 @@ def test_glossary_without_a_local_file_is_sent_to_the_terminal(tool, base):
 
 
 def test_ladder_snapshot_much_smaller_than_the_last_one_of_the_same_league_is_refused(tool, base, ninja, monkeypatch):
-    tool.update("ladder")                                        # 120 rows
+    tool.update("ninja")                                        # 120 rows
     small = FakeNinja(characters(100)[:55] + characters(100, "Other")[:45])
     assert len(small.rows) == 100
     monkeypatch.setattr(mnt, "MIN_LADDER_SHARE_OF_PREVIOUS", 0.9)
@@ -967,7 +968,7 @@ def test_ladder_snapshot_much_smaller_than_the_last_one_of_the_same_league_is_re
     monkeypatch.setattr(mnt.ladder, "_get_binary", small.get_binary)
     before = (base / LADDER).read_bytes()
     with pytest.raises(ServiceUnavailable, match=r"returned 100 characters.*previous snapshot has 120"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert (base / LADDER).read_bytes() == before and b"Secret" not in before
 
 
@@ -976,7 +977,7 @@ def test_ladder_without_any_keystone_is_refused(tool, base, monkeypatch):
     monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
     monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
     with pytest.raises(ServiceUnavailable, match="0 with keystones"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert not (base / LADDER).exists()
 
 
@@ -994,7 +995,7 @@ def test_ladder_result_page_that_fails_keeps_the_old_snapshot(tool, base, monkey
     monkeypatch.setattr(mnt.ladder, "_get_json", site.get_json)
     monkeypatch.setattr(mnt.ladder, "_get_binary", flaky)
     with pytest.raises(ServiceUnavailable, match="network error: 429 Too Many Requests. Nothing was written"):
-        tool.update("ladder")
+        tool.update("ninja")
     assert not (base / LADDER).exists() and len(pages) == 3
 
 

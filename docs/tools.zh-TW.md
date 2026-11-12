@@ -25,7 +25,7 @@
 | `build_workflow` | 有出處的流派回答流程，給不支援 MCP prompt 的用戶端使用 |
 | `refresh_gem` | 重新抓取 poe2db 上的一顆寶石頁面並取代本機紀錄 |
 | `data_status` | 本機資料有哪些、多舊；需要時可檢查線上網站 |
-| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、天賦、裝備、名詞解釋、天梯），每次呼叫的請求數有上限 |
+| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、`passives`、`items`、`glossary`、`ninja`），每次呼叫的請求數有上限 |
 
 Prompt：`build_guide`（流派流程）、`status` 與 `update`（資料指令，見 [data.zh-TW.md](data.zh-TW.md#指令)）。
 只有 `refresh_gem` 與 `update_data` 會變更資料；其餘十六個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。

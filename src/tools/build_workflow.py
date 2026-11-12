@@ -16,7 +16,7 @@ from src.tools.maintenance import (
     GLOSSARY_BATCH,
     ITEMS,
     ITEMS_BATCH,
-    LADDER,
+    NINJA,
     MAX_NAMES,
     NOT_UPDATABLE,
     PASSIVES,
@@ -155,8 +155,8 @@ UPDATE_WHOLE_SET_STEPS = {
    line of progress per call (`fetched`, `left`).
 3. When `done` is true, report `bases`, `uniques` and `modifiers`.
 {ON_ERROR}""",
-    LADDER: f"""\
-1. Call update_data with scope="ladder" and no other argument. It makes at most 14 requests to poe.ninja
+    NINJA: f"""\
+1. Call update_data with scope="ninja" and no other argument. It makes at most 14 requests to poe.ninja
    and replaces the ladder snapshot; character and account names are never stored.
 2. Report `records` and `league`, and `previous_league` when the league changed.
 {ON_ERROR}""",

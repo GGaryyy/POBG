@@ -757,8 +757,8 @@
      "kind": "action",
      "row": 4,
      "col": 0,
-     "zh": "依範圍進入對應的流程（各有一張圖）\nskill_gems、spirit_gems、support_gems → 寶石\npassives → 天賦樹\nitems → 裝備\nglossary → 名詞解釋\nladder → 天梯",
-     "en": "The scope decides the flow (one chart each)\nskill_gems, spirit_gems, support_gems → gems\npassives → passive tree\nitems → items\nglossary → glossary\nladder → ladder",
+     "zh": "依範圍進入對應的流程（各有一張圖）\nskill_gems、spirit_gems、support_gems → 寶石\npassives → 天賦樹\nitems → 裝備\nglossary → 名詞解釋\nninja → 天梯（poe.ninja）",
+     "en": "The scope decides the flow (one chart each)\nskill_gems, spirit_gems, support_gems → gems\npassives → passive tree\nitems → items\nglossary → glossary\nninja → ladder (poe.ninja)",
      "align": "left"
     },
     {
@@ -1515,10 +1515,10 @@
    ]
   },
   {
-   "id": "update-ladder",
+   "id": "update-ninja",
    "title": {
-    "zh": "/pobg:update ladder",
-    "en": "/pobg:update ladder"
+    "zh": "/pobg:update ninja",
+    "en": "/pobg:update ninja"
    },
    "nodes": [
     {
@@ -1526,8 +1526,8 @@
      "kind": "start",
      "row": 0,
      "col": 0,
-     "zh": "範圍是 ladder（不接受其他參數）",
-     "en": "The scope is ladder (no other argument)"
+     "zh": "範圍是 ninja（不接受其他參數）",
+     "en": "The scope is ninja (no other argument)"
     },
     {
      "id": "B",

@@ -242,7 +242,7 @@ def test_build_tool_failures_surface_as_tool_errors(svc, ladder, tool, args, mes
 
 def test_reference_builds_missing_file_is_a_tool_error(svc, monkeypatch, tmp_path):
     monkeypatch.setattr(mcp_server, "_tools", BuildTools(svc, builds_path=tmp_path / "none.jsonl"))
-    with pytest.raises(ToolError, match="scope ladder"):
+    with pytest.raises(ToolError, match="scope ninja"):
         call("reference_builds", {})
 
 
@@ -446,7 +446,7 @@ def test_data_status_through_the_server_uses_the_loaded_folder_and_no_network(fr
     status = payload(call("data_status", {}))
     assert status["data_dir"] == str(service.base_dir / "data") and "online" not in status
     assert {d["name"]: d["records"] for d in status["datasets"]}["skill_gems"] == 3
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ladder"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja"]
     assert calls == []
 
 
@@ -519,11 +519,11 @@ def test_update_data_respects_max_gems_and_reports_what_is_left(fresh):
 
 
 @pytest.mark.parametrize("args, message", [
-    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ladder"),
+    ({"scope": ""}, "scope is required and must be one of: skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja"),
     ({"scope": "all"}, "there is no update for everything"),
     ({"scope": "weapons"}, "scope is required"),
     ({"scope": "items", "dry_run": True}, "an items update re-fetches whole item class pages"),
-    ({"scope": "ladder", "names": ["x"]}, "only apply to the gem scopes"),
+    ({"scope": "ninja", "names": ["x"]}, "only apply to the gem scopes"),
     ({"scope": "skill_gems", "max_gems": 100}, "max_gems must be between 1 and 40"),
     ({"scope": "skill_gems", "names": ["Nope"]}, "not a skill_gem in the local data"),
     ({"scope": "passives", "dry_run": True}, "only apply to the gem scopes"),
@@ -579,8 +579,8 @@ def test_update_prompt_for_the_glossary_repeats_until_done():
 
 
 def test_update_prompt_for_the_ladder_is_one_call_and_mentions_names_are_not_stored():
-    text = prompt_text("update", {"scope": "ladder"})
-    assert 'scope="ladder" and no other argument' in text and "poe.ninja" in text
+    text = prompt_text("update", {"scope": "ninja"})
+    assert 'scope="ninja" and no other argument' in text and "poe.ninja" in text
     assert "never stored" in text and "dry_run" not in text
 
 
@@ -591,7 +591,7 @@ def test_ladder_update_through_the_server_is_visible_to_reference_builds(fresh, 
     monkeypatch.setattr(mnt.ladder, "_get_binary", site.get_binary)
     with pytest.raises(ToolError, match="community builds"):
         call("reference_builds", {})                                # the fresh folder has no ladder file
-    result = payload(call("update_data", {"scope": "ladder"}))
+    result = payload(call("update_data", {"scope": "ninja"}))
     assert result["records"] == 120 and result["league"] == LEAGUE
     builds = payload(call("reference_builds", {"class_name": "Titan", "limit": 3}))
     text = json.dumps(builds, ensure_ascii=False)

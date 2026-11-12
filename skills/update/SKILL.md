@@ -1,7 +1,7 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary or ladder); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ladder> [gem names or item classes, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary or ninja); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja> [gem names or item classes, comma-separated]
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ The first word is the scope; anything after it is a comma-separated list of gem 
 scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`, `items`, `glossary`, `ladder`:** do not call `update_data`. Tell the user to pick one scope,
+`passives`, `items`, `glossary`, `ninja`:** do not call `update_data`. Tell the user to pick one scope,
 for example `/pobg:update skill_gems`.
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
@@ -55,9 +55,9 @@ for example `/pobg:update skill_gems`.
    `kept_without_refresh`. When it is still false after 20 calls, tell the user to run the
    command again within 30 minutes: it continues where it stopped.
 
-## `ladder`
+## `ninja`
 
-1. Call `update_data` with `scope: "ladder"` and no other argument. It makes at most 14
+1. Call `update_data` with `scope: "ninja"` and no other argument. It makes at most 14
    requests to poe.ninja and replaces the ladder snapshot; character and account names are
    never stored.
 2. Report `records` and `league`, and `previous_league` when the league changed.

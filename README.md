@@ -123,7 +123,7 @@ when it writes) is drawn in **[docs/flow/commands.md](docs/flow/commands.md)**.
 | `passives` | The passive tree, plus PoB's level table and Spirit quest rewards used in build codes |
 | `items` | Gear bases, uniques and modifiers (also flasks, charms, jewels); add item class names to update only those |
 | `glossary` | Glossary terms |
-| `ladder` | The poe.ninja ladder snapshot (no character or account names are kept) |
+| `ninja` | The poe.ninja ladder snapshot (no character or account names are kept) |
 
 Examples:
 
