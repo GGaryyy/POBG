@@ -1,5 +1,7 @@
 # Connecting an MCP client
 
+**English** | [繁體中文](clients.zh-TW.md)
+
 POBG is a local **stdio** MCP server. Every client starts it with the same command:
 
 ```
@@ -110,7 +112,7 @@ apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Lo
 ## Gemini CLI
 
 `~/.gemini/settings.json` (user) or `.gemini/settings.json` (project) takes the generic
-`mcpServers` JSON from the README. Or from a terminal:
+`mcpServers` JSON shown under Claude Desktop. Or from a terminal:
 
 ```bash
 gemini mcp add -s user pobg uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server

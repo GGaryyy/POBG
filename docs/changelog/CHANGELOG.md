@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- READMEs (English and 繁體中文) rewritten for players who install POBG to use it
+  (`docs/plan_readme.md`): a quick start, what a build answer contains, and a new section on
+  importing into Path of Building that says which numbers are worked out from the data and
+  which are assumptions (ideal gear values, Configuration options from the build's own
+  evidence, charges at their maximum, poe.ninja's fixed ladder states). The old README
+  example "gear comes in a later version" was out of date since 0.10.0.
+- Developer material moved out of the READMEs, unchanged in substance: the tool table and
+  `export_pob` details to the new `docs/tools.md`; data sources, request etiquette, update
+  scopes, the PoB updater command, the terminal crawl and development to the new
+  `docs/data.md`. `docs/data.md` also names PoB's `QuestRewards.lua`, fetched since 0.9.0.
+- Traditional Chinese versions of the developer docs: `docs/clients.zh-TW.md`,
+  `docs/tools.zh-TW.md`, `docs/data.zh-TW.md`; each doc links to its other language, and the
+  Chinese README links to the Chinese docs.
+
 ## [0.10.0] - 2026-11-12
 
 Path of Building export, part 2: gear (`docs/plan_pob_export.md`, "第二段").
