@@ -15,11 +15,14 @@ Claude Code plugin. Its data is a local copy of [poe2db.tw](https://poe2db.tw), 
 tree and a [poe.ninja](https://poe.ninja/poe2/builds) ladder snapshot. Not affiliated with
 Grinding Gear Games, poe2db.tw, PathOfBuilding or poe.ninja.
 
+POBG only stands on the shoulders of giants: without the data that poe2db.tw, the Path of
+Building community and poe.ninja have collected and published over the years, this project would
+not exist. Thank you.
+
 ## Quick start
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.4 or newer
-   (`uv --version` to check, `uv self update` to upgrade). Older versions still trust the
-   eMudhra / emSign certificates whose keys were exposed in October 2026.
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/); it must be version
+   **0.13.4 or newer** (`uv --version` to check, `uv self update` to upgrade).
 2. In **Claude Code**:
 
    ```
@@ -99,15 +102,45 @@ supports, gear, and PoB Configuration options. Notes about the build are in PoB'
 
 ## Commands
 
-| Command (Claude Code) | What it does |
-|---|---|
-| `/pobg:status` | How old each part of the data is; on request, a check of whether poe2db changed |
-| `/pobg:update <scope>` | Re-fetches one part of the data after a patch, e.g. `/pobg:update skill_gems` |
-| `/pobg:update-pob <folder>` | Updates your Path of Building (PoE2, alone or in a PoeCharm2 folder) into a new folder next to the old one |
-| `/pobg:poe2-advisor` | The build instructions Claude Code follows; applied automatically |
+POBG has four commands in Claude Code. The full flow of each one (what it calls, where it decides,
+when it writes) is drawn in **[docs/flow/commands.md](docs/flow/commands.md)**.
 
-In other AI apps `status` and `update` appear as prompts of the `pobg` server. Scopes, request
-counts and details: [docs/data.md](docs/data.md#commands).
+| Command | What it does |
+|---|---|
+| `/pobg:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. After you agree, it also checks the live sites: did poe2db's pages change, is there a newer passive tree |
+| `/pobg:update <scope> [names]` | Re-fetches **one** data set after a game patch. Shows what would be fetched first, then updates it |
+| `/pobg:update-pob <folder>` | Updates your Path of Building (PoE2, alone or inside a PoeCharm2 folder) to the latest release. Checks versions first; after you agree, downloads into a **new folder** next to the old one, which is never changed or deleted |
+| `/pobg:poe2-advisor` | The instructions followed to answer PoE2 questions and write builds. You do not run it yourself; it is applied automatically when you ask |
+
+`/pobg:update` always needs a scope; there is no "update everything":
+
+| Scope | Updates |
+|---|---|
+| `skill_gems` | Skill gems |
+| `spirit_gems` | Spirit gems (persistent skills) |
+| `support_gems` | Support gems |
+| `passives` | The passive tree, plus PoB's level table and Spirit quest rewards used in build codes |
+| `items` | Gear bases, uniques and modifiers (also flasks, charms, jewels); add item class names to update only those |
+| `glossary` | Glossary terms |
+| `ladder` | The poe.ninja ladder snapshot (no character or account names are kept) |
+
+Examples:
+
+```
+/pobg:status
+/pobg:update skill_gems
+/pobg:update support_gems Fire Attunement, Brutality I
+/pobg:update items Bows
+/pobg:update-pob "D:\PoB\PoeCharm2"
+```
+
+Plain words work too, e.g. "update the skill gems older than 30 days". A balance patch that only
+changes numbers does not change the gem listing page, so a plain update finds nothing; name the
+gems from the patch notes, or ask for gems older than N days.
+
+In other AI apps `status` and `update` are prompts of the `pobg` server (the "+" menu in Claude
+Desktop, `/pobg.status` in VS Code, slash commands in Gemini CLI); `update-pob` is run from a
+terminal there. Request counts per scope and more notes: [docs/data.md](docs/data.md#commands).
 
 ## Limits
 
@@ -149,5 +182,6 @@ change how it uses your data, please open an issue.
 | [docs/clients.md](docs/clients.md) | Setting up each MCP client, what was tested |
 | [docs/tools.md](docs/tools.md) | The 18 MCP tools and prompts, what `export_pob` computes |
 | [docs/data.md](docs/data.md) | Sources, update scopes, full crawl, development and tests |
+| [docs/flow/commands.md](docs/flow/commands.md) | The full flow of the four commands |
 | [docs/flow/system_flow.md](docs/flow/system_flow.md) | System and data flow diagrams |
 | [ROADMAP.md](ROADMAP.md), [CHANGELOG](docs/changelog/CHANGELOG.md) | What is next, what changed |

@@ -53,3 +53,15 @@ README 是一路隨各階段加內容長出來的（英文 291 行、中文 247 
 ## 不在範圍內
 
 - 截圖或圖片（之後可加）；英文以外語言；`docs/clients.md` 的內容改寫。
+
+## 追加（2026-11-12）：指令流程圖
+
+使用者要求：每個指令的路線要能從 README 連到，且要完整詳細；Floorplan 的流程只能是直線，改用能分岔的畫法。
+
+- 新增 `docs/flow/commands.md`（英文）與 `docs/flow/commands.zh-TW.md`（中文），用 Mermaid 流程圖（GitHub 直接渲染，
+  專案規則指定的格式）畫出四個指令：`poe2-advisor`（含 `export_pob` 內部算了什麼）、`status`、`update`
+  （總覽一張，三種寶石、`passives`、`items`、`glossary`、`ladder` 各一張）、`update-pob`。
+- 內容以 `skills/*/SKILL.md`、`src/tools/build_workflow.py`、`src/tools/maintenance.py`、`src/tools/pob_update.py` 為準：
+  判斷條件、上限、失敗時是否寫入都畫出來。
+- 兩份 README 的「指令」一節與「給開發者」表格連到這份文件。
+- 驗收：每張圖都能被 Mermaid 解析；圖中的數字（請求數、上限、次數）與程式一致。

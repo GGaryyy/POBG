@@ -9,7 +9,7 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 ```
 
 - 必須安裝 `uv` 0.13.4 以上（[安裝說明](https://docs.astral.sh/uv/getting-started/installation/)；
-  `uv self update` 可升級），且用戶端要找得到它。較舊的版本仍信任 2026 年 10 月金鑰外洩的 eMudhra / emSign 憑證。
+  `uv self update` 可升級），且用戶端要找得到它。
   用戶端回報「command not found」時，把 `uv` 的完整路徑填進 `command`（macOS / Linux 用 `which uv`，Windows 用 `where uv` 查詢）。
 - `--directory` 後面的路徑是你 clone 本 repo 的位置。Windows 上在 JSON 裡要用雙反斜線：`"C:\\Users\\you\\POBG"`。
 - 第一次啟動會下載約 40 個套件（四個直接相依），所以比較久（網路快的話幾秒，慢的話幾分鐘）。若用戶端放棄等待，

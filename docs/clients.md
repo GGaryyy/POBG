@@ -9,8 +9,7 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 ```
 
 - `uv` 0.13.4 or newer must be installed ([instructions](https://docs.astral.sh/uv/getting-started/installation/);
-  `uv self update` upgrades it) and found by the client. Older versions still trust the
-  eMudhra / emSign certificates whose keys were exposed in October 2026. If the client reports "command not found", put the full path of
+  `uv self update` upgrades it) and found by the client. If the client reports "command not found", put the full path of
   `uv` in `command` (`which uv` on macOS / Linux, `where uv` on Windows).
 - The path after `--directory` is where you cloned this repo. On Windows write it with
   doubled backslashes inside JSON: `"C:\\Users\\you\\POBG"`.

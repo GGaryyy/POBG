@@ -19,6 +19,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 - Traditional Chinese versions of the developer docs: `docs/clients.zh-TW.md`,
   `docs/tools.zh-TW.md`, `docs/data.zh-TW.md`; each doc links to its other language, and the
   Chinese README links to the Chinese docs.
+- The Commands section of both READMEs lists the four commands in full again, with the seven
+  `update` scopes and examples, and a line thanking the data sources.
+- The uv requirement is stated as a version only (0.13.4 or newer) in the READMEs and client
+  guides, without the certificate explanation, at the user's request.
+
+### Added
+- `docs/flow/commands.md` and `docs/flow/commands.zh-TW.md`: Mermaid flowcharts of the four
+  commands with every decision and stop: `poe2-advisor` (and what `export_pob` works out),
+  `status`, `update` (an overview and one chart each for the gem scopes, `passives`, `items`,
+  `glossary`, `ladder`) and `update-pob`. Linked from the READMEs.
 
 ## [0.10.0] - 2026-11-12
 

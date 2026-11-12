@@ -11,10 +11,12 @@ POBG 是非官方的 [Model Context Protocol](https://modelcontextprotocol.io) s
 天賦樹與一份 [poe.ninja](https://poe.ninja/poe2/builds) 天梯快照的本機副本。本專案與 Grinding Gear Games、poe2db.tw、
 PathOfBuilding、poe.ninja 均無隸屬關係。
 
+POBG 只是站在巨人的肩膀上：沒有 poe2db.tw、Path of Building 社群與 poe.ninja 長期整理並公開的資料，就不會有這個專案。感謝他們。
+
 ## 快速開始
 
-1. 安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.4 以上
-   （`uv --version` 查看，`uv self update` 升級）。較舊的版本仍信任 2026 年 10 月金鑰外洩的 eMudhra / emSign 憑證。
+1. 安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/)，版本必須是 **0.13.4 以上**
+   （`uv --version` 查看，`uv self update` 升級）。
 2. 在 **Claude Code** 中：
 
    ```
@@ -77,14 +79,43 @@ MCP server，而 POBG 是在你的電腦上執行。
 
 ## 指令
 
-| 指令（Claude Code） | 做什麼 |
-|---|---|
-| `/pobg:status` | 各類資料的新舊；需要時可檢查 poe2db 是否改版 |
-| `/pobg:update <範圍>` | 改版後重新抓取一類資料，例如 `/pobg:update skill_gems` |
-| `/pobg:update-pob <資料夾>` | 把你的 Path of Building（PoE2，單獨安裝或放在 PoeCharm2 資料夾中）更新到舊資料夾旁的新資料夾 |
-| `/pobg:poe2-advisor` | Claude Code 撰寫流派時遵循的說明，自動套用 |
+POBG 在 Claude Code 中共有四個指令。每個指令的完整流程圖（會呼叫什麼、在哪裡判斷、何時寫入）見
+**[docs/flow/commands.zh-TW.md](docs/flow/commands.zh-TW.md)**。
 
-在其他 AI 應用中，`status` 與 `update` 是 `pobg` server 提供的 prompt。範圍、請求數與細節見
+| 指令 | 做什麼 |
+|---|---|
+| `/pobg:status` | 列出每類資料有幾筆、何時抓的、已經多久。你同意後還可檢查線上網站：poe2db 頁面是否改版、天賦樹有沒有新版 |
+| `/pobg:update <範圍> [名稱]` | 遊戲改版後重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
+| `/pobg:update-pob <資料夾>` | 把你的 Path of Building（PoE2，單獨安裝或放在 PoeCharm2 資料夾中）更新到最新版。先比對版本，你同意後才下載到舊資料夾旁的**新資料夾**；舊資料夾不會被修改或刪除 |
+| `/pobg:poe2-advisor` | 回答 PoE2 問題與撰寫流派時遵循的說明。不用自己下指令，提問時會自動套用 |
+
+`/pobg:update` 一定要指定範圍，沒有「全部更新」：
+
+| 範圍 | 更新什麼 |
+|---|---|
+| `skill_gems` | 技能寶石 |
+| `spirit_gems` | 精神寶石（常駐技能） |
+| `support_gems` | 輔助寶石 |
+| `passives` | 天賦樹，以及匯入碼用的 PoB 等級表與精魂任務獎勵 |
+| `items` | 裝備基底、傳奇與詞綴（含藥劑、護符、珠寶）；加上類別名稱就只更新那幾類 |
+| `glossary` | 名詞解釋 |
+| `ladder` | poe.ninja 天梯快照（不保留角色或帳號名稱） |
+
+範例：
+
+```
+/pobg:status
+/pobg:update skill_gems
+/pobg:update support_gems Fire Attunement, Brutality I
+/pobg:update items Bows
+/pobg:update-pob "D:\PoB\PoeCharm2"
+```
+
+也可以直接用說的，例如「更新超過 30 天的技能寶石」。只改數值的平衡改版不會改變寶石列表頁，單純的 update 會找不到要更新的
+項目；這時請指定改版公告提到的寶石名稱，或要求更新超過 N 天的寶石。
+
+在其他 AI 應用中，`status` 與 `update` 是 `pobg` server 提供的 prompt（Claude Desktop 的「+」選單、VS Code 的
+`/pobg.status`、Gemini CLI 的斜線指令）；`update-pob` 則要在終端機執行。每個範圍的請求數與其他注意事項見
 [docs/data.zh-TW.md](docs/data.zh-TW.md#指令)。
 
 ## 限制
@@ -119,5 +150,6 @@ MCP server，而 POBG 是在你的電腦上執行。
 | [docs/clients.zh-TW.md](docs/clients.zh-TW.md) | 各 MCP 用戶端的設定、測試狀態 |
 | [docs/tools.zh-TW.md](docs/tools.zh-TW.md) | 18 個 MCP 工具與 prompt、`export_pob` 算了什麼 |
 | [docs/data.zh-TW.md](docs/data.zh-TW.md) | 資料來源、更新範圍、完整抓取、開發與測試 |
-| [docs/flow/system_flow.md](docs/flow/system_flow.md) | 系統與資料流程圖 |
+| [docs/flow/commands.zh-TW.md](docs/flow/commands.zh-TW.md) | 四個指令的完整流程圖 |
+| [docs/flow/system_flow.md](docs/flow/system_flow.md) | 系統與資料流程圖（英文） |
 | [ROADMAP.md](ROADMAP.md)、[CHANGELOG](docs/changelog/CHANGELOG.md) | 後續規劃、版本變更 |
