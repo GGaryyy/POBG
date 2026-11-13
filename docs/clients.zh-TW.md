@@ -26,7 +26,8 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 | 在 Claude Desktop 或 claude.ai 上傳 plugin（Customize → Plugins） | **拿不到工具**（2026-11-13 實測，0.10.0）：plugin 的檔案與 skill 會同步到雲端的隔離環境，但那裡不會啟動它的本機 MCP server，也連不到 poe2db。請用上面的 Claude Desktop 安裝方式 |
 | MCP Inspector CLI（`npx @modelcontextprotocol/inspector --cli`） | 用十二個查詢與流派工具測過：`tools/list`、`prompts/list`、`tools/call` |
 | Cursor、VS Code、Gemini CLI、Codex CLI | 未測試。下方設定依照 2026-11-11 讀到的各用戶端文件 |
-| ChatGPT | 不支援：它只能透過 HTTPS 連遠端 MCP server |
+| ChatGPT 桌面版（Windows） | **2026-11-13 在應用程式內測過（0.11.0）**：在 設定 → MCPs 加成自訂 STDIO server；問「躍擊 10 等的消耗是多少？」時呼叫了 `lookup_entity` 與 `get_gem`，回答了消耗並附 poe2db 連結。流派請求（「Lv90 傭兵 Tactician 擲彈流」）走完了整個流程：檢查過的寶石、天賦與裝備、`path_to`、來源清單，以及可匯入 PoB 0.23.1 的 `export_pob` 匯入碼。流派本身偏單薄（123 點只用 43 點、沒有昇華點、多個部位只有基底、沒有開啟配置選項），這是模型向工具要了什麼的問題，不是工具失敗。`status`、`update` 還沒試 |
+| 網頁版 ChatGPT | 不支援：它只能透過 HTTPS 連遠端 MCP server |
 
 歡迎回報其他用戶端的結果：請開 issue，註明用戶端名稱與版本。
 
@@ -138,6 +139,20 @@ server 的 stderr 會寫到 `mcp-server-pobg.log`，位置在 `%APPDATA%\Claude\
 ```bash
 gemini mcp add -s user pobg uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
+
+## ChatGPT 桌面版
+
+設定 → 搜尋「MCP」→ **MCPs** → 連接自訂 MCP，類型選 **STDIO**：
+
+| 欄位 | 內容 |
+|---|---|
+| Name | `pobg` |
+| Command to launch | uv 的完整路徑，例如 `C:\Users\you\.local\bin\uv.exe`（用 `where uv` 查詢） |
+| Arguments | 每格一個：`run`、`--frozen`、`--no-dev`、`--directory`、POBG 的資料夾（例如 `C:\POBG`）、`python`、`-m`、`src.tools.mcp_server` |
+| Environment variables | 不用填；只有資料夾同時給 WSL 使用時才加 `UV_PROJECT_ENVIRONMENT`（見上面 Claude Desktop 一節） |
+
+路徑照原樣填，不用加引號，也不用把反斜線寫成兩個。儲存後開新對話直接提問。
+這個設定存在 Codex CLI 也在用的 `~/.codex/config.toml`（下一節），所以兩種加法是同一份設定。
 
 ## Codex CLI
 

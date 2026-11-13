@@ -46,9 +46,14 @@ Later: to refresh the data, ask in a chat (for example "update the skill gems"; 
 [Commands](#commands)). For a new POBG version, unzip the new zip to the same place and run the
 install step again. To take POBG out of Claude Desktop, add `--remove` to the command.
 
-Uploading POBG as a plugin in Claude Desktop or on claude.ai (Customize → Plugins) is **not enough**:
-chats there run in the cloud and do not start a server on your computer, so you would get the
-instructions without the tools (tested 2026-11-13).
+4. Optional, for the full set: also upload the same zip as a plugin (Customize → Plugins → upload).
+   That adds the commands (`/status`, `/update`, `/poe2-advisor`) and the complete build
+   instructions on top of the tools from step 2. Claude Desktop asks you to confirm that the
+   plugin includes a local MCP server; that is POBG's own.
+
+The plugin alone is **not enough**: chats in Claude Desktop and on claude.ai run in the cloud and do
+not start a server on your computer, so without step 2 you would get the instructions without the
+tools. Both together were tested on 2026-11-13.
 
 ### Claude Code
 
@@ -61,9 +66,10 @@ Start a new conversation and ask a question.
 
 ### Other AI apps
 
-Cursor, VS Code, Gemini CLI, Codex CLI …: clone this repo and add it as a local MCP server;
+The ChatGPT desktop app, Cursor, VS Code, Gemini CLI, Codex CLI …: clone this repo and add it as a local MCP server;
 [docs/clients.md](docs/clients.md) has the setup for each one and questions to check it works.
-ChatGPT is not supported: it only connects to online MCP servers, and POBG runs on your computer.
+The ChatGPT desktop app works too (add POBG as a custom MCP server; tested 2026-11-13). ChatGPT on the web
+is not supported: it only connects to online MCP servers, and POBG runs on your computer.
 
 ## What you can ask
 

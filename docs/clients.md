@@ -29,7 +29,8 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 | Plugin uploaded in Claude Desktop or claude.ai (Customize → Plugins) | **Does not give the tools** (tested 2026-11-13, 0.10.0): the plugin's files and skills sync into a cloud sandbox, but its local MCP server is not started there, and the sandbox cannot reach poe2db. Use the Claude Desktop install above |
 | MCP Inspector CLI (`npx @modelcontextprotocol/inspector --cli`) | Tested with the twelve lookup and build tools: `tools/list`, `prompts/list`, `tools/call` |
 | Cursor, VS Code, Gemini CLI, Codex CLI | Not tested. The configuration below follows each client's documentation as read on 2026-11-11 |
-| ChatGPT | Not supported: it connects only to remote MCP servers over HTTPS |
+| ChatGPT desktop app (Windows) | **Tested in the app on 2026-11-13 (0.11.0)**: added under Settings → MCPs as a custom STDIO server; "躍擊 10 等的消耗是多少？" called `lookup_entity` and `get_gem` and answered with the cost and the poe2db link. A build request ("Lv90 傭兵 Tactician 擲彈流") ran the whole workflow: verified gems, passives and gear, `path_to`, the source list and an `export_pob` code that imported into PoB 0.23.1. The build itself was thin (43 of 123 points, no ascendancy points, several slots as bare bases, no Configuration option), which is the model's choice of what to ask the tools for, not a tool failure. `status` and `update` were not tried |
+| ChatGPT on the web | Not supported: it connects only to remote MCP servers over HTTPS |
 
 Reports from other clients are welcome — open an issue with the client name and version.
 
@@ -146,6 +147,21 @@ apart by adding `"env": { "UV_PROJECT_ENVIRONMENT": "C:\\Users\\you\\AppData\\Lo
 ```bash
 gemini mcp add -s user pobg uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server
 ```
+
+## ChatGPT desktop app
+
+Settings → search "MCP" → **MCPs** → connect to a custom MCP, type **STDIO**:
+
+| Field | Value |
+|---|---|
+| Name | `pobg` |
+| Command to launch | the full path of uv, e.g. `C:\Users\you\.local\bin\uv.exe` (`where uv` shows it) |
+| Arguments | one per row: `run`, `--frozen`, `--no-dev`, `--directory`, the POBG folder (e.g. `C:\POBG`), `python`, `-m`, `src.tools.mcp_server` |
+| Environment variables | none; `UV_PROJECT_ENVIRONMENT` only when the folder is shared with WSL (see Claude Desktop above) |
+
+Paths go in as they are, without quotes or doubled backslashes. Save, start a new chat and ask a question.
+The app keeps this in the same `~/.codex/config.toml` the Codex CLI uses (next section), so either way
+of adding it serves both.
 
 ## Codex CLI
 

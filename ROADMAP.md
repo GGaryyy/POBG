@@ -43,7 +43,7 @@ Also open:
 |---|---|
 | Patch notes as an update signal | poe2db's version pages list the gems and uniques each patch changed; a plain `update` cannot see number-only changes |
 | Confirm more clients | Cursor, VS Code, Gemini CLI and Codex CLI configurations are written from their docs but not tested |
-| Remote transport | ChatGPT, claude.ai on the web and chats in Claude Desktop that only have the uploaded plugin reach remote MCP servers only (a plugin's local server is not started in their cloud sandbox, tested 2026-11-13). Needs a decision on hosting first; the user chose to stay local for now |
+| Remote transport | ChatGPT on the web, claude.ai on the web and chats in Claude Desktop that only have the uploaded plugin reach remote MCP servers only (a plugin's local server is not started in their cloud sandbox, tested 2026-11-13). Needs a decision on hosting first; the user chose to stay local for now |
 | Ladder depth | The snapshot is about 600 characters from the top of several rankings; poe.ninja's layout is undocumented and has changed once already, so the fetcher needs watching |
 | New passive tree versions | `status` reports a newer version, but adopting it needs a catalog change and a release; the 1.0 release will add classes, weapons and acts |
 | One-click install for Claude Desktop | 0.11.0 has an install command (`install_desktop`, a `.bat` on Windows) that registers the local server from a release zip or a clone. An `.mcpb` bundle would remove the uv and unzip steps, once its support for uv projects is verified |

@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- The ChatGPT desktop app is no longer listed as unsupported: added as a custom STDIO MCP server it
+  called `lookup_entity` and `get_gem` and answered with the poe2db link, and a build request ran
+  the whole workflow to a code that imported into PoB (tested by the user on 2026-11-13 with 0.11.0). `docs/clients*.md` gain the steps and the test result; only ChatGPT on
+  the web remains unsupported.
+- README: the Claude Desktop steps add uploading the same zip as a plugin, for the commands and the
+  full build instructions on top of the local server's tools (the combination the user tested).
+
 ## [0.11.0] - 2026-11-13
 
 Installing in Claude Desktop (`docs/plan_desktop_install.md`), the `ninja` update scope, and the

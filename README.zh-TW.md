@@ -37,8 +37,12 @@ POBG 在你自己的電腦上執行。請先安裝 [uv](https://docs.astral.sh/u
 之後：要更新資料，直接在對話裡說（例如「更新技能寶石」，見[指令](#指令)）。POBG 出新版時，把新的 zip 解壓到同一個位置，
 再執行一次第 2 步。要把 POBG 從 Claude Desktop 移除，在指令後面加上 `--remove`。
 
-在 Claude Desktop 或 claude.ai 用「上傳 plugin」（Customize → Plugins）安裝 POBG 是**不夠的**：那裡的對話在雲端執行，
-不會啟動你電腦上的 server，只會有說明文字而沒有工具（2026-11-13 實測）。
+4. 選用，但建議一起做：把同一個 zip 當成 plugin 上傳（Customize → Plugins → 上傳）。這會在第 2 步的工具之外，
+   再加上指令（`/status`、`/update`、`/poe2-advisor`）與完整的流派說明。Claude Desktop 會請你確認這個 plugin
+   包含本機 MCP server，那就是 POBG 自己的。
+
+只上傳 plugin 是**不夠的**：Claude Desktop 和 claude.ai 的對話在雲端執行，不會啟動你電腦上的 server，沒做第 2 步就只有說明文字
+而沒有工具。兩者一起裝的組合已在 2026-11-13 實測。
 
 ### Claude Code
 
@@ -51,8 +55,9 @@ POBG 在你自己的電腦上執行。請先安裝 [uv](https://docs.astral.sh/u
 
 ### 其他 AI 應用
 
-Cursor、VS Code、Gemini CLI、Codex CLI 等：clone 本 repo，再把它加成本機 MCP server；各應用的設定方式與確認是否正常的
-提問見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。不支援 ChatGPT：它只能連線上的 MCP server，而 POBG 是在你的電腦上執行。
+ChatGPT 桌面版、Cursor、VS Code、Gemini CLI、Codex CLI 等：clone 本 repo，再把它加成本機 MCP server；各應用的設定方式與確認是否正常的
+提問見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。ChatGPT 桌面版也可以用（把 POBG 加成自訂 MCP server，2026-11-13 實測）。不支援網頁版 ChatGPT：它只能連線上的 MCP server，
+而 POBG 是在你的電腦上執行。
 
 ## 可以問什麼
 
