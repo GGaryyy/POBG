@@ -9,6 +9,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 - `docs/clients*.md` and the 0.12.0 test report: the Codex plugin tested from a clean state in the
   user's Codex (an earlier check had been answered by a hand-added server). ROADMAP lists `items_by`
   not accepting attribute page names as a follow-up.
+- The repo is public. The READMEs say to type the two Claude Code `/plugin` lines one at a time
+  (pasted together, Claude Code reads them as one marketplace source); Claude Code and Codex on macOS
+  both installed from the public repo and is recorded in `docs/clients*.md` and ROADMAP.
 
 ## [0.12.0] - 2026-11-13
 

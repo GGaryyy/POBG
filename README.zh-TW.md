@@ -27,7 +27,7 @@ Claude Code 我們建議在 WSL 裡使用；Codex CLI 在 PowerShell 或 cmd 上
 
 ### Claude Code（建議）
 
-在 Claude Code 裡輸入這兩行：
+在 Claude Code 裡**一次輸入一行**（等第一行完成再輸入第二行，兩行一起貼上會被當成同一個來源）：
 
 ```
 /plugin marketplace add GGaryyy/POBG

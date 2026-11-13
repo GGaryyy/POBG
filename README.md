@@ -35,7 +35,7 @@ not tested, so we cannot say how it behaves there. macOS and Linux need nothing 
 
 ### Claude Code (recommended)
 
-Type these two lines inside Claude Code:
+Type these lines inside Claude Code **one at a time** (wait for the first to finish; pasting both at once makes Claude Code read them as one source):
 
 ```
 /plugin marketplace add GGaryyy/POBG

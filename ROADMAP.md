@@ -23,14 +23,13 @@ client connects without friction.
 
 ## Right after going public (listed 2026-11-13)
 
-The repo is private until the user makes it public. The READMEs recommend Claude Code or Codex (the user's
-decision on 2026-11-13); other AI apps are tested later, when someone uses them. These tasks wait for the
-repo to be public and come first, in this order. Creating a release is done only on the user's word.
+The repo was made public on 2026-11-13. The READMEs recommend Claude Code or Codex (the user's
+decision on 2026-11-13); other AI apps are tested later, when someone uses them. These tasks come first, in this order. Creating a release is done only on the user's word.
 
 | # | Task | Why it waits | Done when |
 |---|---|---|---|
-| 1 | Install in Claude Code from GitHub: `/plugin marketplace add GGaryyy/POBG`, `/plugin install pobg@pobg` | Never run: the repo was private. Only loading from a local folder was tested | The server connects and a lookup cites poe2db; if the short form fails, use the full git URL in the READMEs |
-| 2 | Install in Codex from GitHub without access to the repo: `codex plugin marketplace add GGaryyy/POBG`, `codex plugin add pobg@pobg` | Works with the owner's GitHub access (tested 2026-11-13 while private); a user without access needs the repo public | The server connects, `$pobg:status` works and a build ends with a code that imports into PoB |
+| 1 | Install in Claude Code from GitHub: `/plugin marketplace add GGaryyy/POBG`, `/plugin install pobg@pobg` | Never run: the repo was private. Only loading from a local folder was tested | The server connects and a lookup cites poe2db; if the short form fails, use the full git URL in the READMEs. 2026-11-13 on macOS: pasting both lines at once makes Claude Code read them as one source; the READMEs now say to type them one at a time. **Done on macOS (2026-11-13)**: typed one at a time, installed from the public repo and worked |
+| 2 | Install in Codex from GitHub without access to the repo: `codex plugin marketplace add GGaryyy/POBG`, `codex plugin add pobg@pobg` | Works with the owner's GitHub access (tested 2026-11-13 while private); a user without access needs the repo public | The server connects, `$pobg:status` works and a build ends with a code that imports into PoB. **Done on macOS (2026-11-13)**: installed from the public repo with the two README lines and worked |
 | 3 | Record the results of 1 and 2 in `docs/clients.md` and `docs/clients.zh-TW.md` ("What was tested") | The table still says "to be confirmed after the first public release" | Each row has a date and a result |
 | 4 | Friends follow the README alone, in Claude Code or Codex | The steps were only followed by the people who wrote them | Notes on where a newcomer got stuck feed back into the README |
 
