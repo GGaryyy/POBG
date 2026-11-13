@@ -14,7 +14,7 @@ scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
 `passives`, `items`, `glossary`, `ninja`:** do not call `update_data`. Tell the user to pick one scope,
-for example `/pobg:update skill_gems`.
+for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:update` in Codex).
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
 

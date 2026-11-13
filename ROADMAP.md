@@ -21,6 +21,33 @@ client connects without friction.
 | Packaging | stdio MCP server started with `uv run`; Claude Code plugin with the `poe2-advisor` skill |
 | Client readiness (0.7.0) | Tool annotations and titles, tool-only fallback for the workflow, portability tests, Windows launcher tested, client guide |
 
+## Right after going public (listed 2026-11-13)
+
+The repo is private until the user makes it public. The READMEs recommend Claude Code or Codex (the user's
+decision on 2026-11-13); other AI apps are tested later, when someone uses them. These tasks wait for the
+repo to be public and come first, in this order. Creating a release is done only on the user's word.
+
+| # | Task | Why it waits | Done when |
+|---|---|---|---|
+| 1 | Install in Claude Code from GitHub: `/plugin marketplace add GGaryyy/POBG`, `/plugin install pobg@pobg` | Never run: the repo was private. Only loading from a local folder was tested | The server connects and a lookup cites poe2db; if the short form fails, use the full git URL in the READMEs |
+| 2 | Install in Codex from GitHub: `codex plugin marketplace add GGaryyy/POBG`, `codex plugin add pobg@pobg` | The Codex plugin (0.12.0) was installed only from a local folder | The server connects, `$pobg:status` works and a build ends with a code that imports into PoB |
+| 3 | Record the results of 1 and 2 in `docs/clients.md` and `docs/clients.zh-TW.md` ("What was tested") | The table still says "to be confirmed after the first public release" | Each row has a date and a result |
+| 4 | Friends follow the README alone, in Claude Code or Codex | The steps were only followed by the people who wrote them | Notes on where a newcomer got stuck feed back into the README |
+
+Later, when someone needs them (not blocking):
+
+| Task | State |
+|---|---|
+| A `v0.11.0` release with `pobg-0.11.0.zip` for Claude Desktop (command in `docs/data.md`, "Releasing") | The installer is done and tested on a clone; never installed from a zip. `docs/clients.md` links to the release page, which does not exist yet |
+| The release zip uploaded as a plugin in Claude Desktop | The zip has a top-level `POBG` folder; the upload tested on 2026-11-13 had the files at the top |
+| The ChatGPT desktop app with the Codex plugin (it shares `~/.codex` with Codex) | Tools tested without the plugin; the build was thin |
+| Show the length of a build code, so a code the model retyped wrongly is noticed | Seen in Codex CLI on 2026-11-13; the user chose to leave it: each AI hands the code over in its own way |
+| Cursor, VS Code, Gemini CLI | Not tested |
+
+Open from the same day: the Microsoft Store build's config location is matched by a pattern that was not
+verified on such a machine; `status` and `update` were not tried in the ChatGPT desktop app or Codex; the
+project-docs rule says diagrams are Mermaid, while the command flowcharts are now generated SVG.
+
 ## Next (in this order, decided 2026-11-11)
 
 The data covers gems, the passive tree, the glossary and (0.8.0) gear, flask, charm and jewel

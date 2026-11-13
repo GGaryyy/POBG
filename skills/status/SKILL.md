@@ -11,7 +11,8 @@ description: Show what the local Path of Exile 2 data holds and how old it is (r
 3. Ask whether to check the live sites. Only when the user agrees, call `data_status` with
    `check_online: true` (about 19 requests to poe2db.tw and GitHub) and report `problems`:
    pages that no longer parse, or a newer passive tree version.
-4. When something should be updated, name the command: `/pobg:update <scope>` with one of
+4. When something should be updated, name the command `pobg:update <scope>`
+   (`/pobg:update` in Claude Code, `$pobg:update` in Codex) with one of
    `skill_gems`, `spirit_gems`, `support_gems`, `passives`, `items`, `glossary`, `ninja`.
 
 Do not call `update_data` from this skill.

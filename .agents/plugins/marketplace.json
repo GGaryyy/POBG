@@ -1,0 +1,20 @@
+{
+  "name": "pobg",
+  "interface": {
+    "displayName": "POBG"
+  },
+  "plugins": [
+    {
+      "name": "pobg",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

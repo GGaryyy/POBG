@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup, Tag
 # CONSTANTS
 # ---------------------------------------------------------------------------
 
-USER_AGENT = "POBG/0.11 (+https://github.com/GGaryyy/POBG; research scraper)"
+USER_AGENT = "POBG/0.12 (+https://github.com/GGaryyy/POBG; research scraper)"
 REQUEST_TIMEOUT = 30
 DEFAULT_RETRIES = 3
 BACKOFF_BASE_SECONDS = 1.5

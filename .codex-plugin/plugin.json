@@ -1,0 +1,36 @@
+{
+  "name": "pobg",
+  "version": "0.12.0",
+  "description": "Unofficial Path of Exile 2 data tools for AI assistants, built on poe2db.tw: cited gem, passive and glossary lookups (English + 繁體中文), passive tree routes with point costs, and build advice whose every gem and passive is verified against local data.",
+  "author": {
+    "name": "GGaryyy"
+  },
+  "homepage": "https://github.com/GGaryyy/POBG",
+  "repository": "https://github.com/GGaryyy/POBG",
+  "license": "MIT",
+  "keywords": [
+    "path-of-exile-2",
+    "poe2",
+    "poe2db",
+    "mcp",
+    "game-data"
+  ],
+  "interface": {
+    "displayName": "POBG",
+    "shortDescription": "Cited PoE2 data and builds",
+    "longDescription": "Path of Exile 2 gems, passives, gear and glossary from a local copy of poe2db.tw (English and 繁體中文), verified build advice and Path of Building codes. The MCP server runs on your computer.",
+    "developerName": "GGaryyy",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "What does Leap Slam cost at level 10?",
+      "給我一個 90 級的傭兵流派，包含完整裝備和 PoB 匯入碼"
+    ]
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.codex-plugin/mcp.json"
+}

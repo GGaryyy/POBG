@@ -23,53 +23,49 @@ not exist. Thank you.
 
 POBG runs on your own computer. Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
 first; it must be version **0.13.4 or newer** (`uv --version` to check, `uv self update` to upgrade).
-Then pick the app you use.
 
-### Claude Desktop
+**We recommend Claude Code or Codex.** In both, POBG installs as a plugin: the plugin starts the MCP
+server on your computer (the tools) and brings the build instructions and the `pobg` commands. Ask
+questions in plain words; use a `pobg` command to check or update the data. These are the setups
+that produced complete builds in our tests.
 
-1. Download `pobg-<version>.zip` from the [latest release](https://github.com/GGaryyy/POBG/releases/latest)
-   and unzip it to a place where it can stay, for example `C:\POBG`. Claude Desktop starts POBG from
-   that folder, so do not move or delete it afterwards. (With git: `git clone https://github.com/GGaryyy/POBG`.)
-2. Quit Claude Desktop completely (also from the system tray), then register POBG in it. On Windows,
-   double-click `install_claude_desktop.bat` in the folder. On any system, run this in the folder:
+**On Windows, use WSL.** Both were installed and tested inside WSL (Ubuntu), with uv installed there
+as well. For Claude Code on Windows we recommend WSL. Codex CLI in PowerShell or cmd was
+not tested, so we cannot say how it behaves there. macOS and Linux need nothing extra.
 
-   ```
-   uv run --frozen --no-dev python -m src.tools.install_desktop
-   ```
+### Claude Code (recommended)
 
-   It adds one entry, `pobg`, to Claude Desktop's settings file. The file is backed up first and
-   nothing else in it is changed.
-3. Start Claude Desktop again and ask a question.
-   The first start takes a little longer while uv sets up Python and about 40 packages.
-
-Later: to refresh the data, ask in a chat (for example "update the skill gems"; see
-[Commands](#commands)). For a new POBG version, unzip the new zip to the same place and run the
-install step again. To take POBG out of Claude Desktop, add `--remove` to the command.
-
-4. Optional, for the full set: also upload the same zip as a plugin (Customize → Plugins → upload).
-   That adds the commands (`/status`, `/update`, `/poe2-advisor`) and the complete build
-   instructions on top of the tools from step 2. Claude Desktop asks you to confirm that the
-   plugin includes a local MCP server; that is POBG's own.
-
-The plugin alone is **not enough**: chats in Claude Desktop and on claude.ai run in the cloud and do
-not start a server on your computer, so without step 2 you would get the instructions without the
-tools. Both together were tested on 2026-11-13.
-
-### Claude Code
+Type these two lines inside Claude Code:
 
 ```
 /plugin marketplace add GGaryyy/POBG
 /plugin install pobg@pobg
 ```
 
-Start a new conversation and ask a question.
+Start a new conversation and ask a question. The first start takes a little longer while uv sets up
+Python and about 40 packages. Commands start with `/pobg:` (for example `/pobg:status`; see [Commands](#commands)).
+
+### Codex CLI (recommended)
+
+Run these two lines in a terminal (not inside a Codex chat):
+
+```
+codex plugin marketplace add GGaryyy/POBG
+codex plugin add pobg@pobg
+```
+
+Start `codex` and ask a question; the first start takes a little longer, as in Claude Code. Commands
+start with `$pobg:` (for example `$pobg:status`; typing `$pobg` lists them). When you ask for a Path of
+Building code, **take it from the file Codex saves**: a long code retyped into the terminal can come out
+wrong (tested 2026-11-13).
 
 ### Other AI apps
 
-The ChatGPT desktop app, Cursor, VS Code, Gemini CLI, Codex CLI …: clone this repo and add it as a local MCP server;
-[docs/clients.md](docs/clients.md) has the setup for each one and questions to check it works.
-The ChatGPT desktop app works too (add POBG as a custom MCP server; tested 2026-11-13). ChatGPT on the web
-is not supported: it only connects to online MCP servers, and POBG runs on your computer.
+Claude Desktop, the ChatGPT desktop app, Cursor, VS Code, Gemini CLI … can run POBG as a local MCP
+server too, with more steps, and we have tested them less: [docs/clients.md](docs/clients.md) has the
+setup for each and what was tried. Without the skills (the ChatGPT desktop app, for one) the tools
+work but a build answer came out thinner. ChatGPT and Claude on the web are not supported: they only
+connect to online MCP servers, and POBG runs on your computer.
 
 ## What you can ask
 
@@ -136,17 +132,19 @@ supports, gear, and PoB Configuration options. Notes about the build are in PoB'
 
 ## Commands
 
-POBG has four commands in Claude Code. The full flow of each one (what it calls, where it decides,
-when it writes) is drawn in **[docs/flow/commands.md](docs/flow/commands.md)**.
+POBG has four commands. Their names are the same in Claude Code and Codex; each app has its own sign
+for calling one: `/` in Claude Code, `$` in Codex (typing `$pobg` there lists them). The full flow of
+each one (what it calls, where it decides, when it writes) is drawn in
+**[docs/flow/commands.md](docs/flow/commands.md)**.
 
-| Command | What it does |
-|---|---|
-| `/pobg:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. After you agree, it also checks the live sites: did poe2db's pages change, is there a newer passive tree |
-| `/pobg:update <scope> [names]` | Re-fetches **one** data set after a game patch. Shows what would be fetched first, then updates it |
-| `/pobg:update-pob <folder>` | Updates your Path of Building (PoE2, alone or inside a PoeCharm2 folder) to the latest release. Checks versions first; after you agree, downloads into a **new folder** next to the old one, which is never changed or deleted |
-| `/pobg:poe2-advisor` | The instructions followed to answer PoE2 questions and write builds. You do not run it yourself; it is applied automatically when you ask |
+| Command | Claude Code | Codex | What it does |
+|---|---|---|---|
+| status | `/pobg:status` | `$pobg:status` | Shows, per data set, how many records there are, when they were fetched and how old they are. After you agree, it also checks the live sites: did poe2db's pages change, is there a newer passive tree |
+| update | `/pobg:update <scope> [names]` | `$pobg:update <scope> [names]` | Re-fetches **one** data set after a game patch. Shows what would be fetched first, then updates it |
+| update-pob | `/pobg:update-pob <folder>` | `$pobg:update-pob <folder>` | Updates your Path of Building (PoE2, alone or inside a PoeCharm2 folder) to the latest release. Checks versions first; after you agree, downloads into a **new folder** next to the old one, which is never changed or deleted |
+| poe2-advisor | `/pobg:poe2-advisor` | `$pobg:poe2-advisor` | The instructions followed to answer PoE2 questions and write builds. You do not run it yourself; it is applied automatically when you ask |
 
-`/pobg:update` always needs a scope; there is no "update everything":
+`update` always needs a scope; there is no "update everything":
 
 | Scope | Updates |
 |---|---|
@@ -158,7 +156,7 @@ when it writes) is drawn in **[docs/flow/commands.md](docs/flow/commands.md)**.
 | `glossary` | Glossary terms |
 | `ninja` | The poe.ninja ladder snapshot (no character or account names are kept) |
 
-Examples:
+Examples (in Codex write `$` instead of `/`):
 
 ```
 /pobg:status

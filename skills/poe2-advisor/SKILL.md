@@ -91,7 +91,8 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
    Exposure and so on) for which the build itself has evidence; `summary.config` names each with
    its source gem, passive or item. List them: PoB's damage figure assumes these states. When
    comparing with a ladder character, say which of poe.ninja's assumed states this build lacks. An older
-   PoB skips or refuses what it does not have: suggest `/pobg:update-pob`.
+   PoB skips or refuses what it does not have: suggest the `pobg:update-pob` command
+   (`/pobg:update-pob` in Claude Code, `$pobg:update-pob` in Codex).
 
 ## Notes
 

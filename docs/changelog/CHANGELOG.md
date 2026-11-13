@@ -5,13 +5,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-13
+
+A Codex plugin next to the Claude Code one (`docs/plan_codex_plugin.md`), so both are installed
+the same way and use the same commands.
+
+### Added
+- `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json` and `.agents/plugins/marketplace.json`:
+  `codex plugin marketplace add GGaryyy/POBG` then `codex plugin add pobg@pobg` installs the
+  MCP server and the four skills in one step, as the two `/plugin` commands do in Claude Code.
+  The user wanted one way of working: install the plugin, ask in plain words, use a `pobg`
+  command to check or update the data. Tested by installing from a local folder into an isolated
+  Codex home (Codex 0.168.0): the server starts from the plugin's folder with 18 tools and the
+  skills are named `pobg:poe2-advisor`, `pobg:status`, `pobg:update`, `pobg:update-pob`, the same
+  names as in Claude Code; Codex calls them with `$` (`$pobg:status`), Claude Code with `/`. The
+  user then installed it in their Codex, where `$pobg:status` ran the skill and its tool.
+  The server file sits in `.codex-plugin/` because a root `.mcp.json` would register a second
+  server in Claude Code.
+
 ### Changed
+- READMEs: Codex installs as a plugin with two commands (the manual `codex mcp add` and copying
+  skill folders are gone); the Commands table gives each command for Claude Code and Codex.
+- Skills name their commands for both hosts. `update-pob` no longer relies on a Claude-only path
+  variable alone: in Codex it runs from the folder two levels above its `SKILL.md`.
+- Local test installs come from a clean clone: Codex copies a whole folder, `.venv` and `output/`
+  included, ignoring `.gitignore`.
 - The ChatGPT desktop app is no longer listed as unsupported: added as a custom STDIO MCP server it
   called `lookup_entity` and `get_gem` and answered with the poe2db link, and a build request ran
   the whole workflow to a code that imported into PoB (tested by the user on 2026-11-13 with 0.11.0). `docs/clients*.md` gain the steps and the test result; only ChatGPT on
   the web remains unsupported.
-- README: the Claude Desktop steps add uploading the same zip as a plugin, for the commands and the
-  full build instructions on top of the local server's tools (the combination the user tested).
+- READMEs: the quick start recommends Claude Code or Codex CLI (the user's decision: these gave the
+  tools and the skills, and complete builds). Claude Desktop, the ChatGPT desktop app and the other
+  clients move to one paragraph that points to `docs/clients*.md`, where the Claude Desktop steps
+  now also say that the server plus the uploaded plugin is the complete setup there. They state
+  that both were tested in WSL: Windows users are pointed to WSL, and Codex CLI in PowerShell or
+  cmd is marked as not tested.
+- `docs/clients*.md`: Codex CLI tested in WSL with the skills copied to `~/.codex/skills` (complete
+  build, code imports); noted that the model can mangle a long code when it retypes it to the terminal.
+- ROADMAP: a "Right after going public" list (release with the zip, install from the zip, the zip as
+  a plugin, the Claude Code install from GitHub, skills in the ChatGPT desktop app, recording the results).
 
 ## [0.11.0] - 2026-11-13
 

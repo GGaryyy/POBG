@@ -163,7 +163,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.11.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.12.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 

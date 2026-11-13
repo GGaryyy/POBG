@@ -44,7 +44,7 @@ POBG 在 Claude Code 中有四個指令。這份文件畫出每個指令從輸�
 ## `/pobg:update <範圍>`：更新一類資料
 
 出處：[`skills/update/SKILL.md`](../../skills/update/SKILL.md)、`src/tools/maintenance.py` 的 `update`。
-一次只更新一個範圍，沒有「全部更新」。所有請求都表明身分（`POBG/0.11`），每個頁面或檔案前等待 0.8 秒
+一次只更新一個範圍，沒有「全部更新」。所有請求都表明身分（`POBG/0.12`），每個頁面或檔案前等待 0.8 秒
 （hover 片段 0.3 秒）。
 
 ### 總覽：先看範圍

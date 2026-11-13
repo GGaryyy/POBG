@@ -16,48 +16,44 @@ POBG 只是站在巨人的肩膀上：沒有 poe2db.tw、Path of Building 社群
 ## 快速開始
 
 POBG 在你自己的電腦上執行。請先安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/)，版本必須是
-**0.13.4 以上**（`uv --version` 查看，`uv self update` 升級），再依你用的應用選一種。
+**0.13.4 以上**（`uv --version` 查看，`uv self update` 升級）。
 
-### Claude Desktop（桌面版）
+**我們建議使用 Claude Code 或 Codex。** 兩者都以 plugin 安裝 POBG：plugin 會在你的電腦上啟動 MCP server（提供工具），並帶來流派說明與
+`pobg` 指令。平常直接用一般的話提問；要檢查或更新資料時用 `pobg` 指令。這也是我們測試中產出完整流派的做法。
 
-1. 從[最新版本](https://github.com/GGaryyy/POBG/releases/latest)下載 `pobg-<版本>.zip`，解壓到一個可以長期放著的位置，
-   例如 `C:\POBG`。Claude Desktop 之後會從這個資料夾啟動 POBG，所以解壓後不要搬移或刪除它。
-   （會用 git 的話：`git clone https://github.com/GGaryyy/POBG`。）
-2. 先完全結束 Claude Desktop（系統匣的圖示也要結束），再把 POBG 註冊進去。Windows 請在資料夾裡點兩下
-   `install_claude_desktop.bat`；任何系統都可以在資料夾裡執行：
+**Windows 使用者請用 WSL。** 這兩者我們都是裝在 WSL（Ubuntu）裡測試的，uv 也裝在 WSL 裡。Windows 上的
+Claude Code 我們建議在 WSL 裡使用；Codex CLI 在 PowerShell 或 cmd 上沒有測過，所以無法說明在那裡的情況。macOS 與 Linux 不需要
+額外準備。
 
-   ```
-   uv run --frozen --no-dev python -m src.tools.install_desktop
-   ```
+### Claude Code（建議）
 
-   它會在 Claude Desktop 的設定檔裡加上一項 `pobg`。寫入前會先備份設定檔，其他內容都不會動。
-3. 重新開啟 Claude Desktop，然後直接提問。
-   第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。
-
-之後：要更新資料，直接在對話裡說（例如「更新技能寶石」，見[指令](#指令)）。POBG 出新版時，把新的 zip 解壓到同一個位置，
-再執行一次第 2 步。要把 POBG 從 Claude Desktop 移除，在指令後面加上 `--remove`。
-
-4. 選用，但建議一起做：把同一個 zip 當成 plugin 上傳（Customize → Plugins → 上傳）。這會在第 2 步的工具之外，
-   再加上指令（`/status`、`/update`、`/poe2-advisor`）與完整的流派說明。Claude Desktop 會請你確認這個 plugin
-   包含本機 MCP server，那就是 POBG 自己的。
-
-只上傳 plugin 是**不夠的**：Claude Desktop 和 claude.ai 的對話在雲端執行，不會啟動你電腦上的 server，沒做第 2 步就只有說明文字
-而沒有工具。兩者一起裝的組合已在 2026-11-13 實測。
-
-### Claude Code
+在 Claude Code 裡輸入這兩行：
 
 ```
 /plugin marketplace add GGaryyy/POBG
 /plugin install pobg@pobg
 ```
 
-開一個新對話直接提問。
+開一個新對話直接提問。第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。指令以 `/pobg:` 開頭
+（例如 `/pobg:status`，見[指令](#指令)）。
+
+### Codex CLI（建議）
+
+在終端機執行這兩行（不是在 Codex 的對話裡）：
+
+```
+codex plugin marketplace add GGaryyy/POBG
+codex plugin add pobg@pobg
+```
+
+啟動 `codex` 直接提問，第一次啟動同樣會稍久一點。指令以 `$pobg:` 開頭（例如 `$pobg:status`；輸入 `$pobg` 會列出全部）。
+請它給 Path of Building 匯入碼時，**請用 Codex 存下的檔案**：很長的匯入碼被重打到終端機上時可能出錯（2026-11-13 實測）。
 
 ### 其他 AI 應用
 
-ChatGPT 桌面版、Cursor、VS Code、Gemini CLI、Codex CLI 等：clone 本 repo，再把它加成本機 MCP server；各應用的設定方式與確認是否正常的
-提問見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。ChatGPT 桌面版也可以用（把 POBG 加成自訂 MCP server，2026-11-13 實測）。不支援網頁版 ChatGPT：它只能連線上的 MCP server，
-而 POBG 是在你的電腦上執行。
+Claude Desktop、ChatGPT 桌面版、Cursor、VS Code、Gemini CLI 等也能把 POBG 當成本機 MCP server 使用，但步驟比較多，我們的測試也
+比較少：各應用的設定方式與測試紀錄見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。沒有 skill 時（例如 ChatGPT 桌面版）工具
+可以用，但流派回答比較單薄。不支援網頁版的 ChatGPT 與 Claude：它們只能連線上的 MCP server，而 POBG 是在你的電腦上執行。
 
 ## 可以問什麼
 
@@ -108,17 +104,18 @@ ChatGPT 桌面版、Cursor、VS Code、Gemini CLI、Codex CLI 等：clone 本 re
 
 ## 指令
 
-POBG 在 Claude Code 中共有四個指令。每個指令的完整流程圖（會呼叫什麼、在哪裡判斷、何時寫入）見
+POBG 共有四個指令。指令名稱在 Claude Code 和 Codex 裡完全一樣，只是兩個應用叫用的符號不同：Claude Code 用 `/`，Codex 用 `$`
+（在 Codex 打 `$pobg` 會列出它們）。每個指令的完整流程圖（會呼叫什麼、在哪裡判斷、何時寫入）見
 **[docs/flow/commands.zh-TW.md](docs/flow/commands.zh-TW.md)**。
 
-| 指令 | 做什麼 |
-|---|---|
-| `/pobg:status` | 列出每類資料有幾筆、何時抓的、已經多久。你同意後還可檢查線上網站：poe2db 頁面是否改版、天賦樹有沒有新版 |
-| `/pobg:update <範圍> [名稱]` | 遊戲改版後重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
-| `/pobg:update-pob <資料夾>` | 把你的 Path of Building（PoE2，單獨安裝或放在 PoeCharm2 資料夾中）更新到最新版。先比對版本，你同意後才下載到舊資料夾旁的**新資料夾**；舊資料夾不會被修改或刪除 |
-| `/pobg:poe2-advisor` | 回答 PoE2 問題與撰寫流派時遵循的說明。不用自己下指令，提問時會自動套用 |
+| 指令 | Claude Code | Codex | 做什麼 |
+|---|---|---|---|
+| status | `/pobg:status` | `$pobg:status` | 列出每類資料有幾筆、何時抓的、已經多久。你同意後還可檢查線上網站：poe2db 頁面是否改版、天賦樹有沒有新版 |
+| update | `/pobg:update <範圍> [名稱]` | `$pobg:update <範圍> [名稱]` | 遊戲改版後重新抓取**一類**資料。先列出會抓哪些，再實際更新 |
+| update-pob | `/pobg:update-pob <資料夾>` | `$pobg:update-pob <資料夾>` | 把你的 Path of Building（PoE2，單獨安裝或放在 PoeCharm2 資料夾中）更新到最新版。先比對版本，你同意後才下載到舊資料夾旁的**新資料夾**；舊資料夾不會被修改或刪除 |
+| poe2-advisor | `/pobg:poe2-advisor` | `$pobg:poe2-advisor` | 回答 PoE2 問題與撰寫流派時遵循的說明。不用自己下指令，提問時會自動套用 |
 
-`/pobg:update` 一定要指定範圍，沒有「全部更新」：
+`update` 一定要指定範圍，沒有「全部更新」：
 
 | 範圍 | 更新什麼 |
 |---|---|
@@ -130,7 +127,7 @@ POBG 在 Claude Code 中共有四個指令。每個指令的完整流程圖（�
 | `glossary` | 名詞解釋 |
 | `ninja` | poe.ninja 天梯快照（不保留角色或帳號名稱） |
 
-範例：
+範例（在 Codex 把 `/` 換成 `$`）：
 
 ```
 /pobg:status

@@ -22,6 +22,9 @@ pytestmark = pytest.mark.unit
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
 MARKET = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+CODEX = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+CODEX_MCP = json.loads((ROOT / ".codex-plugin" / "mcp.json").read_text(encoding="utf-8"))
+CODEX_MARKET = json.loads((ROOT / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
 PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 SKILL = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
 REPO_URL = "https://github.com/GGaryyy/POBG"
@@ -45,7 +48,7 @@ def requirement_name(line: str) -> str:
 
 
 def test_versions_agree():
-    assert PLUGIN["version"] == PYPROJECT["project"]["version"] == __version__
+    assert PLUGIN["version"] == CODEX["version"] == PYPROJECT["project"]["version"] == __version__
     assert re.fullmatch(r"\d+\.\d+\.\d+", __version__)
 
 
@@ -57,6 +60,32 @@ def test_names_agree():
     assert PLUGIN["repository"] == REPO_URL and REPO_URL in USER_AGENT
     assert MARKET["owner"]["name"] == PLUGIN["author"]["name"]
     assert MARKET["metadata"]["description"] and PLUGIN["description"]
+
+
+def test_the_codex_plugin_matches_the_claude_one():
+    assert CODEX["name"] == CODEX_MARKET["name"] == "pobg" and CODEX["description"] == PLUGIN["description"]
+    assert CODEX["repository"] == PLUGIN["repository"] and CODEX["author"] == PLUGIN["author"]
+    assert [p["name"] for p in CODEX_MARKET["plugins"]] == ["pobg"]
+    assert CODEX_MARKET["plugins"][0]["source"] == {"source": "local", "path": "./"}
+    assert CODEX["skills"] == "./skills/" and (ROOT / CODEX["mcpServers"]).is_file()
+    assert len(CODEX["interface"]["shortDescription"]) <= 30                     # Codex's limit for the subtitle
+    assert list(CODEX_MCP["mcpServers"]) == ["pobg"]
+
+
+def test_the_codex_launcher_starts_the_same_server_from_the_plugin_folder():
+    claude, codex = PLUGIN["mcpServers"]["pobg"], CODEX_MCP["mcpServers"]["pobg"]
+    assert codex["command"] == claude["command"] == "uv" and codex["cwd"] == "."
+    assert codex["args"] == [("." if arg == "${CLAUDE_PLUGIN_ROOT}" else arg) for arg in claude["args"]]
+    assert "CLAUDE" not in json.dumps(codex)                                       # Codex does not expand them
+
+
+def test_skills_name_the_commands_for_both_hosts():
+    for name in ("status", "update", "poe2-advisor"):
+        text = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+        flat = " ".join(text.split())
+        assert "in Claude Code" in flat and "in Codex" in flat, name
+    update_pob = (ROOT / "skills" / "update-pob" / "SKILL.md").read_text(encoding="utf-8")
+    assert update_pob.count("${CLAUDE_PLUGIN_ROOT}") == 1 and "in Codex, the folder two levels" in update_pob
 
 
 def test_plugin_launcher_is_portable():
@@ -205,7 +234,7 @@ def test_update_pob_skill_is_user_invoked_checks_first_and_asks_before_downloadi
     assert head["name"] == "update-pob" and head["disable-model-invocation"] == "true"
     body = " ".join(text.split("---", 2)[2].split())
     assert "$ARGUMENTS" in body and "Do not search the disk" in body
-    command = 'uv run --directory "${CLAUDE_PLUGIN_ROOT}" python -m src.tools.pob_update --dir "<folder>"'
+    command = 'uv run --directory "<plugin folder>" python -m src.tools.pob_update --dir "<folder>"'
     assert body.index(command + " --check") < body.index("Only after the user agrees") < body.rindex(command)
     assert "Never delete the old folder" in body and not TOOL_LIKE.findall(body.replace("export_pob", ""))
     assert "600000 ms" in body and "do not run anything" in body and "poecharm_latest_date" in body
@@ -215,4 +244,5 @@ def test_update_pob_skill_is_user_invoked_checks_first_and_asks_before_downloadi
 
 def test_advisor_points_to_the_update_pob_command():
     skill = (ROOT / "skills" / "poe2-advisor" / "SKILL.md").read_text(encoding="utf-8")
-    assert "/pobg:update-pob" in skill and (ROOT / "skills" / "update-pob" / "SKILL.md").is_file()
+    assert "/pobg:update-pob" in skill and "$pobg:update-pob" in skill
+    assert (ROOT / "skills" / "update-pob" / "SKILL.md").is_file()

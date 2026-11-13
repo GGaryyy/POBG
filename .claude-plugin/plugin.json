@@ -1,6 +1,6 @@
 {
   "name": "pobg",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Unofficial Path of Exile 2 data tools for AI assistants, built on poe2db.tw: cited gem, passive and glossary lookups (English + 繁體中文), passive tree routes with point costs, and build advice whose every gem and passive is verified against local data.",
   "author": {
     "name": "GGaryyy"

@@ -17,7 +17,8 @@ passives and gems it does not know. This command updates the user's copy. It dow
 Building) or `PoeCharm3.exe` (PoeCharm2, with Path of Building inside it). Do not search the
 disk for it.
 
-The command runs from the plugin's folder. On Windows paths such as `G:\POB\poe2` work as
+The command runs from the plugin's folder: `${CLAUDE_PLUGIN_ROOT}` in Claude Code; in Codex, the folder two levels
+above this SKILL.md (the one that holds `pyproject.toml`). Write that folder where `<plugin folder>` stands below. On Windows paths such as `G:\POB\poe2` work as
 given; under WSL write them as `/mnt/g/POB/poe2`. Put the path in double quotes. If it contains
 `"`, `` ` `` or `$`, do not run anything: ask the user to rename the folder or run the command
 themselves.
@@ -25,7 +26,7 @@ themselves.
 1. Check (2 requests to GitHub, writes nothing):
 
    ```
-   uv run --directory "${CLAUDE_PLUGIN_ROOT}" python -m src.tools.pob_update --dir "<folder>" --check
+   uv run --directory "<plugin folder>" python -m src.tools.pob_update --dir "<folder>" --check
    ```
 
    Report `installed` and `latest`, and `note` when there is one. For a PoeCharm2 folder also
@@ -43,7 +44,7 @@ themselves.
    progress lines go to stderr, the result (JSON) to stdout:
 
    ```
-   uv run --directory "${CLAUDE_PLUGIN_ROOT}" python -m src.tools.pob_update --dir "<folder>"
+   uv run --directory "<plugin folder>" python -m src.tools.pob_update --dir "<folder>"
    ```
 
 4. Report `new_folder`, `version`, `builds_copied`, `checksum` and `next`. On `error`, show it:

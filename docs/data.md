@@ -88,7 +88,7 @@ normally after a game patch. A running server makes no network request unless `r
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `POBG/0.11 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
+  `POBG/0.12 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
@@ -133,11 +133,11 @@ what the server needs (no tests, docs, plans or reports) and unpacks to a single
 
 ```bash
 git archive --format=zip --prefix=POBG/ -o output/pobg-<version>.zip v<version> \
-    .claude-plugin skills src data pyproject.toml uv.lock README.md README.zh-TW.md LICENSE install_claude_desktop.bat
+    .claude-plugin .codex-plugin .agents skills src data pyproject.toml uv.lock README.md README.zh-TW.md LICENSE install_claude_desktop.bat
 gh release create v<version> output/pobg-<version>.zip --title "POBG <version>" --notes-file <notes>
 ```
 
-The version is in `pyproject.toml`, `.claude-plugin/plugin.json`, `src/__init__.py`, `uv.lock` and the
+The version is in `pyproject.toml`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `src/__init__.py`, `uv.lock` and the
 `User-Agent` in `src/scrapers/common.py`.
 
 ## Development
@@ -151,5 +151,5 @@ uv run ruff check .
 Layout: `src/catalog/` (source catalog, probe, entity index), `src/scrapers/` (collectors),
 `src/kg/` (stat index, knowledge graph), `src/tools/` (lookup service, build tools, PoB export
 and updater, pathing, data status and updates, the Claude Desktop installer, MCP server), `skills/` and `.claude-plugin/`
-(Claude Code plugin), `data/` (the collected data), `docs/` (client guide, tools, flow diagrams,
+(Claude Code plugin), `.codex-plugin/` and `.agents/` (Codex plugin), `data/` (the collected data), `docs/` (client guide, tools, flow diagrams,
 plans, reports, changelog). See [`ROADMAP.md`](../ROADMAP.md) for what is next.

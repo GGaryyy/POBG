@@ -24,11 +24,12 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 
 | Client | Status (2026-11-11 with 0.7.0, unless a later date is given) |
 |---|---|
-| Claude Code — plugin | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `pobg` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
+| Claude Code — plugin (WSL; recommended on Windows) | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `pobg` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
 | Claude Desktop (Windows) | **Tested in the app on 2026-11-13 (0.10.0)**: with the `pobg` server registered in `claude_desktop_config.json`, chats call the tools (`data_status` answered from the local data folder). The installer (`install_desktop`, 0.11.0) was run against a copy of a real config and in check mode against the real one. Before that: a scripted MCP session through Windows `uv.exe` and Python 3.12 (system code page 950) with Chinese input |
 | Plugin uploaded in Claude Desktop or claude.ai (Customize → Plugins) | **Does not give the tools** (tested 2026-11-13, 0.10.0): the plugin's files and skills sync into a cloud sandbox, but its local MCP server is not started there, and the sandbox cannot reach poe2db. Use the Claude Desktop install above |
 | MCP Inspector CLI (`npx @modelcontextprotocol/inspector --cli`) | Tested with the twelve lookup and build tools: `tools/list`, `prompts/list`, `tools/call` |
-| Cursor, VS Code, Gemini CLI, Codex CLI | Not tested. The configuration below follows each client's documentation as read on 2026-11-11 |
+| Codex CLI (WSL, 0.168.0) | **Tested on 2026-11-13 (0.11.0)** with the server added by `codex mcp add` and the `poe2-advisor`, `status` and `update` skill folders copied to `~/.codex/skills`: `pobg` connected with 18 tools; a lookup read the skill, called `lookup_entity` and `get_gem` and cited poe2db; a build request produced a complete build (117 passive nodes incl. 8 ascendancy points, 14 items, 5 Configuration options) and a code that imports into PoB. **Take the code from the file Codex saves, not from the terminal**: when asked to print it, the model retyped the 3,613-character code and got about half of it, which PoB rejects. Not tested in PowerShell or cmd. **Plugin (0.12.0)**: installed from a local folder into an isolated Codex home: the server starts from the plugin's folder (18 tools) and the skills are listed as `pobg:poe2-advisor`, `pobg:status`, `pobg:update`, `pobg:update-pob`. The user then installed it in their Codex and `$pobg:status` ran the skill and called `data_status` (version 0.12.0) |
+| Cursor, VS Code, Gemini CLI | Not tested. The configuration below follows each client's documentation as read on 2026-11-11 |
 | ChatGPT desktop app (Windows) | **Tested in the app on 2026-11-13 (0.11.0)**: added under Settings → MCPs as a custom STDIO server; "躍擊 10 等的消耗是多少？" called `lookup_entity` and `get_gem` and answered with the cost and the poe2db link. A build request ("Lv90 傭兵 Tactician 擲彈流") ran the whole workflow: verified gems, passives and gear, `path_to`, the source list and an `export_pob` code that imported into PoB 0.23.1. The build itself was thin (43 of 123 points, no ascendancy points, several slots as bare bases, no Configuration option), which is the model's choice of what to ask the tools for, not a tool failure. `status` and `update` were not tried |
 | ChatGPT on the web | Not supported: it connects only to remote MCP servers over HTTPS |
 
@@ -73,8 +74,13 @@ What the installer does:
   valid JSON, or that changed while the installer was working, is refused and left as it is. When the config
   is found in two places (a leftover folder next to the Store build), it asks for `--config`.
 
-A plugin uploaded in Claude Desktop or on claude.ai (Customize → Plugins) brings the skills only: those chats
-run in a cloud sandbox, which does not start a plugin's local MCP server (tested 2026-11-13).
+For the commands (`/status`, `/update`, `/poe2-advisor`) and the full build instructions as well, also upload
+the project as a plugin (Customize → Plugins → upload a zip that holds `.claude-plugin/`). The local server
+gives the tools, the plugin the skills; both together were tested on 2026-11-13. The plugin alone brings the
+skills only: those chats run in a cloud sandbox, which does not start a plugin's local MCP server.
+
+To update POBG, put the new version in the same folder and run the install command again. The data is
+refreshed from a chat ("update the skill gems").
 
 By hand instead: Settings → Developer → **Edit Config** opens `claude_desktop_config.json`:
 
@@ -165,6 +171,31 @@ of adding it serves both.
 
 ## Codex CLI
 
+POBG is a Codex plugin too: it starts the MCP server and brings the skills, with the same `pobg:` command names
+as in Claude Code (called with `$` in Codex: `$pobg:status`).
+
+```
+codex plugin marketplace add GGaryyy/POBG
+codex plugin add pobg@pobg
+```
+
+The plugin files are `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json` (the server, started from the
+plugin's own folder) and `.agents/plugins/marketplace.json`. Codex copies the plugin into
+`~/.codex/plugins/cache/` and uv sets up the Python environment there on the first start.
+
+To try a local copy before it is on GitHub, install from a clean clone, not from a working folder: Codex copies
+the whole folder, `.venv` and `output/` included, whatever `.gitignore` says.
+
+```
+git clone /path/to/POBG ~/pobg-codex-test
+codex plugin marketplace add ~/pobg-codex-test
+codex plugin add pobg@pobg
+```
+
+Without the plugin, the server alone also works (`~/.codex/config.toml`), but then there are no `pobg`
+commands and the build instructions come only from the `build_workflow` tool:
+
+
 `~/.codex/config.toml`:
 
 ```toml
@@ -174,6 +205,7 @@ args = ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG", 
 ```
 
 Or: `codex mcp add pobg -- uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.mcp_server`
+
 
 ## Any other stdio client
 

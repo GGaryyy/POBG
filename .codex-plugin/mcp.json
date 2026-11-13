@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "pobg": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--frozen",
+        "--no-dev",
+        "--directory",
+        ".",
+        "python",
+        "-m",
+        "src.tools.mcp_server"
+      ],
+      "cwd": "."
+    }
+  }
+}
