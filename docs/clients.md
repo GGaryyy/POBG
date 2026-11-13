@@ -22,10 +22,11 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 
 ## What was tested
 
-| Client | Status (2026-11-11, version 0.7.0) |
+| Client | Status (2026-11-11 with 0.7.0, unless a later date is given) |
 |---|---|
 | Claude Code — plugin | Tested on Linux (WSL): loaded from a local folder with `--plugin-dir`, exactly one `pobg` server, connected; `claude plugin validate --strict` passes. Install from GitHub to be confirmed after the first public release |
-| Claude Desktop (Windows) | Launcher tested: a scripted MCP session through Windows `uv.exe` and Python 3.12 (system code page 950) ran the lookup and build tools with Chinese input, `data_status` and a dry-run `update_data`. In-app test: pending |
+| Claude Desktop (Windows) | **Tested in the app on 2026-11-13 (0.10.0)**: with the `pobg` server registered in `claude_desktop_config.json`, chats call the tools (`data_status` answered from the local data folder). The installer (`install_desktop`, 0.11.0) was run against a copy of a real config and in check mode against the real one. Before that: a scripted MCP session through Windows `uv.exe` and Python 3.12 (system code page 950) with Chinese input |
+| Plugin uploaded in Claude Desktop or claude.ai (Customize → Plugins) | **Does not give the tools** (tested 2026-11-13, 0.10.0): the plugin's files and skills sync into a cloud sandbox, but its local MCP server is not started there, and the sandbox cannot reach poe2db. Use the Claude Desktop install above |
 | MCP Inspector CLI (`npx @modelcontextprotocol/inspector --cli`) | Tested with the twelve lookup and build tools: `tools/list`, `prompts/list`, `tools/call` |
 | Cursor, VS Code, Gemini CLI, Codex CLI | Not tested. The configuration below follows each client's documentation as read on 2026-11-11 |
 | ChatGPT | Not supported: it connects only to remote MCP servers over HTTPS |
@@ -47,7 +48,34 @@ has no project `.mcp.json`, so the server is never registered twice).
 
 ## Claude Desktop
 
-Settings → Developer → **Edit Config** opens `claude_desktop_config.json`:
+Get the project (the zip from the [latest release](https://github.com/GGaryyy/POBG/releases/latest), or a clone)
+into a folder that stays, then register it from that folder:
+
+```
+uv run --frozen --no-dev python -m src.tools.install_desktop            # add or update the pobg server
+uv run --frozen --no-dev python -m src.tools.install_desktop --check    # say what would change, write nothing
+uv run --frozen --no-dev python -m src.tools.install_desktop --remove   # take it out again
+```
+
+Quit Claude Desktop completely first (also from the system tray): while it runs it rewrites its config and
+could undo the change. On Windows `install_claude_desktop.bat` in the folder runs the first command (options
+are passed on). Then start Claude Desktop again.
+
+What the installer does:
+
+- Finds `claude_desktop_config.json` (`%APPDATA%\Claude` on Windows, also the Microsoft Store build's folder;
+  `~/Library/Application Support/Claude` on macOS; `~/.config/Claude` on Linux). Pass `--config <file>` when
+  it is somewhere else.
+- Writes one entry, `mcpServers.pobg`, with the full path of `uv` and of this folder. Other servers and
+  settings are left alone and never printed. An `env` you added to the `pobg` entry is kept.
+- Copies the file to `claude_desktop_config.json.pobg-backup-<time>` before any change. A file that is not
+  valid JSON, or that changed while the installer was working, is refused and left as it is. When the config
+  is found in two places (a leftover folder next to the Store build), it asks for `--config`.
+
+A plugin uploaded in Claude Desktop or on claude.ai (Customize → Plugins) brings the skills only: those chats
+run in a cloud sandbox, which does not start a plugin's local MCP server (tested 2026-11-13).
+
+By hand instead: Settings → Developer → **Edit Config** opens `claude_desktop_config.json`:
 
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -66,6 +94,8 @@ Add the server next to any existing ones, then quit Claude Desktop completely an
   }
 }
 ```
+
+If Claude Desktop does not find `uv`, write its full path in `command` (the installer does this for you).
 
 The server's stderr is written to `mcp-server-pobg.log` in `%APPDATA%\Claude\logs`
 (Windows), `~/Library/Logs/Claude` (macOS) or `~/.config/Claude/logs` (Linux).

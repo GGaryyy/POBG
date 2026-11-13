@@ -19,10 +19,11 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 
 ## 測試過哪些用戶端
 
-| 用戶端 | 狀態（2026-11-11，版本 0.7.0） |
+| 用戶端 | 狀態（2026-11-11、版本 0.7.0；另有註明日期者除外） |
 |---|---|
 | Claude Code — plugin | 在 Linux（WSL）測過：用 `--plugin-dir` 從本機資料夾載入，只有一個 `pobg` server，已連線；`claude plugin validate --strict` 通過。從 GitHub 安裝待第一次公開釋出後確認 |
-| Claude Desktop（Windows） | 測過啟動方式：以腳本透過 Windows `uv.exe` 與 Python 3.12（系統字碼頁 950）跑 MCP 對話，用中文呼叫查詢與流派工具、`data_status` 與試跑的 `update_data`。應用程式內測試：待進行 |
+| Claude Desktop（Windows） | **2026-11-13 在應用程式內測過（0.10.0）**：`pobg` server 註冊在 `claude_desktop_config.json` 時，對話會呼叫工具（`data_status` 回報的是本機資料夾）。安裝程式（`install_desktop`，0.11.0）對真實設定檔的副本實際執行過，對真實設定檔只跑過檢查模式。更早：以腳本透過 Windows `uv.exe` 與 Python 3.12（系統字碼頁 950）用中文跑 MCP 對話 |
+| 在 Claude Desktop 或 claude.ai 上傳 plugin（Customize → Plugins） | **拿不到工具**（2026-11-13 實測，0.10.0）：plugin 的檔案與 skill 會同步到雲端的隔離環境，但那裡不會啟動它的本機 MCP server，也連不到 poe2db。請用上面的 Claude Desktop 安裝方式 |
 | MCP Inspector CLI（`npx @modelcontextprotocol/inspector --cli`） | 用十二個查詢與流派工具測過：`tools/list`、`prompts/list`、`tools/call` |
 | Cursor、VS Code、Gemini CLI、Codex CLI | 未測試。下方設定依照 2026-11-11 讀到的各用戶端文件 |
 | ChatGPT | 不支援：它只能透過 HTTPS 連遠端 MCP server |
@@ -43,7 +44,31 @@ plugin 會把 Python 環境放在 plugin 自己的資料夾裡。若是在 clone
 
 ## Claude Desktop
 
-設定 → 開發者 → **Edit Config** 會開啟 `claude_desktop_config.json`：
+把專案（[最新版本](https://github.com/GGaryyy/POBG/releases/latest)的 zip，或 clone）放到一個長期保留的資料夾，
+再從那個資料夾註冊：
+
+```
+uv run --frozen --no-dev python -m src.tools.install_desktop            # 新增或更新 pobg server
+uv run --frozen --no-dev python -m src.tools.install_desktop --check    # 只顯示會改什麼，不寫入
+uv run --frozen --no-dev python -m src.tools.install_desktop --remove   # 移除
+```
+
+請先完全結束 Claude Desktop（系統匣的圖示也要結束）：它執行中會改寫自己的設定檔，可能把這次的變更蓋掉。
+Windows 可以直接執行資料夾裡的 `install_claude_desktop.bat`，它會跑第一個指令（後面可接同樣的選項）。完成後再開啟 Claude Desktop。
+
+安裝程式做的事：
+
+- 找到 `claude_desktop_config.json`（Windows 在 `%APPDATA%\Claude`，也會找 Microsoft Store 版的資料夾；
+  macOS 在 `~/Library/Application Support/Claude`；Linux 在 `~/.config/Claude`）。在別的位置時用 `--config <檔案>` 指定。
+- 只寫入 `mcpServers.pobg` 這一項，內容是 `uv` 與這個資料夾的完整路徑。其他 server 與設定不會動，也不會被印出來。
+  你自己加在 `pobg` 上的 `env` 會保留。
+- 任何變更前先把檔案複製成 `claude_desktop_config.json.pobg-backup-<時間>`。不是合法 JSON、或在安裝過程中被改動的檔案會被拒絕，
+  原樣保留。設定檔同時出現在兩個位置時（Store 版旁邊留有舊資料夾），會要求用 `--config` 指定。
+
+在 Claude Desktop 或 claude.ai 上傳 plugin（Customize → Plugins）只會帶進 skill：那裡的對話在雲端的隔離環境執行，
+不會啟動 plugin 的本機 MCP server（2026-11-13 實測）。
+
+手動設定的做法：設定 → 開發者 → **Edit Config** 會開啟 `claude_desktop_config.json`：
 
 - macOS：`~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows：`%APPDATA%\Claude\claude_desktop_config.json`
@@ -62,6 +87,8 @@ plugin 會把 Python 環境放在 plugin 自己的資料夾裡。若是在 clone
   }
 }
 ```
+
+如果 Claude Desktop 找不到 `uv`，在 `command` 填它的完整路徑（安裝程式會自動這樣做）。
 
 server 的 stderr 會寫到 `mcp-server-pobg.log`，位置在 `%APPDATA%\Claude\logs`（Windows）、`~/Library/Logs/Claude`（macOS）
 或 `~/.config/Claude/logs`（Linux）。

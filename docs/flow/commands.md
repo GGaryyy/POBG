@@ -54,7 +54,7 @@ new release of POBG.
 
 From [`skills/update/SKILL.md`](../../skills/update/SKILL.md) and `update` in
 `src/tools/maintenance.py`. One scope per command; there is no "update everything". Every
-request identifies itself (`POBG/0.10`) and waits 0.8 s before each page or file (0.3 s before a
+request identifies itself (`POBG/0.11`) and waits 0.8 s before each page or file (0.3 s before a
 hover snippet).
 
 ### Overview: the scope first

@@ -3,9 +3,30 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.11.0] - 2026-11-13
+
+Installing in Claude Desktop (`docs/plan_desktop_install.md`), the `ninja` update scope, and the
+documentation rewritten for players.
+
+### Added
+- `python -m src.tools.install_desktop` registers this folder's MCP server in Claude Desktop: it
+  finds `claude_desktop_config.json` (Windows incl. the Microsoft Store build, macOS, Linux; or
+  `--config`), writes the one entry `mcpServers.pobg` with the full paths of uv and the folder,
+  and leaves every other server and setting alone. The file is backed up before any change, a
+  file that is not valid JSON is refused, the write goes through a temporary file, an `env` the
+  user added to the entry is kept, and nothing of the other servers is ever printed. `--check`
+  writes nothing, `--remove` takes the entry out. `install_claude_desktop.bat` runs it on Windows.
+  uv is written by the path the user reaches it (links are not followed, so a Homebrew or scoop
+  upgrade does not break the entry); a config that changed while the tool ran, or that holds
+  values that are not JSON, is refused; a linked config keeps its link and its file mode.
+- READMEs: a Claude Desktop quick start (release zip or clone → install command → restart), next
+  to the Claude Code plugin. `docs/data.md` says how the release zip is made.
 
 ### Changed
+- The READMEs and client guides no longer suggest that uploading the plugin is enough outside
+  Claude Code. Tested on 2026-11-13 with the 0.10.0 plugin uploaded to a workspace: chats in
+  Claude Desktop and on claude.ai run in a cloud sandbox where the plugin's local MCP server is
+  not started (skills only), while a server registered in Claude Desktop's own config works.
 - **The `ladder` update scope is now `ninja`** (`update_data(scope="ninja")`, `/pobg:update ninja`),
   as the user found `ladder` unclear: `ninja` says where the data comes from. The data set's
   `name` and `update_scope` in `data_status` change with it. `ladder` is no longer accepted (no

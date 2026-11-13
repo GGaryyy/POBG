@@ -43,10 +43,10 @@ Also open:
 |---|---|
 | Patch notes as an update signal | poe2db's version pages list the gems and uniques each patch changed; a plain `update` cannot see number-only changes |
 | Confirm more clients | Cursor, VS Code, Gemini CLI and Codex CLI configurations are written from their docs but not tested |
-| Remote transport | ChatGPT and other hosted clients only reach remote MCP servers. Needs a decision on hosting first |
+| Remote transport | ChatGPT, claude.ai on the web and chats in Claude Desktop that only have the uploaded plugin reach remote MCP servers only (a plugin's local server is not started in their cloud sandbox, tested 2026-11-13). Needs a decision on hosting first; the user chose to stay local for now |
 | Ladder depth | The snapshot is about 600 characters from the top of several rankings; poe.ninja's layout is undocumented and has changed once already, so the fetcher needs watching |
 | New passive tree versions | `status` reports a newer version, but adopting it needs a catalog change and a release; the 1.0 release will add classes, weapons and acts |
-| One-click install for Claude Desktop | An `.mcpb` bundle, once its support for uv projects is verified |
+| One-click install for Claude Desktop | 0.11.0 has an install command (`install_desktop`, a `.bat` on Windows) that registers the local server from a release zip or a clone. An `.mcpb` bundle would remove the uv and unzip steps, once its support for uv projects is verified |
 | Choose gear values | Let the user pick a modifier tier or value for exported gear instead of the best tier's upper end (kept for later, 2026-11-12) |
 | Save a build into PoB's folder | An opt-in command that writes the build into a PoB `Builds` folder the user names, so it appears in PoB's build list without pasting. Not done in 0.9.0: some users do not want files written (decided 2026-11-12) |
 | Open PoB from a link | `pob2://` links open a build in PoB, but only from an upload to a build site (pobb.in, poe2db), which makes the build public |

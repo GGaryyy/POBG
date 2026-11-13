@@ -76,7 +76,7 @@ uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"    
 請求方式：
 
 - 對 poe2db 與 GitHub 的請求會以
-  `POBG/0.10 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
+  `POBG/0.11 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
   請求前等待 0.8 秒（hover 片段 0.3 秒），最多嘗試三次。`refresh_gem` 同樣等待 0.8 秒，一次只發一個請求。
 - poe2db 的 `robots.txt` 只禁止 `/*/marked` 與 `/*/markdown_history`，兩者都不會被請求。單一天賦節點頁面
   （每頁 1.2 MB）刻意不抓。
@@ -108,6 +108,20 @@ uv run python -m src.kg.stats && uv run python -m src.kg.build_graph
 完整抓取寶石（`collect_gems --kind all`，約 1,000 頁）只在第一次執行或 poe2db 改版面時需要。
 頁面快取與 probe 指標寫到 `output/`（不進版控）。
 
+## 發佈
+
+每個版本附一個 zip，給不用 git、要把 POBG 裝進 Claude Desktop 的人。裡面只有 server 需要的檔案
+（沒有測試、文件、計畫與報告），解壓後是單一的 `POBG` 資料夾：
+
+```bash
+git archive --format=zip --prefix=POBG/ -o output/pobg-<版本>.zip v<版本> \
+    .claude-plugin skills src data pyproject.toml uv.lock README.md README.zh-TW.md LICENSE install_claude_desktop.bat
+gh release create v<版本> output/pobg-<版本>.zip --title "POBG <版本>" --notes-file <說明檔>
+```
+
+版本號寫在 `pyproject.toml`、`.claude-plugin/plugin.json`、`src/__init__.py`、`uv.lock`，以及
+`src/scrapers/common.py` 的 `User-Agent`。
+
 ## 開發
 
 ```bash
@@ -117,6 +131,6 @@ uv run ruff check .
 ```
 
 目錄：`src/catalog/`（來源目錄、probe、實體索引）、`src/scrapers/`（蒐集程式）、`src/kg/`（屬性索引、知識圖）、
-`src/tools/`（查詢服務、流派工具、PoB 匯出與更新、天賦路徑、資料狀態與更新、MCP server）、`skills/` 與 `.claude-plugin/`
+`src/tools/`（查詢服務、流派工具、PoB 匯出與更新、天賦路徑、資料狀態與更新、Claude Desktop 安裝程式、MCP server）、`skills/` 與 `.claude-plugin/`
 （Claude Code plugin）、`data/`（蒐集到的資料）、`docs/`（用戶端說明、工具、流程圖、計畫、報告、changelog）。
 後續規劃見 [`ROADMAP.md`](../ROADMAP.md)。

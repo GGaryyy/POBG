@@ -21,22 +21,49 @@ not exist. Thank you.
 
 ## Quick start
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/); it must be version
-   **0.13.4 or newer** (`uv --version` to check, `uv self update` to upgrade).
-2. In **Claude Code**:
+POBG runs on your own computer. Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+first; it must be version **0.13.4 or newer** (`uv --version` to check, `uv self update` to upgrade).
+Then pick the app you use.
+
+### Claude Desktop
+
+1. Download `pobg-<version>.zip` from the [latest release](https://github.com/GGaryyy/POBG/releases/latest)
+   and unzip it to a place where it can stay, for example `C:\POBG`. Claude Desktop starts POBG from
+   that folder, so do not move or delete it afterwards. (With git: `git clone https://github.com/GGaryyy/POBG`.)
+2. Quit Claude Desktop completely (also from the system tray), then register POBG in it. On Windows,
+   double-click `install_claude_desktop.bat` in the folder. On any system, run this in the folder:
 
    ```
-   /plugin marketplace add GGaryyy/POBG
-   /plugin install pobg@pobg
+   uv run --frozen --no-dev python -m src.tools.install_desktop
    ```
 
-3. Start a new conversation and ask a question. The first start takes a little longer while uv
-   sets up Python and about 40 packages.
+   It adds one entry, `pobg`, to Claude Desktop's settings file. The file is backed up first and
+   nothing else in it is changed.
+3. Start Claude Desktop again and ask a question.
+   The first start takes a little longer while uv sets up Python and about 40 packages.
 
-**Other AI apps** (Claude Desktop, Cursor, VS Code, Gemini CLI, Codex CLI …): clone this repo and
-add it as a local MCP server; [docs/clients.md](docs/clients.md) has the setup for each one and
-five questions to check it works. ChatGPT is not supported: it only connects to online MCP
-servers, and POBG runs on your computer.
+Later: to refresh the data, ask in a chat (for example "update the skill gems"; see
+[Commands](#commands)). For a new POBG version, unzip the new zip to the same place and run the
+install step again. To take POBG out of Claude Desktop, add `--remove` to the command.
+
+Uploading POBG as a plugin in Claude Desktop or on claude.ai (Customize → Plugins) is **not enough**:
+chats there run in the cloud and do not start a server on your computer, so you would get the
+instructions without the tools (tested 2026-11-13).
+
+### Claude Code
+
+```
+/plugin marketplace add GGaryyy/POBG
+/plugin install pobg@pobg
+```
+
+Start a new conversation and ask a question.
+
+### Other AI apps
+
+Cursor, VS Code, Gemini CLI, Codex CLI …: clone this repo and add it as a local MCP server;
+[docs/clients.md](docs/clients.md) has the setup for each one and questions to check it works.
+ChatGPT is not supported: it only connects to online MCP servers, and POBG runs on your computer.
 
 ## What you can ask
 

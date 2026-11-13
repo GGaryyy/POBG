@@ -15,20 +15,44 @@ POBG 只是站在巨人的肩膀上：沒有 poe2db.tw、Path of Building 社群
 
 ## 快速開始
 
-1. 安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/)，版本必須是 **0.13.4 以上**
-   （`uv --version` 查看，`uv self update` 升級）。
-2. 在 **Claude Code** 中：
+POBG 在你自己的電腦上執行。請先安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/)，版本必須是
+**0.13.4 以上**（`uv --version` 查看，`uv self update` 升級），再依你用的應用選一種。
+
+### Claude Desktop（桌面版）
+
+1. 從[最新版本](https://github.com/GGaryyy/POBG/releases/latest)下載 `pobg-<版本>.zip`，解壓到一個可以長期放著的位置，
+   例如 `C:\POBG`。Claude Desktop 之後會從這個資料夾啟動 POBG，所以解壓後不要搬移或刪除它。
+   （會用 git 的話：`git clone https://github.com/GGaryyy/POBG`。）
+2. 先完全結束 Claude Desktop（系統匣的圖示也要結束），再把 POBG 註冊進去。Windows 請在資料夾裡點兩下
+   `install_claude_desktop.bat`；任何系統都可以在資料夾裡執行：
 
    ```
-   /plugin marketplace add GGaryyy/POBG
-   /plugin install pobg@pobg
+   uv run --frozen --no-dev python -m src.tools.install_desktop
    ```
 
-3. 開一個新對話直接提問。第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。
+   它會在 Claude Desktop 的設定檔裡加上一項 `pobg`。寫入前會先備份設定檔，其他內容都不會動。
+3. 重新開啟 Claude Desktop，然後直接提問。
+   第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。
 
-**其他 AI 應用**（Claude Desktop、Cursor、VS Code、Gemini CLI、Codex CLI 等）：clone 本 repo，再把它加成本機 MCP server；
-各應用的設定方式與五個確認是否正常的提問見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。不支援 ChatGPT：它只能連線上的
-MCP server，而 POBG 是在你的電腦上執行。
+之後：要更新資料，直接在對話裡說（例如「更新技能寶石」，見[指令](#指令)）。POBG 出新版時，把新的 zip 解壓到同一個位置，
+再執行一次第 2 步。要把 POBG 從 Claude Desktop 移除，在指令後面加上 `--remove`。
+
+在 Claude Desktop 或 claude.ai 用「上傳 plugin」（Customize → Plugins）安裝 POBG 是**不夠的**：那裡的對話在雲端執行，
+不會啟動你電腦上的 server，只會有說明文字而沒有工具（2026-11-13 實測）。
+
+### Claude Code
+
+```
+/plugin marketplace add GGaryyy/POBG
+/plugin install pobg@pobg
+```
+
+開一個新對話直接提問。
+
+### 其他 AI 應用
+
+Cursor、VS Code、Gemini CLI、Codex CLI 等：clone 本 repo，再把它加成本機 MCP server；各應用的設定方式與確認是否正常的
+提問見 [docs/clients.zh-TW.md](docs/clients.zh-TW.md)。不支援 ChatGPT：它只能連線上的 MCP server，而 POBG 是在你的電腦上執行。
 
 ## 可以問什麼
 
