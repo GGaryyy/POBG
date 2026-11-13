@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 
 ## [Unreleased]
 
+### Changed
+- `docs/clients*.md` and the 0.12.0 test report: the Codex plugin tested from a clean state in the
+  user's Codex (an earlier check had been answered by a hand-added server). ROADMAP lists `items_by`
+  not accepting attribute page names as a follow-up.
+
 ## [0.12.0] - 2026-11-13
 
 A Codex plugin next to the Claude Code one (`docs/plan_codex_plugin.md`), so both are installed

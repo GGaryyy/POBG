@@ -30,7 +30,7 @@ repo to be public and come first, in this order. Creating a release is done only
 | # | Task | Why it waits | Done when |
 |---|---|---|---|
 | 1 | Install in Claude Code from GitHub: `/plugin marketplace add GGaryyy/POBG`, `/plugin install pobg@pobg` | Never run: the repo was private. Only loading from a local folder was tested | The server connects and a lookup cites poe2db; if the short form fails, use the full git URL in the READMEs |
-| 2 | Install in Codex from GitHub: `codex plugin marketplace add GGaryyy/POBG`, `codex plugin add pobg@pobg` | The Codex plugin (0.12.0) was installed only from a local folder | The server connects, `$pobg:status` works and a build ends with a code that imports into PoB |
+| 2 | Install in Codex from GitHub without access to the repo: `codex plugin marketplace add GGaryyy/POBG`, `codex plugin add pobg@pobg` | Works with the owner's GitHub access (tested 2026-11-13 while private); a user without access needs the repo public | The server connects, `$pobg:status` works and a build ends with a code that imports into PoB |
 | 3 | Record the results of 1 and 2 in `docs/clients.md` and `docs/clients.zh-TW.md` ("What was tested") | The table still says "to be confirmed after the first public release" | Each row has a date and a result |
 | 4 | Friends follow the README alone, in Claude Code or Codex | The steps were only followed by the people who wrote them | Notes on where a newcomer got stuck feed back into the README |
 
@@ -43,6 +43,7 @@ Later, when someone needs them (not blocking):
 | The ChatGPT desktop app with the Codex plugin (it shares `~/.codex` with Codex) | Tools tested without the plugin; the build was thin |
 | Show the length of a build code, so a code the model retyped wrongly is noticed | Seen in Codex CLI on 2026-11-13; the user chose to leave it: each AI hands the code over in its own way |
 | Cursor, VS Code, Gemini CLI | Not tested |
+| `items_by` accepts an attribute page name (`Body_Armours_str_dex`) like `modifiers_for` does | Seen 2026-11-13: a Codex build made 8 failed `items_by` calls with such names before finding the class |
 
 Open from the same day: the Microsoft Store build's config location is matched by a pattern that was not
 verified on such a machine; `status` and `update` were not tried in the ChatGPT desktop app or Codex; the
