@@ -71,6 +71,13 @@ class PobItem:
     explicits: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class PobTreeSpec:
+    title: str                     # e.g. "Act 1 (level 15)"
+    nodes: tuple[str, ...]
+    attributes: dict[str, list[str]] = field(default_factory=dict)
+
+
 @dataclass
 class PobBuild:
     title: str
@@ -88,6 +95,7 @@ class PobBuild:
     auto_level: bool = True        # False keeps a level the caller asked for
     items: list[PobItem] = field(default_factory=list)
     config: list[str] = field(default_factory=list)   # PoB configuration options switched on (check boxes)
+    tree_specs: list[PobTreeSpec] = field(default_factory=list)   # several trees (campaign stages); the last is active
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +104,8 @@ class PobBuild:
 
 
 def build_xml(build: PobBuild) -> str:
-    """The build as PoB's XML: Build, Tree and Skills sections, plus Notes when given. The
+    """The build as PoB's XML: Build, Tree and Skills sections, plus Notes when given. A build with
+    `tree_specs` gets one tree per entry (PoB's tree list), the last one active. The
     character level is written (see pob_level); PoB's automatic mode stays on unless a level was
     asked for. Attribute passives get
     their attribute through Overrides, as PoB saves a choice made on its tree; PoB reads all three
@@ -107,16 +116,18 @@ def build_xml(build: PobBuild) -> str:
         "ascendClassName": build.ascendancy_name or "None", "mainSocketGroup": str(build.main_group),
         "characterLevelAutoMode": "true" if build.auto_level else "false", "viewMode": "TREE",
     })
-    tree = ET.SubElement(root, "Tree", {"activeSpec": "1"})
-    spec = ET.SubElement(tree, "Spec", {
-        "title": xml_text(build.title), "treeVersion": build.tree_version, "classInternalId": str(build.class_id),
-        "ascendancyInternalId": build.ascendancy_id or "", "secondaryAscendClassId": "0",
-        "nodes": ",".join(build.nodes), "masteryEffects": "",
-    })
-    if any(build.attributes.values()):
-        overrides = ET.SubElement(spec, "Overrides")
-        ET.SubElement(overrides, "AttributeOverride",
-                      {f"{key}Nodes": ",".join(build.attributes.get(key, [])) for key in ATTRIBUTES})
+    specs = build.tree_specs or [PobTreeSpec(build.title, tuple(build.nodes), build.attributes)]
+    tree = ET.SubElement(root, "Tree", {"activeSpec": str(len(specs))})
+    for entry in specs:
+        spec = ET.SubElement(tree, "Spec", {
+            "title": xml_text(entry.title), "treeVersion": build.tree_version, "classInternalId": str(build.class_id),
+            "ascendancyInternalId": build.ascendancy_id or "", "secondaryAscendClassId": "0",
+            "nodes": ",".join(entry.nodes), "masteryEffects": "",
+        })
+        if any(entry.attributes.values()):
+            overrides = ET.SubElement(spec, "Overrides")
+            ET.SubElement(overrides, "AttributeOverride",
+                          {f"{key}Nodes": ",".join(entry.attributes.get(key, [])) for key in ATTRIBUTES})
     skills = ET.SubElement(root, "Skills", {"activeSkillSet": "1", "defaultGemQuality": str(GEM_QUALITY)})
     skill_set = ET.SubElement(skills, "SkillSet", {"id": "1", "title": SKILL_SET_TITLE})
     for group in build.groups:

@@ -7,6 +7,7 @@ import pytest
 
 from src.tools import pob_export as pe
 from src.tools.pob_export import (
+    PobTreeSpec,
     BadCode,
     PobBuild,
     PobGem,
@@ -226,3 +227,21 @@ def test_config_section_lists_the_options_switched_on():
     assert [i.attrib for i in config.findall("ConfigSet/Input")] == [
         {"name": "usePowerCharges", "boolean": "true"}, {"name": "conditionEnemyShocked", "boolean": "true"}]
     assert parsed(sample()).find("Config") is None
+
+
+def test_several_trees_are_written_in_order_and_the_last_is_active():
+    build = sample(tree_specs=[PobTreeSpec("Act 1 (level 12)", ("100", "101")),
+                               PobTreeSpec("Act 2 (level 28)", ("100", "101", "102"), {"int": ["101"]})])
+    tree = parsed(build).find("Tree")
+    specs = tree.findall("Spec")
+    assert tree.get("activeSpec") == "2"
+    assert [(s.get("title"), s.get("nodes")) for s in specs] == [("Act 1 (level 12)", "100,101"),
+                                                                ("Act 2 (level 28)", "100,101,102")]
+    assert specs[0].find("Overrides") is None
+    assert specs[1].find("Overrides/AttributeOverride").get("intNodes") == "101"
+    assert all(s.get("classInternalId") == specs[0].get("classInternalId") for s in specs)
+
+
+def test_without_tree_specs_there_is_one_tree():
+    tree = parsed(sample()).find("Tree")
+    assert tree.get("activeSpec") == "1" and len(tree.findall("Spec")) == 1

@@ -76,6 +76,10 @@ POBG 在 Claude Code 中有四個指令。這份文件畫出每個指令從輸�
 
 ![/pobg:update ninja](img/update-ninja.zh-TW.svg)
 
+### `campaign`
+
+![/pobg:update campaign](img/update-campaign.zh-TW.svg)
+
 ## `/pobg:update-pob <資料夾>`：更新你的 Path of Building
 
 出處：[`skills/update-pob/SKILL.md`](../../skills/update-pob/SKILL.md)、`src/tools/pob_update.py`。

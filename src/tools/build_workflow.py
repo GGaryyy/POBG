@@ -11,6 +11,7 @@ skills/update in the plugin) are the user-facing commands over data_status and u
 from __future__ import annotations
 
 from src.tools.maintenance import (
+    CAMPAIGN,
     GEM_SCOPES,
     GLOSSARY,
     GLOSSARY_BATCH,
@@ -39,35 +40,57 @@ WRITING_RULES = (
 )
 
 BUILD_WORKFLOW = """\
-1. Read the request and answer in the user's language.
+1. Read the request and answer in the user's language. Decide the goal. The default is a campaign build: a
+   build that clears the campaign, given stage by stage. Make an endgame build (the steps without the
+   campaign parts) only when the user names a level above the last stage's level or asks for maps,
+   endgame or a late-game build. For a campaign build call campaign_stages first: each stage's limits
+   (level, passive and ascendancy points, gem level and tiers, support tier and sockets, quest Spirit)
+   come from it, never from your own estimate.
 2. Generate the build from the data, not from the ladder: gather candidates with lookup_entity, gems_by, supports_for, passives_with_stat, get_gem and get_passive.
    For gear, pick bases or uniques with items_by and get_item, and for each slot the target modifiers
    with modifiers_for, at most 3 prefixes and 3 suffixes, in order of importance (written
    "item: modifier", the whole modifier as modifiers_for shows it; for armour name the base).
    Every choice needs a reason from these records (what the gem, passive or item does), never
-   "ladder characters use it".
+   "ladder characters use it". For a campaign build, plan the end of the last stage first, then each
+   earlier stage: pass the stage's level as max_level to gems_by, supports_for, items_by and
+   modifiers_for so that every choice can be had by then, and give a skill at most the stage's
+   support_sockets supports.
 3. Call verify_build once with every gem, passive, item and target modifier the draft build uses
    (lists take 40 entries, affixes 60). With a whole set of gear, or on a repeat check, pass
-   detail="brief": you already hold the records from the lookups, and the answer is much smaller.
+   detail="brief": you already hold the records from the lookups. For a campaign build pass the last
+   stage's level as character_level: drop what is in `too_early` or move it to a later stage.
 4. For each entry in `unverified`: drop the name, or replace it from its `suggestions` or a new search.
    Call verify_build again with the final list. Do this at most twice; after that, drop what is still unverified.
 5. Call path_to with the class (or ascendancy) and the verified passives. State the points it reports
    against the limits; when `over` is true, drop the passives with the largest `added_points` and call it again.
+   For a campaign build list the targets most important first and pass by_stage=true: `stages` gives
+   each stage's points and the passives reached by its end; targets in `after_campaign` are not reached.
 6. Compare with the ladder: call reference_builds (class and/or main skill) now, after the build is
    drafted. Use it only to say how the build differs from what ladder characters run: what is the same,
-   what this build uses that they do not, what they use that it does not, with counts. When the user
-   asks what is popular, reference_builds is the answer itself.
-7. Write the build from the `verified` facts, with a short "compared with the ladder" section. """ + WRITING_RULES + """ Modifiers are random: present the
+   what this build uses that they do not, what they use that it does not, with counts. Ladder characters
+   are endgame characters: for a campaign build compare the main skill and ascendancy only. When it has
+   no matching characters, say so. When the user asks what is popular, reference_builds is the answer itself.
+7. Write the build from the `verified` facts, with a short "compared with the ladder" section. For a
+   campaign build write one section per stage, in this order: level and points; skills and supports
+   (what to use, and when to switch to the main skill); passives reached; gear (bases, and target
+   modifiers that level can roll); Spirit and persistent skills; ascendancy (trial and points); the
+   stage's permanent quest rewards and bosses from campaign_stages. What campaign_stages lists in
+   `not_in_data` (boss tactics, the resistance penalty) is not in the local data: say so instead of
+   guessing. """ + WRITING_RULES + """ Modifiers are random: present the
    target modifiers as goals to look for, not as what the item will have, and say that damage is not calculated.
 8. End the answer with `sources_markdown` from the last verify_build call, unchanged. It already lists
-   the names that were not found. Add `source_markdown` from reference_builds below it.
+   the names that were not found. Add `source_markdown` from reference_builds below it, and for a
+   campaign build the stage pages from campaign_stages.
 9. Give a Path of Building code: call export_pob with the class (or ascendancy), the verified passives
-   as `targets`, one "skill: support, support" entry per skill group, main skill first, and one
-   "slot: item; modifier; modifier" entry per verified item in `gear` (a rare's verified target
-   modifiers; nothing after a unique); pass `character_level` when the user asked for a build at
-   a level. Gear values are written at the top of each modifier's best tier: say the PoB numbers
-   are an ideal, since modifiers are random. The tool works out the character
-   level, each gem's level and the attribute passives from the data: do not work them out yourself.
+   as `targets` (most important first), one "skill: support, support" entry per skill group, main skill
+   first, and one "slot: item; modifier; modifier" entry per verified item in `gear` (a rare's verified
+   target modifiers; nothing after a unique). For a campaign build pass `stage` = the last stage's id
+   (not character_level): the code then holds one passive tree per stage, and level, gems, sockets,
+   gear and Spirit follow that stage. For an endgame build pass `character_level` when the user asked
+   for a build at a level. Gear values are written at the top of each modifier's best tier (for a
+   stage: the best tier its level can roll): say the PoB numbers are a goal, since modifiers are
+   random. The tool works out the character level, each gem's level and the attribute passives from
+   the data: do not work them out yourself.
    Put `code` in a code block after the sources, with `how_to_import` and `notes`, say what is in
    `not_exported`, and report `summary.attributes` and `summary.spirit`: where `need` is above `have`,
    fix the build (other gems, fewer persistent skills or Spirit-reserving supports, attribute or Spirit
@@ -75,12 +98,16 @@ BUILD_WORKFLOW = """\
    options in `summary.config` with their evidence: PoB's damage assumes them."""
 
 SERVER_INSTRUCTIONS = (
-    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary), English and Traditional "
+    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary, gear, campaign), English and Traditional "
     "Chinese. Resolve names with lookup_entity first, then use get_gem / get_passive / "
     "explain_keyword / passives_with_stat / gems_by / supports_for, and for gear get_item / items_by / "
     "modifiers_for. Quote the returned records and "
     "cite the returned source URLs; do not answer numbers from memory. Use refresh_gem only when a "
     "record looks outdated (check fetched_at). "
+    "Campaign questions (areas, bosses, quests, rewards of an act): get_area, get_quest, campaign_by. "
+    "For build advice the default goal is a build that clears the campaign: call campaign_stages first and keep "
+    "each stage within its limits (max_level on gems_by / supports_for, character_level on verify_build, "
+    "by_stage on path_to, stage on export_pob); an endgame build only when asked for. "
     "For build advice: generate the build from these records, with a reason from the data for every "
     "choice (not \"ladder characters use it\"), then call verify_build with every gem, passive, item and target modifier "
     "(at most 3 prefixes and 3 suffixes per slot; modifiers are random, so present them as targets) "
@@ -159,6 +186,12 @@ UPDATE_WHOLE_SET_STEPS = {
 1. Call update_data with scope="ninja" and no other argument. It makes at most 14 requests to poe.ninja
    and replaces the ladder snapshot; character and account names are never stored.
 2. Report `records` and `league`, and `previous_league` when the league changed.
+{ON_ERROR}""",
+    CAMPAIGN: f"""\
+1. Call update_data with scope="campaign" and no other argument. It makes about 26 requests: the Act
+   pages of poe2db.tw in two languages, the gem and Jeweller's Orb pages, and PathOfBuilding-PoE2's
+   quest rewards.
+2. Report the `stages` (and `previous_stages` when they changed), `areas` and `quests`.
 {ON_ERROR}""",
 }
 

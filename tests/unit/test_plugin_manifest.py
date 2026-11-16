@@ -36,7 +36,8 @@ STATUS_SKILL = (ROOT / "skills" / "status" / "SKILL.md").read_text(encoding="utf
 UPDATE_SKILL = (ROOT / "skills" / "update" / "SKILL.md").read_text(encoding="utf-8")
 HEAVY_MODULES = ("faiss", "torch", "langchain", "langchain_core", "langgraph", "sentence_transformers", "fastapi")
 TOOL_LIKE = re.compile(r"\b(?:lookup_entity|get_\w+|explain_\w+|passives_\w+|gems_\w+|supports_\w+|"
-                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|export_pob|build_workflow|data_status|update_data|items_by|modifiers_for)\b")
+                       r"reference_\w+|verify_\w+|refresh_\w+|path_to|export_pob|build_workflow|data_status|update_data|items_by|modifiers_for|"
+                       r"campaign_\w+)\b")
 
 
 def tool_names() -> set[str]:
@@ -182,7 +183,7 @@ def test_status_skill_only_reads():
 def test_update_skill_is_user_invoked_and_requires_a_scope():
     head = frontmatter(UPDATE_SKILL)
     assert head["name"] == "update" and head["disable-model-invocation"] == "true"
-    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja>")
+    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign>")
     body = UPDATE_SKILL.split("---", 2)[2]
     assert "$ARGUMENTS" in body and "do not call `update_data`" in body
     assert set(TOOL_LIKE.findall(body)) == {"update_data"}

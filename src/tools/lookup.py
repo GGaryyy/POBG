@@ -13,11 +13,12 @@ import re
 import sys
 import threading
 from pathlib import Path
+from typing import Callable
 
 import networkx as nx
 
 from src.catalog.entity_index import PASSIVE_TYPE_TO_KIND, EntityIndex
-from src.catalog.spec import GEM_KINDS, ITEM_KINDS, Spec, load_spec
+from src.catalog.spec import CAMPAIGN_KINDS, GEM_KINDS, ITEM_KINDS, Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, load_graph
 from src.scrapers.collect_gems import BROKEN_WARNINGS, DETAIL_CACHE_DIR
 from src.scrapers.collect_passives import ZH_FROM_TREE_DATA
@@ -40,6 +41,7 @@ from src.scrapers.gem_detail import parse_detail
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 MAX_LIMIT = 200
+MAX_LEVEL = 100
 MAX_STAT_LIMIT = 100   # passives_with_stat rows are large; 200 of them pass 140,000 characters
 MAX_QUERY_LEN = 500    # names and free-text queries
 MAX_FILTER_LEN = 120   # tag / class / weapon / text filters
@@ -48,7 +50,7 @@ TREE_DATA_LABEL = "Passive tree data on poe2db"
 LANGS = ("en", "zh-tw")
 LISTING_FIELDS = ("tag_slugs", "attribute_colour", "summary")
 NEGATIVE_KINDS = {"reduced", "less", "slower", "lose"}
-ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword", *ITEM_KINDS)
+ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword", *ITEM_KINDS, *CAMPAIGN_KINDS)
 _CJK_RE = re.compile(r"[㐀-鿿]")
 DATA_LOCK = threading.Lock()
 
@@ -233,8 +235,14 @@ class LookupService:
 
     def gems_by(self, tag: str | None = None, tier: int | None = None, class_name: str | None = None,
                 weapon: str | None = None, kind: str | None = None, limit: int = 50,
-                text: str | None = None) -> dict:
+                text: str | None = None, max_level: int | None = None,
+                earliest: Callable[[dict, str], int | None] | None = None) -> dict:
+        """`max_level` keeps the gems a character of that level can have; `earliest` (record, kind)
+        gives that level for a gem (campaign rules), and is required with max_level."""
         text = clean_text(text) if text else None
+        max_level = level_argument(max_level, "max_level")
+        if max_level is not None and earliest is None:
+            raise BadArgument("max_level needs the campaign data; update it with update_data scope campaign")
         for label, value in (("tag", tag), ("class_name", class_name), ("weapon", weapon), ("text", text)):
             _cap(value, label)
         if all(v is None or v == "" for v in (tag, tier, class_name, weapon, kind, text)):
@@ -248,11 +256,15 @@ class LookupService:
                 continue
             for rec in self.gems[gem_kind].values():
                 if _gem_matches(rec, tag, tier, weapon, searched) and (class_gems is None or rec["slug"] in class_gems):
+                    since = earliest(rec, gem_kind) if earliest else None
+                    if max_level is not None and since is not None and since > max_level:
+                        continue
                     hits.append({"slug": rec["slug"], "kind": gem_kind, "name": rec["name"], "tier": rec.get("tier"),
                                  "tags": rec.get("tags"), "url_en": rec.get("source_url"), "url_zh_tw": rec.get("url_zh_tw"),
-                                 **({"gemcutting": class_gems[rec["slug"]]} if class_gems else {})})
+                                 **({"gemcutting": class_gems[rec["slug"]]} if class_gems else {}),
+                                 **({"from_level": since} if earliest else {})})
         result = {"filters": {"tag": tag, "tier": tier, "class_name": class_name, "weapon": weapon, "kind": kind,
-                              "text": text},
+                              "text": text, **({"max_level": max_level} if max_level is not None else {})},
                   "total": len(hits), "gems": hits[:_limit(limit)]}
         if text and searched != text:
             result["text_searched"] = searched
@@ -472,6 +484,15 @@ class LookupService:
 
 def _optional(path: Path) -> list[dict]:
     return read_jsonl(path) if path.exists() else []
+
+
+def level_argument(value: int | None, label: str) -> int | None:
+    """A character level argument: None, or a whole number from 1 to 100."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_LEVEL:
+        raise BadArgument(f"{label} must be a whole number from 1 to {MAX_LEVEL}")
+    return value
 
 
 def _require(value: str, label: str) -> None:

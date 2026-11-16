@@ -195,3 +195,22 @@ class PassivePathfinder:
 
     def _allocation_order(self, start: str, tree: set[str]) -> list[str]:
         return [node for node in self._spanning_parents(start, tree) if node != start]
+
+    def priority_order(self, start: str, route: Route, targets: list[str]) -> list[str]:
+        """The route's nodes in the order the targets are listed: the whole way to the first
+        target, then what the second one adds, and so on (every node next to an earlier one).
+        Nodes that lead to no listed target come last, in the route's own order."""
+        parents = self._spanning_parents(start, {start, *route.order})
+        taken: list[str] = []
+        have = {start}
+        for target in targets:
+            chain, node = [], target
+            while node is not None and node not in have and node in parents:
+                chain.append(node)
+                node = parents[node]
+            if node not in have:
+                continue                                   # not on this route
+            for node in reversed(chain):
+                taken.append(node)
+                have.add(node)
+        return taken + [node for node in route.order if node not in have]

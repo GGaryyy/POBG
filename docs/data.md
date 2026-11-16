@@ -27,6 +27,7 @@ your Path of Building.
 | `items` | Gear bases, unique items and modifiers from the 69 item class pages (English and Chinese; gear, flasks, charms, jewels); add item class names (`Bows`, `Body Armours`) to update only those | At most 20 requests per call (10 class pages in both languages, about 600 KB each), 138 in all; repeated until done, and written only when every page is fetched and checked |
 | `glossary` | Every glossary term (English and Chinese hover snippets), found through the listing pages and a few gem pages | At most 50 per call (under a minute), about 750 in all; repeated until done, and written only when the whole glossary has been fetched |
 | `ninja` | A new poe.ninja snapshot of the current league: class, level, skills, keystones. No character or account names are kept | At most 14 |
+| `campaign` | The campaign: poe2db's Act pages in English and Chinese (areas with level, bosses and what they grant, quests, act map, community walkthroughs), PoB's quest rewards, and the gem and Jeweller's Orb pages behind campaign-stage limits | About 26 |
 
 Examples: `/pobg:update skill_gems`, `/pobg:update support_gems Fire Attunement, Brutality I`,
 `/pobg:update items Bows`, "update the skill gems older than 30 days".
@@ -83,12 +84,13 @@ normally after a game patch. A running server makes no network request unless `r
 | poe2db hover snippets | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}` (`lang` = `us` / `tw`) and `…/Poe_Data_GemEffects_hover/{hash}` | Glossary explanations (357 terms, English + Chinese); gem hovers only to find the Chinese glossary links | About 1.2 KB each, 0.3 s apart, when the glossary is rebuilt |
 | poe2db passive tree data | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` and `data_tw.json` (version read from `https://poe2db.tw/tw/passive-skill-tree/` and its script on `cdn.poe2db.tw/js/`) | Chinese name and stat lines of every passive node, class and ascendancy names, point limits | 2 files when the passive tree is rebuilt; the viewer page and script only when the probe checks for a new version |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json` and `…/dev/src/Data/QuestRewards.lua` (the probe also lists `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`) | Passive tree structure: every node, connections, names, stats, keystone / notable flags, class starts, ascendancies, positions; PoB's act table for the character level and its Spirit quest rewards | 2 files when the passive tree is rebuilt |
+| poe2db campaign pages | `https://poe2db.tw/us/{slug}` and `https://poe2db.tw/tw/{slug}`: `Act` (the index), each `Act_N` it lists that has areas, `Interlude`; `Uncut_Skill_Gem`, `Uncut_Spirit_Gem`, `Uncut_Support_Gems` and its five level pages, the three Jeweller's Orb pages (English only) | Areas (name, level, town, waypoint, bosses and what they grant, connections on the act map, the community walkthrough), quests (type, reward, objective), the skill gem level table, gemcutting tiers, drop levels of Uncut Support Gems and Jeweller's Orbs | About 25 pages, 0.8 s apart, when `update campaign` is run; with PoB's `QuestRewards.lua` (permanent quest rewards) about 26 requests |
 | poe.ninja | `https://poe.ninja/poe2/api/data/index-state`, `https://poe.ninja/poe2/api/builds/{version}/search`, `https://poe.ninja/poe2/api/builds/dictionary/{hash}` | Ladder characters: class, level, main skill, gems, keystones, league, rank. Character and account names are discarded before anything is written | About 600 characters per snapshot (the top 100 of several sort orders): at most 14 requests, 0.8 s apart, when `update ninja` is run. The snapshot in this repo is from 2026-11-11, league "Runes of Aldur" |
 
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `POBG/0.12 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
+  `POBG/0.13 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
@@ -98,8 +100,8 @@ How the requests are made:
   before, so the fetcher refuses to write a snapshot that looks wrong. It sends the same
   identifying `User-Agent` and waits 0.8 s between requests.
 - Snapshot in this repo: gems fetched 2026-11-10, glossary, ladder and items 2026-11-11, passive
-  tree `0_5` (poe2db tree data `4.5`) with its quest rewards 2026-11-12. Every record returned by
-  a tool states its own `fetched_at`.
+  tree `0_5` (poe2db tree data `4.5`) with its quest rewards 2026-11-12, campaign 2026-11-14 (patch
+  0.5.5: Acts 1–4 and the Interludes). Every record returned by a tool states its own `fetched_at`.
 
 Not collected: 103 bases (mostly Runeforged variants, and the Timeless Jewel) appear on no
 modifier page, so `modifiers_for` cannot answer for them; thirteen gems on poe2db's meta gem page
@@ -119,7 +121,8 @@ uv run python -m src.catalog.probe                # is poe2db still shaped the w
 uv run python -m src.scrapers.collect_gems --kind all --changed-only   # 3 listings + changed gems only
 uv run python -m src.scrapers.collect_passives && uv run python -m src.scrapers.collect_glossary
 uv run python -m src.scrapers.collect_items      # 138 item class pages: bases, uniques, modifiers
-uv run python -m src.catalog.entity_index build   # bilingual name index (reads gems, passives, glossary, items)
+uv run python -m src.scrapers.collect_campaign   # about 26 requests: acts, areas, quests, stage rules
+uv run python -m src.catalog.entity_index build   # bilingual name index (gems, passives, glossary, items, campaign)
 uv run python -m src.kg.stats && uv run python -m src.kg.build_graph
 ```
 

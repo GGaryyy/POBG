@@ -75,14 +75,26 @@ connect to online MCP servers, and POBG runs on your computer.
 - "How many passive points does a Witch need to reach Blood Magic and Resolute Technique?"
 - "What modifiers can a bow roll, and what are the attack speed tiers?"
 - "What does Quill Rain do?"
-- "Give me a level 90 lightning Invoker build with full gear and a PoB code."
+- "Which quests in Act 2 give passive points?" "What level is Ogham Manor, and who is the boss?"
+- "Give me a Mercenary grenade build with gear and a PoB code." (by default a build that clears the campaign)
+- "Give me a level 90 lightning Invoker build with full gear and a PoB code." (a level or "late game" gets the
+  finished endgame build)
 
 You can ask in Traditional Chinese too; see the [繁體中文 README](README.zh-TW.md) for examples.
 
 ## What a build answer contains
 
 The assistant builds from the data, not from what is popular, and checks every name before it
-writes:
+writes.
+
+**By default a build is made to clear the campaign**, act by act (Act 1, Act 2, …, the Interludes):
+each act's level, passive and ascendancy points, the skills and supports usable by then, the passives
+reached, gear that level can have, Spirit, and the act's permanent quest rewards and bosses. These
+limits are worked out from the data (the `campaign` scope under [Commands](#commands)). A level above
+the end of the campaign (e.g. 90), or asking for maps / late game, gets the finished build with
+top-tier gear.
+
+Every build answer contains:
 
 - **Skills and supports**, each with the reason from its gem record.
 - **Passives**: the targets, the route to reach them and the points used out of 123 (+8
@@ -107,10 +119,15 @@ gems it does not know and may refuse the tree version or ascendancy.
 
 **What the code holds:** class and ascendancy, the passive route, skill groups with their
 supports, gear, and PoB Configuration options. Notes about the build are in PoB's **Notes** tab.
+A campaign build's code holds **one passive tree per act** (switch between them in the tree list at
+the top of PoB's Tree tab); skills, gear and level are the last act's.
 
 **Worked out from the data, not guessed by the AI:**
 
-- Character level, from the points spent (123 points is level 100), or the level you asked for.
+- Character level, from the points spent (123 points is level 100), or the level you asked for; for a
+  campaign build, the act's level (its highest area level).
+- A campaign build's limits: passive and ascendancy points, skill gem level, support gem tier and
+  support sockets, from the act pages, PoB's quest rewards and the drop levels of gems and Jeweller's Orbs.
 - Each skill gem's level: the highest that character level can use.
 - Which attribute each attribute passive takes: what the gems and gear require first.
 - Spirit: what the persistent skills reserve against quest rewards, a sceptre and Spirit on
@@ -119,8 +136,9 @@ supports, gear, and PoB Configuration options. Notes about the build are in PoB'
 **Assumptions to know about:**
 
 - **Gear values are an ideal.** Every modifier is at the top of its best tier (e.g. "+(100—119)
-  to maximum Life" becomes "+119"). Real items roll lower; edit them in PoB's Items tab. Choosing
-  a tier or value is planned for later. Quality, runes, soul cores, sockets and jewels are not
+  to maximum Life" becomes "+119"); for a campaign build, the best tier an item of that level can
+  roll. Real items roll lower; edit them in PoB's Items tab. Choosing a tier or value is planned for
+  later. Quality, runes, soul cores, sockets and jewels are not
   included; without a weapon, attack skills show as disabled.
 - **Configuration** is switched on only where the build itself gives a reason: a charge it
   gains, an ailment it inflicts, lightning hits that Shock … The answer lists each option with
@@ -155,6 +173,7 @@ each one (what it calls, where it decides, when it writes) is drawn in
 | `items` | Gear bases, uniques and modifiers (also flasks, charms, jewels); add item class names to update only those |
 | `glossary` | Glossary terms |
 | `ninja` | The poe.ninja ladder snapshot (no character or account names are kept) |
+| `campaign` | The campaign: each act's areas, bosses, quests, permanent rewards and community walkthroughs, and the gem and socket rules campaign builds follow |
 
 Examples (in Codex write `$` instead of `/`):
 
@@ -176,14 +195,18 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
 
 ## Limits
 
-- The data is a snapshot (gems 2026-11-10, items, glossary and ladder 2026-11-11). Balance
-  patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
+- The data is a snapshot (gems 2026-11-10, items, glossary and ladder 2026-11-11, campaign
+  2026-11-14). Balance patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
 - POBG checks that every name exists and quotes its facts; it does not judge how strong a build
   is or calculate damage. PoB does the maths.
 - Modifiers are random: the gear in an answer is a target to look for, not a promise.
 - The passive route is a good one, not a proven shortest one; weapon-set passive points and
   jewels are not planned.
 - The ladder comparison uses a sample of about 600 characters near the top of several rankings.
+  Ladder characters are endgame characters: a campaign build compares only the main skill and ascendancy.
+- A campaign build takes each act's highest area level as the character level. Boss tactics beyond the
+  area walkthroughs, the resistance penalty after the acts and drop chances are not in the data; answers
+  say so. When 1.0 (Acts 5 and 6) is out, run `update campaign`.
 - Not covered: crafting, currency, spawn weights, endgame items, a few bases and meta gems
   ([details](docs/data.md#sources-and-scope-of-use)).
 

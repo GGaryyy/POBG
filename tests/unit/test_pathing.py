@@ -160,3 +160,22 @@ def test_random_graphs_are_valid_and_within_twice_the_optimum(seed):
         assert route.points == best == route.alone[targets[0]]
     again = pf.route(names[0], list(reversed(targets)), ids)
     assert again.order == route.order                 # target order in the request does not matter
+
+
+# -- priority order (campaign stages) ---------------------------------------------------------------------------
+
+def test_priority_order_takes_the_listed_target_first_and_stays_allocatable():
+    pf, ids = finder(TRAP)
+    route = pf.route("s", ["T1", "T2"], ids)
+    first_t2 = pf.priority_order("s", route, ["T2", "T1"])
+    assert first_t2[:first_t2.index("T2") + 1] == ["a", "b", "c", "e", "T2"]
+    assert sorted(first_t2) == sorted(route.order)
+    assert_allocatable(pf, Route(start="s", order=first_t2), ["T1", "T2"])
+
+
+def test_priority_order_ignores_targets_off_the_route_and_keeps_leftovers():
+    pf, ids = finder(TRAP)
+    route = pf.route("s", ["T1", "T2"], ids)
+    order = pf.priority_order("s", route, ["nowhere", "T1"])
+    assert sorted(order) == sorted(route.order) and len(order) == len(set(order))
+    assert order.index("T1") < order.index("T2")

@@ -163,21 +163,25 @@ def explain_keyword(query: str, lang: str | None = None) -> dict:
 @_user_errors
 def gems_by(tag: str | None = None, tier: int | None = None, class_name: str | None = None,
             weapon: str | None = None, kind: str | None = None, limit: int = 50,
-            text: str | None = None) -> dict:
+            text: str | None = None, max_level: int | None = None) -> dict:
     """Filter gems by tag (e.g. "Fire", "Minions"), tier, gemcutting class (e.g. "Witch" or the
     group label "Occult"), required weapon (substring), kind (skill_gem, spirit_gem,
     support_gem) and/or text (English substring of the name, description or stat lines, e.g.
-    "rage"). At least one filter is required."""
-    return service().gems_by(tag=tag, tier=tier, class_name=class_name, weapon=weapon, kind=kind, limit=limit,
-                             text=text)
+    "rage"). At least one filter is required. max_level (a character level, e.g. a campaign
+    stage's level) keeps only gems that can be had by then; each gem then has `from_level`."""
+    tools = build_tools()
+    return tools.lookup.gems_by(tag=tag, tier=tier, class_name=class_name, weapon=weapon, kind=kind, limit=limit,
+                                text=text, max_level=max_level,
+                                earliest=tools.campaign.earliest_level if max_level is not None else None)
 
 
 @server.tool(title="Support gems for a skill", annotations=READ_ONLY)
 @_user_errors
-def supports_for(skill: str, tag: str | None = None, limit: int = 50) -> dict:
+def supports_for(skill: str, tag: str | None = None, limit: int = 50, max_level: int | None = None) -> dict:
     """Every support gem that can support a skill or spirit gem (name in English or 繁體中文),
-    lowest tier first, optionally narrowed by tag. `total` counts all of them."""
-    return build_tools().supports_for(skill, tag=tag, limit=limit)
+    lowest tier first, optionally narrowed by tag. `total` counts all of them. max_level (a
+    character level) keeps only supports whose tier drops by then (`from_level` on each)."""
+    return build_tools().supports_for(skill, tag=tag, limit=limit, max_level=max_level)
 
 
 @server.tool(title="Ladder reference builds", annotations=READ_ONLY)
@@ -195,34 +199,37 @@ def reference_builds(class_name: str | None = None, main_skill: str | None = Non
 @_user_errors
 def verify_build(gems: list[str] | None = None, passives: list[str] | None = None,
                  lang: str | None = None, items: list[str] | None = None,
-                 affixes: list[str] | None = None, detail: str = "full") -> dict:
+                 affixes: list[str] | None = None, detail: str = "full",
+                 character_level: int | None = None) -> dict:
     """Check every gem, passive and item name of a draft build against local poe2db data. Exact
-    matches (English, 繁體中文, slug or tree id) come back under `verified` with their facts and
-    a `cite` number; the rest under `unverified` with suggestions. `affixes` are target
-    modifiers, "item: modifier" with the whole modifier as modifiers_for shows it, numbers
-    optional ("Rings: +#% to Fire Resistance"); item is a class, base or unique. A part of a
-    modifier is not verified: its candidates come back as suggestions. Per item at most 3
-    prefixes and 3 suffixes, one modifier per family; armour classes need a base or an
-    attribute page (Helmets_str). End the answer with `sources_markdown` (lang: en or zh-tw),
-    unchanged. At most 40 entries per list (60 affixes), 120 characters each; check the whole
-    build in one call. detail "brief" returns names and cite numbers only: use it when you
-    already hold the records (a build with gear, a repeat check)."""
+    matches (English, 繁體中文, slug or tree id) come back under `verified` with facts and a
+    `cite` number; the rest under `unverified` with suggestions. `affixes`: "item: modifier",
+    the whole modifier as modifiers_for shows it, numbers optional ("Rings: +#% to Fire
+    Resistance"); item is a class, base or unique (armour: a base or e.g. Helmets_str). A part
+    of a modifier is not verified. Per item at most 3 prefixes and 3 suffixes, one modifier per
+    family. End the answer with `sources_markdown` (lang: en or zh-tw), unchanged. At most 40
+    entries per list (60 affixes), 120 characters each; one call per build. detail "brief":
+    names and cite numbers only. character_level (a campaign stage's level) moves what cannot
+    be had yet to `too_early` (`from_level`); modifiers get the best tier that level rolls."""
     result = build_tools().verify_build(gems=gems, passives=passives, lang=lang, items=items, affixes=affixes,
-                                        detail=detail)
+                                        detail=detail, character_level=character_level)
     result.pop("sources", None)        # the same rows as sources_markdown; kept out of the tool output for size
     return result
 
 
 @server.tool(title="Passive tree route and point cost", annotations=READ_ONLY)
 @_user_errors
-def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, lang: str | None = None) -> dict:
+def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, lang: str | None = None,
+            by_stage: bool = False) -> dict:
     """Which passive nodes to allocate, in order, to reach `targets` (passive names in English or
     繁體中文, slugs or tree ids; at most 40) from a class start, and what it costs. `class_name` is
     a class or ascendancy (English or 繁體中文). Returns `points` used against the limits (123
     passive, 8 ascendancy), the ordered `path` with each node's stats, `stat_totals` for the whole
     route, per-target `points_alone` / `added_points`, plus `unverified` and `unreachable`
-    targets. The route is a good approximation, not a guaranteed minimum."""
-    return build_tools().path_to(class_name, targets, ascendancy=ascendancy, lang=lang)
+    targets. The route is a good approximation, not a guaranteed minimum. by_stage=true takes the
+    targets in the order listed (most important first) and returns `stages`: for each campaign
+    stage, the points it allows, the nodes allocated by its end and the targets reached."""
+    return build_tools().path_to(class_name, targets, ascendancy=ascendancy, lang=lang, by_stage=by_stage)
 
 
 @server.tool(title="Path of Building build code", annotations=READ_ONLY)
@@ -230,21 +237,22 @@ def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, 
 def export_pob(class_name: str, targets: list[str] | None = None, skills: list[str] | None = None,
                ascendancy: str | None = None, main_skill: str | None = None, title: str | None = None,
                attribute: str | None = None, character_level: int | None = None, gear: list[str] | None = None,
-               config: bool = True, lang: str | None = None) -> dict:
-    """A Path of Building (PoE2) build code to paste into PoB's Import/Export tab. `class_name`,
-    `ascendancy`, `targets` as in path_to. `skills`: one "skill: support, support" per group (max
-    12, 5 supports); `main_skill` picks the main one. `gear`: one "slot: item; modifier; modifier"
-    per item (Weapon 1/2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1/2, Belt, Charm 1-3,
-    Flask 1/2; a base or unique; a rare's modifiers worded as in modifiers_for). English or
-    繁體中文. Worked out from the data, not to be guessed: character level (`character_level`
-    1-100 sets it), skill gem levels, attribute passives (`attribute` str/dex/int forces one),
-    gear values (top of each best tier: an ideal, say so), and PoB Configuration options (charges,
-    enemy states) switched on only with evidence in this build (`summary.config`; `config` false:
-    none). `summary.attributes` / `summary.spirit`: have / need. Unmatched names go to
-    `not_exported`. Show `code`, `notes`, `how_to_import`. Writes no file."""
+               config: bool = True, lang: str | None = None, stage: str | None = None) -> dict:
+    """A Path of Building (PoE2) build code for PoB's Import/Export tab. `class_name`, `ascendancy`,
+    `targets` as in path_to. `skills`: one "skill: support, support" per group (max 12, 5
+    supports); `main_skill` picks the main one. `gear`: one "slot: item; modifier; modifier" per
+    item (Weapon 1/2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1/2, Belt, Charm 1-3, Flask
+    1/2; a base or unique; rare modifiers worded as in modifiers_for). From the data, not
+    guessed: character level (`character_level` sets it), gem levels, attribute passives
+    (`attribute` str/dex/int forces one), gear values (top of each best tier: a goal), PoB
+    Configuration options with evidence (`summary.config`). `stage` (a campaign_stages id,
+    instead of character_level) holds all to that stage's limits, one passive tree per stage.
+    `summary.attributes` / `summary.spirit`: have / need. Unmatched names go to `not_exported`.
+    Show `code`, `notes`, `how_to_import`. Writes no file."""
     return build_tools().export_pob(class_name, targets=targets, skills=skills, ascendancy=ascendancy,
                                     main_skill=main_skill, title=title, attribute=attribute,
-                                    character_level=character_level, gear=gear, config=config, lang=lang)
+                                    character_level=character_level, gear=gear, config=config, lang=lang,
+                                    stage=stage)
 
 
 @server.tool(title="Item base or unique", annotations=READ_ONLY)
@@ -282,6 +290,45 @@ def modifiers_for(item: str, group: str = "normal", affix: str | None = None, te
     recommend targets in order of importance, not as certain."""
     return build_tools().items.modifiers_for(item, group=group, affix=affix, text=text, max_level=max_level,
                                              limit=limit)
+
+
+@server.tool(title="Campaign stages and their limits", annotations=READ_ONLY)
+@_user_errors
+def campaign_stages(lang: str | None = None) -> dict:
+    """The campaign act by act (Act 1 ... the Interludes), each with the limits a build has by its
+    end, worked out from the data: character level (highest area level), passive points (level
+    points plus quest points so far), ascendancy points (trials reached), quest Spirit, highest
+    skill gem level and cuttable tiers, support gem tier, support sockets. Also each stage's
+    permanent quest rewards, trials and bosses, and `not_in_data`: what the answer must not
+    guess. Call it first for a campaign build."""
+    return build_tools().campaign.campaign_stages(lang=lang)
+
+
+@server.tool(title="Campaign area or boss", annotations=READ_ONLY)
+@_user_errors
+def get_area(name: str) -> dict:
+    """One campaign area by name or slug (English or 繁體中文), or the area of a boss: area level,
+    town / waypoint, bosses and what they grant, connected areas, permanent quest rewards there,
+    the community walkthrough from poe2db (both languages) and the quests that name the area."""
+    return build_tools().campaign.get_area(name)
+
+
+@server.tool(title="Campaign quest", annotations=READ_ONLY)
+@_user_errors
+def get_quest(name: str) -> dict:
+    """One campaign quest by name or slug (English or 繁體中文): type (main or optional), rewards
+    and objectives in both languages, and its act."""
+    return build_tools().campaign.get_quest(name)
+
+
+@server.tool(title="Filter the campaign", annotations=READ_ONLY)
+@_user_errors
+def campaign_by(kind: str, stage: str | None = None, text: str | None = None, limit: int = 30) -> dict:
+    """Campaign areas, quests, bosses or permanent rewards. kind: area, quest, boss or reward
+    (PoB's permanent quest rewards: passive points, Spirit, resistances, choices). stage: "act_2",
+    "Act 2", "第 2 章", "interlude". text: words in either language found in names, rewards,
+    objectives or walkthroughs (e.g. "天賦點", "Spirit", "Cold Resistance")."""
+    return build_tools().campaign.campaign_by(kind, stage=stage, text=text, limit=limit)
 
 
 @server.tool(title="Re-fetch one gem page", annotations=NETWORK_WRITE)
@@ -359,7 +406,8 @@ def status() -> str:
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
     """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
-    passives, items, glossary or ninja. names: optional gem names or item classes, comma-separated."""
+    passives, items, glossary, ninja or campaign. names: optional gem names or item classes,
+    comma-separated."""
     return update_prompt_text(scope, names)
 
 

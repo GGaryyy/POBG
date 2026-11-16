@@ -909,6 +909,43 @@
           "modifiers": 100
         }
       }
+    },
+    "campaign": {
+      "kind": "campaign",
+      "index_slug": "Act",
+      "act_slug_pattern": "^Act_(\\d+)$",
+      "interlude_slug": "Interlude",
+      "skill_gem_slug": "Uncut_Skill_Gem",
+      "spirit_gem_slug": "Uncut_Spirit_Gem",
+      "support_listing_slug": "Uncut_Support_Gems",
+      "socket_orbs": [
+        "Lesser_Jewellers_Orb",
+        "Greater_Jewellers_Orb",
+        "Perfect_Jewellers_Orb"
+      ],
+      "ascendancy_trials": [
+        {
+          "slug": "Trial_of_the_Sekhemas",
+          "points": 2
+        },
+        {
+          "slug": "The_Trial_of_Chaos",
+          "points": 2
+        }
+      ],
+      "ascendancy_trials_notes": "The campaign trials that grant ascendancy points, two each (poe2db Trial_of_the_Sekhemas and The_Trial_of_Chaos pages; verified 2026-11-14 for 0.5.5). Later points come from endgame trials and are not campaign stages.",
+      "stages_file": "data/campaign/stages.jsonl",
+      "areas_file": "data/campaign/areas.jsonl",
+      "quests_file": "data/campaign/quests.jsonl",
+      "rules_file": "data/campaign/rules.json",
+      "expect_min": {
+        "stages": 4,
+        "areas_per_stage": 5,
+        "quests": 40,
+        "skill_gem_levels": 20,
+        "support_gem_levels": 3
+      },
+      "notes": "Act pages are listed on the Act index page; an Act page without areas (a datamined act not in the game yet) is not a stage. poe2db keeps the Interludes as Act 6: the Act page whose areas are the Interlude page's areas is named Interlude. Each Act page holds the area table (level, bosses, content), the quest list (type, reward, objective), the act map (which areas connect) and the community walkthrough per area, in English and Traditional Chinese. Permanent quest rewards (passive points, Spirit, resistances, choices) come from PoB's QuestRewards.lua (pob2_tree.quest_rewards_url), placed in a stage by its Description. Verified 2026-11-14 for 0.5.5."
     }
   },
   "fields": {

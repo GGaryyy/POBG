@@ -13,6 +13,6 @@ description: Show what the local Path of Exile 2 data holds and how old it is (r
    pages that no longer parse, or a newer passive tree version.
 4. When something should be updated, name the command `pobg:update <scope>`
    (`/pobg:update` in Claude Code, `$pobg:update` in Codex) with one of
-   `skill_gems`, `spirit_gems`, `support_gems`, `passives`, `items`, `glossary`, `ninja`.
+   `skill_gems`, `spirit_gems`, `support_gems`, `passives`, `items`, `glossary`, `ninja`, `campaign`.
 
 Do not call `update_data` from this skill.

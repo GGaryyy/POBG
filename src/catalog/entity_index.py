@@ -123,6 +123,7 @@ def build_entity_index(
     entities += _passive_entities(spec, nodes, zh_names, passive_slugs or {}, built_at)
     entities += _keyword_entities(spec, data_dir, built_at)
     entities += _item_entities(spec, data_dir, built_at)
+    entities += _campaign_entities(spec, data_dir, built_at)
     _check_unique(entities)
     return entities
 
@@ -207,6 +208,42 @@ def _item_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity]:
                 record_file=rel.as_posix(), record_key={"slug": rec["slug"]},
                 aliases=make_aliases(rec["name"], rec.get("name_zh_tw")), built_at=built_at,
             ))
+    return out
+
+
+def _campaign_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity]:
+    """Campaign areas, quests and bosses (a boss points at its area), when the campaign data exists."""
+    source = spec.raw["sources"].get("campaign")
+    if not source:
+        return []
+    out: list[Entity] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(kind: str, slug: str | None, name: str, name_zh: str | None, rel: Path, key: str, urls: dict) -> None:
+        if not slug or (kind, slug) in seen:
+            return
+        seen.add((kind, slug))
+        out.append(Entity(slug=slug, kind=kind, name_en=name, name_zh_tw=name_zh, url_en=urls.get("url_en"),
+                          url_zh_tw=urls.get("url_zh_tw"), record_file=rel.as_posix(), record_key={"slug": key},
+                          aliases=make_aliases(name, name_zh), built_at=built_at))
+
+    areas_rel, quests_rel = Path(source["areas_file"]), Path(source["quests_file"])
+    areas_path = data_dir / areas_rel.relative_to("data")
+    quests_path = data_dir / quests_rel.relative_to("data")
+    for area in read_jsonl(areas_path) if areas_path.exists() else []:
+        if not area.get("slug") or not area.get("name"):
+            continue                      # a malformed row must not stop the index of every other data set
+        add("campaign_area", area["slug"], area["name"], area.get("name_zh_tw"), areas_rel, area["slug"], area)
+        for boss in area.get("bosses") or []:
+            if not boss.get("name"):
+                continue
+            add("campaign_boss", boss.get("slug"), boss["name"], boss.get("name_zh_tw"), areas_rel, area["slug"],
+                {"url_en": spec.resolve_url(boss["slug"], "en") if boss.get("slug") else None,
+                 "url_zh_tw": spec.resolve_url(boss["slug"], "zh-tw") if boss.get("slug") else None})
+    for quest in read_jsonl(quests_path) if quests_path.exists() else []:
+        if not quest.get("slug") or not quest.get("name"):
+            continue
+        add("campaign_quest", quest["slug"], quest["name"], quest.get("name_zh_tw"), quests_rel, quest["slug"], quest)
     return out
 
 

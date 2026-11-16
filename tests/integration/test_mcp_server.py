@@ -22,7 +22,7 @@ pytestmark = pytest.mark.integration
 
 TOOLS = ["lookup_entity", "get_gem", "get_passive", "passives_with_stat", "explain_keyword", "gems_by",
          "supports_for", "reference_builds", "verify_build", "path_to", "export_pob", "get_item", "items_by",
-         "modifiers_for",
+         "modifiers_for", "campaign_stages", "get_area", "get_quest", "campaign_by",
          "refresh_gem", "build_workflow",
          "data_status", "update_data"]
 LADDER = Path(__file__).resolve().parents[1] / "fixtures" / "jsonl" / "poe_ninja_builds.jsonl"
@@ -163,7 +163,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.12.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.13.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
@@ -334,7 +334,7 @@ def test_export_pob_schema_and_description():
     assert tool.input_schema["required"] == ["class_name"]
     assert set(tool.input_schema["properties"]) == {"class_name", "targets", "skills", "ascendancy", "main_skill",
                                                     "title", "attribute", "character_level", "gear",
-                                                    "config", "lang"}
+                                                    "config", "lang", "stage"}
     assert "not_exported" in tool.description and "skill: support, support" in tool.description
     assert "slot: item; modifier; modifier" in tool.description and "top of each best tier" in tool.description
     assert "summary.config" in tool.description
@@ -446,7 +446,8 @@ def test_data_status_through_the_server_uses_the_loaded_folder_and_no_network(fr
     status = payload(call("data_status", {}))
     assert status["data_dir"] == str(service.base_dir / "data") and "online" not in status
     assert {d["name"]: d["records"] for d in status["datasets"]}["skill_gems"] == 3
-    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja"]
+    assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja",
+                                       "campaign"]
     assert calls == []
 
 

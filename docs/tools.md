@@ -15,23 +15,27 @@ the `build_workflow` tool) and, for Claude Code, in
 | `lookup_entity` | name (English / 繁中) → entity, kind, both poe2db URLs |
 | `get_gem`, `get_passive`, `explain_keyword` | one record with its sources |
 | `passives_with_stat` | which passives give a stat |
-| `gems_by` | gems by tag, tier, class, weapon, kind or free text |
-| `supports_for` | every support gem that can support a skill |
+| `gems_by` | gems by tag, tier, class, weapon, kind or free text; `max_level` keeps only gems that can be had by that level |
+| `supports_for` | every support gem that can support a skill; `max_level` as in `gems_by` |
 | `reference_builds` | what ladder characters run (class, main skill, rank, gems, keystones — no character names); a build answer uses it to show how the generated build differs from the ladder, not to pick the build |
-| `verify_build` | checks a draft build's gems, passives, items and target modifiers ("Rings: +#% to Fire Resistance": the whole modifier, at most 3 prefixes and 3 suffixes per item; a partial wording comes back with candidates); returns facts, removed names and a finished source list |
-| `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route) |
-| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route, skill groups ("skill: support, support"), gear ("slot: item; modifier; modifier") and PoB Configuration options; names that do not verify, supports that cannot support the skill and modifiers the item cannot roll are listed in `not_exported` instead. See [below](#export_pob) |
+| `verify_build` | checks a draft build's gems, passives, items and target modifiers ("Rings: +#% to Fire Resistance": the whole modifier, at most 3 prefixes and 3 suffixes per item; a partial wording comes back with candidates); returns facts, removed names and a finished source list; `character_level` moves what cannot be had yet to `too_early` and gives each modifier the best tier that level rolls |
+| `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route); `by_stage` takes the targets in the order listed and cuts the route at each campaign stage's points |
+| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route, skill groups ("skill: support, support"), gear ("slot: item; modifier; modifier") and PoB Configuration options; names that do not verify, supports that cannot support the skill and modifiers the item cannot roll are listed in `not_exported` instead; `stage` holds the code to a campaign stage, with one passive tree per stage. See [below](#export_pob) |
 | `get_item` | one gear base (properties, requirements, implicit) or unique item (its modifiers), with sources |
 | `items_by` | bases and uniques by item class, kind, required level or text |
 | `modifiers_for` | what an item class (or a base or unique's class) can roll: modifiers grouped by family, every tier's level and value range, prefix or suffix; also desecrated, essence, corrupted and socketable effects |
+| `campaign_stages` | the campaign act by act, each with the limits a build has by its end (level, passive and ascendancy points, quest Spirit, skill gem level and tiers, support gem tier, support sockets), its permanent quest rewards, trials and bosses, and what the data does not hold. See [below](#campaign-stages) |
+| `get_area` | one campaign area, or the area of a boss: level, bosses and what they grant, connected areas, permanent rewards, the community walkthrough and the quests that name it |
+| `get_quest` | one campaign quest: type, rewards and objectives in both languages, its act |
+| `campaign_by` | campaign areas, quests, bosses or permanent rewards by act and / or words in either language |
 | `build_workflow` | the step-by-step workflow for a cited build answer, for clients that cannot use MCP prompts |
 | `refresh_gem` | re-fetches one gem page from poe2db and replaces the local record |
 | `data_status` | what the local data holds and how old it is; on request, a check of the live sites |
-| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja), a bounded number of requests per call |
+| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja, campaign), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the data commands, see
 [data.md](data.md#commands)). Only `refresh_gem` and `update_data` change anything; the other
-sixteen tools are marked read-only, and of those only `data_status` can reach the network, when
+twenty tools are marked read-only, and of those only `data_status` can reach the network, when
 asked to check the live sites.
 
 ## `export_pob`
@@ -70,3 +74,29 @@ Charges are counted at PoB's maximum (the "count if not maximum" box stays empty
 name the options poe.ninja's ladder exports assume for every character that this build has no
 source for. The rules are text patterns over the game's wording, audited over every gem and
 passive; see `tests/unit/test_config_rules.py` for the sentences they are held to.
+
+## Campaign stages
+
+A build answer is by default a campaign build: one that clears the campaign, given stage by stage.
+`campaign_stages` gives each stage's limits, cumulative up to its end, all from the data:
+
+| Limit | Worked out from |
+|---|---|
+| `level` | the highest area level of the stage on poe2db's Act page (towns left out) |
+| `passive_points` | `level` − 1, plus the quest passive points of PoB's QuestRewards.lua up to the stage (PoB counts them as passive and as weapon-set points) |
+| `ascendancy_points` | 2 for each campaign trial (Trial of the Sekhemas, the Trial of Chaos) whose area level the stage reaches |
+| `quest_spirit` | the "+N to Spirit" quest rewards up to the stage |
+| `skill_gem_level`, `skill_gem_tiers`, `spirit_gem_tiers` | the highest gem level the level allows (Uncut Skill Gem's level table) and the gemcutting tiers up to it |
+| `support_gem_tier` | the highest Uncut Support Gem level that drops by the stage's area level |
+| `support_sockets` | what the Jeweller's Orbs that drop by then set a skill to (2 before any) |
+
+poe2db keeps the Interludes as an Act: the Act page whose areas are the Interlude page's is named
+after it, and an Act page without areas (a datamined act not yet in the game) is not a stage, so new
+acts follow the data. `not_in_data` lists what answers must not guess: boss tactics beyond the area
+walkthroughs, the resistance penalty after the acts, drop chances, Spirit from gear.
+
+With `stage`, `export_pob` holds the code to those limits: the level, the route taken in the order the
+targets are listed and cut at the stage's points (targets beyond it go to `not_exported`), skill and
+support gems of later tiers, more supports than the sockets, items that need a higher level and
+modifiers whose every tier needs a higher item level are left out, and each modifier is written at
+the best tier that level can roll. The code holds one passive tree per stage up to the chosen one.

@@ -89,6 +89,10 @@ scope. The update changes the copy of `data/` the server runs from.
 
 ![/pobg:update ninja](img/update-ninja.en.svg)
 
+### `campaign`
+
+![/pobg:update campaign](img/update-campaign.en.svg)
+
 ## `/pobg:update-pob <folder>`: update your Path of Building
 
 From [`skills/update-pob/SKILL.md`](../../skills/update-pob/SKILL.md) and

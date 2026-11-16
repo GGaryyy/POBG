@@ -14,6 +14,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -34,7 +35,7 @@ from src.catalog.spec import Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, save_graph
 from src.kg.stats import MIN_PARSED_RATIO, build_stat_index, parse_summary, write_stat_index
 from src.scrapers import collect_glossary as glossary
-from src.scrapers import collect_items
+from src.scrapers import collect_campaign, collect_items
 from src.scrapers.collect_gems import CollectionError, collect_kind
 from src.scrapers.collect_passives import PassiveBuildError, load_tree_data, write_passives
 from src.scrapers.collect_passives import build as build_passives
@@ -62,8 +63,9 @@ PASSIVES = "passives"
 NINJA = "ninja"                  # the poe.ninja ladder snapshot
 GLOSSARY = "glossary"
 ITEMS = "items"
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA)
-WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA)      # re-fetched as a whole: no names, ages, caps or dry run
+CAMPAIGN = "campaign"              # acts, areas, quests and the gem / socket rules of campaign stages
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA, CAMPAIGN)
+WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA, CAMPAIGN)      # re-fetched as a whole: no names, ages, caps or dry run
 NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
 MAX_GEMS = 40                    # detail pages per call: keeps one tool call under about a minute
@@ -177,7 +179,8 @@ class DataMaintenance:
             "catalog": {"spec_version": self.spec.raw["spec_version"], "verified_at": self.spec.raw["verified_at"],
                         "pob2_tree_version": pob2["version"], "tree_data_version": tree_data["version"]},
             "datasets": [*(self._gem_status(scope) for scope in GEM_SCOPES), self._passive_status(),
-                         self._items_status(), self._glossary_status(), self._ladder_status(), self._index_status()],
+                         self._items_status(), self._glossary_status(), self._ladder_status(),
+                         self._campaign_status(), self._index_status()],
             "update_scopes": list(UPDATE_SCOPES),
             "not_updatable": dict(NOT_UPDATABLE),
         }
@@ -229,6 +232,13 @@ class DataMaintenance:
         return {"name": NINJA, "update_scope": NINJA, "league": rows[0].get("league") if rows else None,
                 **_dated(path)}
 
+    def _campaign_status(self) -> dict:
+        source = self.spec.source(collect_campaign.SOURCE)
+        areas, _ = _rows(self.base_dir / source["areas_file"])
+        quests, _ = _rows(self.base_dir / source["quests_file"])
+        return {"name": CAMPAIGN, "update_scope": CAMPAIGN, **_dated(self.base_dir / source["stages_file"]),
+                "areas": len(areas), "quests": len(quests)}
+
     def _index_status(self) -> dict:
         return {"name": "entity_index", "update_scope": None, "note": "rebuilt by every update",
                 **_dated(self.index_path, field="built_at")}
@@ -261,6 +271,8 @@ class DataMaintenance:
                     result = self._update_items(counting, names or [])
                 elif scope == GLOSSARY:
                     result = self._update_glossary(counting)
+                elif scope == CAMPAIGN:
+                    result = self._update_campaign(counting)
                 else:
                     result = self._update_gems(scope, names or [], older_than_days, max_gems, dry_run, counting)
         except LockBusy as exc:
@@ -514,6 +526,28 @@ class DataMaintenance:
         if glossary.fill_from_gem_hovers(self.spec, hashes, **options):
             parsed = glossary.crawl(self.spec, hashes, fetch=fetch, cache_dir=hover)
         return parsed
+
+    def _update_campaign(self, counting: _Counting) -> dict:
+        """The acts, areas, quests and stage rules again (about 26 requests); nothing is written
+        when a page no longer parses into the catalog's minimums."""
+        source = self.spec.source(collect_campaign.SOURCE)
+        old, _ = _rows(self.base_dir / source["stages_file"])
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                result = collect_campaign.collect(self.spec, fetch=counting, cache_dir=Path(tmp))
+        except (collect_campaign.CampaignBuildError, requests.RequestException) as exc:
+            raise ServiceUnavailable(f"{exc}. {NOTHING_WRITTEN}") from exc
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError, StopIteration, RecursionError,
+                re.error) as exc:
+            traceback.print_exc(file=sys.stderr)
+            raise ServiceUnavailable(f"the campaign pages changed shape ({type(exc).__name__}: {exc}). "
+                                     f"{NOTHING_WRITTEN}") from exc
+        try:
+            collect_campaign.write(self.spec, self.base_dir, result)
+        except OSError as exc:
+            raise ServiceUnavailable(f"a data file could not be written ({exc}). {PARTIAL_WRITE}") from exc
+        return {"stages": [s["id"] for s in result["stages"]], "previous_stages": [s["id"] for s in old],
+                "areas": len(result["areas"]), "quests": len(result["quests"]), **self._rebuild_derived(counting, None)}
 
     def _update_ladder(self, counting: _Counting) -> dict:
         """A new poe.ninja snapshot (at most 14 requests). Character and account names are used in

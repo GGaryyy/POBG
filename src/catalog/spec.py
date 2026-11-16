@@ -18,6 +18,8 @@ REQUIRED_TOP_LEVEL = ("spec_version", "verified_at", "base_url", "languages", "u
 GEM_KINDS = ("skill_gem", "spirit_gem", "support_gem")
 PASSIVE_KINDS = ("passive_keystone", "passive_notable", "passive_ascendancy")
 ITEM_KINDS = ("item_base", "item_unique")
+CAMPAIGN_KINDS = ("campaign_area", "campaign_quest", "campaign_boss")
+INTERLUDE_STAGE = "interlude"   # the campaign stage id of the Interludes
 
 # ---------------------------------------------------------------------------
 # SPEC

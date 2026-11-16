@@ -1,7 +1,7 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary or ninja); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja> [gem names or item classes, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja or campaign); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign> [gem names or item classes, comma-separated]
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ The first word is the scope; anything after it is a comma-separated list of gem 
 scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`, `items`, `glossary`, `ninja`:** do not call `update_data`. Tell the user to pick one scope,
+`passives`, `items`, `glossary`, `ninja`, `campaign`:** do not call `update_data`. Tell the user to pick one scope,
 for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:update` in Codex).
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
@@ -61,6 +61,13 @@ for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:upda
    requests to poe.ninja and replaces the ladder snapshot; character and account names are
    never stored.
 2. Report `records` and `league`, and `previous_league` when the league changed.
+
+## `campaign`
+
+1. Call `update_data` with `scope: "campaign"` and no other argument. It makes about 26
+   requests: the Act pages of poe2db.tw in two languages, the gem and Jeweller's Orb pages, and
+   PathOfBuilding-PoE2's quest rewards.
+2. Report the `stages` (and `previous_stages` when they changed), `areas` and `quests`.
 
 ## Always
 

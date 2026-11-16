@@ -205,8 +205,8 @@ args = ["run", "--frozen", "--no-dev", "--directory", "/absolute/path/to/POBG", 
 
 | 功能 | 說明 |
 |---|---|
-| 工具 | 十八個。名稱只用字母、數字與 `_`；說明都少於 1,024 個字元；輸入 schema 是扁平物件（字串、整數、布林、字串列表） |
-| 標註 | 十五個工具是 `readOnlyHint: true`、`openWorldHint: false`。`data_status` 是唯讀但 `openWorldHint: true`（有選用的線上檢查）。`refresh_gem` 與 `update_data` 是 `readOnlyHint: false`、`destructiveHint: true`、`openWorldHint: true`：它們會從來源抓取並取代本機紀錄，用戶端應在執行前詢問 |
+| 工具 | 二十二個。名稱只用字母、數字與 `_`；說明都少於 1,024 個字元；輸入 schema 是扁平物件（字串、整數、布林、字串列表） |
+| 標註 | 十九個工具是 `readOnlyHint: true`、`openWorldHint: false`。`data_status` 是唯讀但 `openWorldHint: true`（有選用的線上檢查）。`refresh_gem` 與 `update_data` 是 `readOnlyHint: false`、`destructiveHint: true`、`openWorldHint: true`：它們會從來源抓取並取代本機紀錄，用戶端應在執行前詢問 |
 | Prompt | `build_guide(request, lang)`、`status()`、`update(scope, names)`。不支援 prompt 的用戶端可呼叫 `build_workflow` 工具取得流派步驟，並直接呼叫 `data_status` / `update_data` |
 | Server 說明 | 初始化時送出的一段「如何使用這些工具」；有些用戶端會忽略它，所以才有 `build_workflow` |
 | 語言 | 查詢與回答支援英文與繁體中文；`lang` 為 `en` 或 `zh-tw` |

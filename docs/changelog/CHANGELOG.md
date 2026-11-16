@@ -5,13 +5,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-14
+
+Campaign builds (`docs/plan_campaign_build.md`): a build answer now aims, by default, at clearing the
+campaign, act by act, with every limit worked out from the data; and the campaign itself can be
+asked about. A finished endgame build is still made when a level above the campaign's end, or maps /
+late game, is asked for.
+
+### Added
+- `campaign` data and update scope (`src/scrapers/collect_campaign.py`, about 26 requests): poe2db's
+  Act pages in English and Chinese (areas with level, town, waypoint, bosses and what they grant, the
+  act map, the community walkthrough of each area; quests with type, reward and objectives), PoB's
+  QuestRewards.lua (permanent rewards placed in their stage), and the gem and socket rules (the skill
+  gem level table, gemcutting tiers, the drop level of each Uncut Support Gem level, what each
+  Jeweller's Orb sets the support sockets to and from which drop level). An Act page without areas is
+  not a stage, and the Act page holding the Interlude page's areas is named Interlude, so the stages
+  follow the data when 1.0 adds Acts 5 and 6. Nothing is written below the catalog's minimums.
+- Four MCP tools: `campaign_stages` (each stage's limits: level, passive points, ascendancy points,
+  quest Spirit, skill gem level and tiers, support gem tier, support sockets; its rewards, trials,
+  bosses; and `not_in_data`), `get_area` (an area or a boss's area), `get_quest`, `campaign_by`
+  (areas, quests, bosses or permanent rewards by act or words; rewards are tagged in both languages,
+  e.g. "天賦點"). Areas, quests and bosses are in the name index (`lookup_entity`).
+- `gems_by` and `supports_for` take `max_level`; `verify_build` takes `character_level` and returns
+  `too_early` (with `from_level`), with each modifier's `best` tier the one that level can roll;
+  `path_to` takes `by_stage` (targets in the order listed, cut at each stage's points);
+  `export_pob` takes `stage`: level, points, gem tiers, support sockets, item and modifier levels and
+  quest Spirit follow the stage, and the code holds one passive tree per stage up to it.
+- Flowchart of `update campaign`; tests on a synthetic campaign site (`tests/campaign_support.py`).
+
 ### Changed
+- The build workflow (server instructions, `build_workflow`, the `poe2-advisor` skill): campaign build
+  by default, with the steps above; the ladder comparison for a campaign build covers the main skill
+  and ascendancy only. READMEs, `docs/tools*.md`, `docs/data*.md`, flowcharts and ROADMAP describe it.
 - `docs/clients*.md` and the 0.12.0 test report: the Codex plugin tested from a clean state in the
   user's Codex (an earlier check had been answered by a hand-added server). ROADMAP lists `items_by`
   not accepting attribute page names as a follow-up.
 - The repo is public. The READMEs say to type the two Claude Code `/plugin` lines one at a time
   (pasted together, Claude Code reads them as one marketplace source); Claude Code and Codex on macOS
   both installed from the public repo and is recorded in `docs/clients*.md` and ROADMAP.
+
+### Fixed
+- Found while testing: `get_quest` read the quest table before loading it, so the first lookup in a
+  session never matched.
 
 ## [0.12.0] - 2026-11-13
 
