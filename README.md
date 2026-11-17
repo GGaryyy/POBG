@@ -59,6 +59,28 @@ start with `$pobg:` (for example `$pobg:status`; typing `$pobg` lists them). Whe
 Building code, **take it from the file Codex saves**: a long code retyped into the terminal can come out
 wrong (tested 2026-11-13).
 
+### Updating the plugin
+
+Run these in a terminal, then restart the app. `/pobg:status` (or `$pobg:status`) shows the version.
+
+Claude Code:
+
+```
+claude plugin marketplace update pobg
+claude plugin update pobg@pobg
+```
+
+Codex (it has no plugin update command; refresh the marketplace, then install again):
+
+```
+codex plugin marketplace upgrade pobg
+codex plugin add pobg@pobg
+```
+
+If Codex still shows the old version, run `codex plugin remove pobg@pobg` and add it again. An update
+replaces the plugin's own copy of the data with the one on GitHub, including anything you fetched with
+`update`.
+
 ### Other AI apps
 
 Claude Desktop, the ChatGPT desktop app, Cursor, VS Code, Gemini CLI … can run POBG as a local MCP

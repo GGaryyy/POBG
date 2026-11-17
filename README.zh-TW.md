@@ -49,6 +49,27 @@ codex plugin add pobg@pobg
 啟動 `codex` 直接提問，第一次啟動同樣會稍久一點。指令以 `$pobg:` 開頭（例如 `$pobg:status`；輸入 `$pobg` 會列出全部）。
 請它給 Path of Building 匯入碼時，**請用 Codex 存下的檔案**：很長的匯入碼被重打到終端機上時可能出錯（2026-11-13 實測）。
 
+### 更新 plugin
+
+在終端機執行下列指令，然後重開應用程式。`/pobg:status`（或 `$pobg:status`）會顯示版本。
+
+Claude Code：
+
+```
+claude plugin marketplace update pobg
+claude plugin update pobg@pobg
+```
+
+Codex（沒有更新 plugin 的指令，先刷新 marketplace 再重新安裝）：
+
+```
+codex plugin marketplace upgrade pobg
+codex plugin add pobg@pobg
+```
+
+如果 Codex 仍是舊版，先執行 `codex plugin remove pobg@pobg` 再安裝一次。更新會把 plugin 自帶的資料整份換成 GitHub 上的版本，
+你用 `update` 抓過的資料也會一起被換掉。
+
 ### 其他 AI 應用
 
 Claude Desktop、ChatGPT 桌面版、Cursor、VS Code、Gemini CLI 等也能把 POBG 當成本機 MCP server 使用，但步驟比較多，我們的測試也
