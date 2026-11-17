@@ -124,6 +124,7 @@ def build_entity_index(
     entities += _keyword_entities(spec, data_dir, built_at)
     entities += _item_entities(spec, data_dir, built_at)
     entities += _campaign_entities(spec, data_dir, built_at)
+    entities += _currency_entities(spec, data_dir, built_at)
     _check_unique(entities)
     return entities
 
@@ -244,6 +245,28 @@ def _campaign_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity
         if not quest.get("slug") or not quest.get("name"):
             continue
         add("campaign_quest", quest["slug"], quest["name"], quest.get("name_zh_tw"), quests_rel, quest["slug"], quest)
+    return out
+
+
+def _currency_entities(spec: Spec, data_dir: Path, built_at: str) -> list[Entity]:
+    """Currency items (orbs, essences, omens, runes, ...), when the currency data exists."""
+    source = spec.raw["sources"].get("currency")
+    rel = Path(source["currency_file"]) if source else None
+    path = data_dir / rel.relative_to("data") if rel else None
+    if path is None or not path.exists():
+        return []
+    out: list[Entity] = []
+    seen: set[str] = set()
+    for rec in read_jsonl(path):
+        if not rec.get("slug") or not rec.get("name") or rec["slug"] in seen:
+            continue                      # a malformed row must not stop the index of every other data set
+        seen.add(rec["slug"])
+        out.append(Entity(
+            slug=rec["slug"], kind="currency", name_en=rec["name"], name_zh_tw=rec.get("name_zh_tw"),
+            url_en=rec.get("url_en"), url_zh_tw=rec.get("url_zh_tw"),
+            record_file=rel.as_posix(), record_key={"slug": rec["slug"]},
+            aliases=make_aliases(rec["name"], rec.get("name_zh_tw")), built_at=built_at,
+        ))
     return out
 
 

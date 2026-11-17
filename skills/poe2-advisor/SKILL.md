@@ -1,6 +1,6 @@
 ---
 name: poe2-advisor
-description: Answer Path of Exile 2 questions and write build advice from the local poe2db data with source links, ending with a Path of Building code. Use when the user asks about a PoE2 skill / support / spirit gem, a passive node or keystone, a game term (e.g. Stun, Critical Hit), "which passives give X", the campaign (an act / 章節, area, boss, quest or quest reward), wants a build / 流派 / 配裝 / 開荒 recommendation, or a PoB code / 匯入碼 for one, in English or 繁體中文.
+description: Answer Path of Exile 2 questions and write build advice from the local poe2db data with source links, ending with a Path of Building code. Use when the user asks about a PoE2 skill / support / spirit gem, a passive node or keystone, a game term (e.g. Stun, Critical Hit), "which passives give X", the campaign (an act / 章節, area, boss, quest or quest reward), a currency item (an orb, essence, omen, rune or soul core / 通貨, 精髓, 預兆, 符文: what it does, its levels, which items change another), wants a build / 流派 / 配裝 / 開荒 recommendation, or a PoB code / 匯入碼 for one, in English or 繁體中文.
 ---
 
 # PoE2 advisor (pobg tools)
@@ -27,6 +27,13 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
    rewards, objectives) and `campaign_by` (areas, quests, bosses or permanent `reward`s of an act
    or with some words, e.g. `kind: "reward", text: "天賦點"` for "which quests give passive points").
    Boss tactics beyond the walkthrough text are not in the data: say so.
+   For currency use `get_currency` (one item: effect lines in both languages, stack size,
+   minimum modifier level, required and drop level, and `related`: the items whose effects name
+   it, e.g. the omens that change a Chaos Orb) and `currency_by` (by `category`: currency,
+   essence, splinter, catalyst, omen, augment = runes and soul cores; by `text` in either
+   language; by `max_level`: what drops and can be used by that level). For what an essence
+   guarantees on an item class, follow its `note` to `modifiers_for` with the essence group.
+   Prices, drop chances and crafting steps are not in the data (`not_in_data`): say so.
 3. Quote the returned record and link the returned `sources`. If `fetched_at` looks old and
    the user needs current numbers, call `refresh_gem` (one page, the only network call).
 4. Nothing found → say it is not in the local data and show the closest names from `lookup_entity`.

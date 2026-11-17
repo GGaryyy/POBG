@@ -5,6 +5,43 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-17
+
+Currency items (`docs/plan_currency.md`): the first step toward gear crafting. What each orb,
+essence, splinter, catalyst, omen, rune and soul core does can now be looked up and cited, in both
+languages. Prices and crafting steps are not part of this release.
+
+### Added
+- `currency` data and update scope (`src/scrapers/collect_currency.py`): poe2db's `Stackable_Currency`,
+  `Omen` and `Augment` listing pages in English and Chinese (category from the English tab, effect lines
+  by kind, stack size, minimum modifier level, maximum item level, limit, required level) and each item's
+  own page (drop level, item class, tags, internal type). An update reads the six listing pages and only
+  the item pages not read yet (`older_than_days` reads older ones again; 0 reads all), at most 50
+  requests per call, resumed by the next call; a first update reads about 620 item pages. Nothing is
+  written below the catalog's minimums (per category, Chinese names, item pages read).
+- Two MCP tools: `get_currency` (one item, its sources, and `related`: the items whose effect lines
+  name it as a whole name, e.g. the omens that change a Chaos Orb; an essence points to its
+  `modifiers_for` group) and `currency_by` (by category in English or Chinese, words in either language,
+  or `max_level` on drop and required level; with no filter, the categories). Both say what is not in
+  the data (prices, drop chances, crafting steps). Currency items are in the name index (`lookup_entity`).
+- `src/scrapers/item_page.py`: one reader for the facts box of a poe2db item page, used by the currency
+  and campaign collectors.
+- Flowchart of `update currency`; tests on a synthetic currency site (`tests/currency_support.py`).
+
+### Fixed
+- The campaign collector read an item page's drop level from table rows; poe2db now shows it as
+  name/value cards, so the next `update campaign` would have found no Jeweller's Orb drop levels and
+  refused to write. Both layouts are read now.
+- The `update_data` description and the `update` prompt did not list the `campaign` scope;
+  `lookup_entity`'s description named only gem, passive and glossary kinds.
+
+### Changed
+- Server instructions, the `poe2-advisor`, `update` and `status` skills, READMEs, `docs/tools*.md`,
+  `docs/data*.md`, `docs/clients*.md` (24 tools, 21 read-only), the system and command flowcharts and
+  ROADMAP describe the currency data. User-Agent `POBG/0.14`.
+- Batched updates (items, glossary, currency): a page that answers 404 no longer counts toward the
+  "five failures in a row: the site is down" stop, since the site did answer.
+
 ## [0.13.0] - 2026-11-14
 
 Campaign builds (`docs/plan_campaign_build.md`): a build answer now aims, by default, at clearing the

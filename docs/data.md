@@ -28,6 +28,7 @@ your Path of Building.
 | `glossary` | Every glossary term (English and Chinese hover snippets), found through the listing pages and a few gem pages | At most 50 per call (under a minute), about 750 in all; repeated until done, and written only when the whole glossary has been fetched |
 | `ninja` | A new poe.ninja snapshot of the current league: class, level, skills, keystones. No character or account names are kept | At most 14 |
 | `campaign` | The campaign: poe2db's Act pages in English and Chinese (areas with level, bosses and what they grant, quests, act map, community walkthroughs), PoB's quest rewards, and the gem and Jeweller's Orb pages behind campaign-stage limits | About 26 |
+| `currency` | Currency items from poe2db's `Stackable_Currency`, `Omen` and `Augment` listing pages (English and Chinese: what each item does, stack size, minimum modifier level, limits, required level) and each item's own page (drop level, item class, tags). Item pages already read are kept; `older_than_days` reads older ones again (0: all) | 6 listing pages plus the item pages not read yet; at most 50 per call, about 620 item pages on a first update (about 13 calls), only new items afterwards |
 
 Examples: `/pobg:update skill_gems`, `/pobg:update support_gems Fire Attunement, Brutality I`,
 `/pobg:update items Bows`, "update the skill gems older than 30 days".
@@ -85,12 +86,13 @@ normally after a game patch. A running server makes no network request unless `r
 | poe2db passive tree data | `https://poe2db.tw/data/passive-skill-tree/4.5/data_us.json` and `data_tw.json` (version read from `https://poe2db.tw/tw/passive-skill-tree/` and its script on `cdn.poe2db.tw/js/`) | Chinese name and stat lines of every passive node, class and ascendancy names, point limits | 2 files when the passive tree is rebuilt; the viewer page and script only when the probe checks for a new version |
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json` and `…/dev/src/Data/QuestRewards.lua` (the probe also lists `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`) | Passive tree structure: every node, connections, names, stats, keystone / notable flags, class starts, ascendancies, positions; PoB's act table for the character level and its Spirit quest rewards | 2 files when the passive tree is rebuilt |
 | poe2db campaign pages | `https://poe2db.tw/us/{slug}` and `https://poe2db.tw/tw/{slug}`: `Act` (the index), each `Act_N` it lists that has areas, `Interlude`; `Uncut_Skill_Gem`, `Uncut_Spirit_Gem`, `Uncut_Support_Gems` and its five level pages, the three Jeweller's Orb pages (English only) | Areas (name, level, town, waypoint, bosses and what they grant, connections on the act map, the community walkthrough), quests (type, reward, objective), the skill gem level table, gemcutting tiers, drop levels of Uncut Support Gems and Jeweller's Orbs | About 25 pages, 0.8 s apart, when `update campaign` is run; with PoB's `QuestRewards.lua` (permanent quest rewards) about 26 requests |
+| poe2db currency pages | `https://poe2db.tw/us/{slug}` and `https://poe2db.tw/tw/{slug}`: the listings `Stackable_Currency`, `Omen`, `Augment`; each item's own English page (`/us/Chaos_Orb`, …). The `Economy` price pages are not read | Currency items: category, effects in both languages, stack size, minimum modifier level, limits, required level, drop level, item class, tags (620 items) | 6 listing pages per update; an item page once per item, again only with `older_than_days` |
 | poe.ninja | `https://poe.ninja/poe2/api/data/index-state`, `https://poe.ninja/poe2/api/builds/{version}/search`, `https://poe.ninja/poe2/api/builds/dictionary/{hash}` | Ladder characters: class, level, main skill, gems, keystones, league, rank. Character and account names are discarded before anything is written | About 600 characters per snapshot (the top 100 of several sort orders): at most 14 requests, 0.8 s apart, when `update ninja` is run. The snapshot in this repo is from 2026-11-11, league "Runes of Aldur" |
 
 How the requests are made:
 
 - poe2db and GitHub requests identify themselves as
-  `POBG/0.13 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
+  `POBG/0.14 (+https://github.com/GGaryyy/POBG; research scraper)`, wait 0.8 s
   before every page or file (0.3 s before a hover snippet) and make at most three attempts.
   `refresh_gem` waits the same 0.8 s, one request at a time.
 - poe2db's `robots.txt` disallows only `/*/marked` and `/*/markdown_history`; neither is
@@ -101,7 +103,7 @@ How the requests are made:
   identifying `User-Agent` and waits 0.8 s between requests.
 - Snapshot in this repo: gems fetched 2026-11-10, glossary, ladder and items 2026-11-11, passive
   tree `0_5` (poe2db tree data `4.5`) with its quest rewards 2026-11-12, campaign 2026-11-14 (patch
-  0.5.5: Acts 1–4 and the Interludes). Every record returned by a tool states its own `fetched_at`.
+  0.5.5: Acts 1–4 and the Interludes), currency 2026-11-17. Every record returned by a tool states its own `fetched_at`.
 
 Not collected: 103 bases (mostly Runeforged variants, and the Timeless Jewel) appear on no
 modifier page, so `modifiers_for` cannot answer for them; thirteen gems on poe2db's meta gem page
@@ -122,7 +124,8 @@ uv run python -m src.scrapers.collect_gems --kind all --changed-only   # 3 listi
 uv run python -m src.scrapers.collect_passives && uv run python -m src.scrapers.collect_glossary
 uv run python -m src.scrapers.collect_items      # 138 item class pages: bases, uniques, modifiers
 uv run python -m src.scrapers.collect_campaign   # about 26 requests: acts, areas, quests, stage rules
-uv run python -m src.catalog.entity_index build   # bilingual name index (gems, passives, glossary, items, campaign)
+uv run python -m src.scrapers.collect_currency   # 6 listing pages + one page per new item (about 620 the first time)
+uv run python -m src.catalog.entity_index build   # bilingual name index (gems, passives, glossary, items, campaign, currency)
 uv run python -m src.kg.stats && uv run python -m src.kg.build_graph
 ```
 

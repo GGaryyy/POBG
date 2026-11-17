@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from src.tools.maintenance import (
     CAMPAIGN,
+    CURRENCY,
+    CURRENCY_BATCH,
     GEM_SCOPES,
     GLOSSARY,
     GLOSSARY_BATCH,
@@ -98,13 +100,15 @@ BUILD_WORKFLOW = """\
    options in `summary.config` with their evidence: PoB's damage assumes them."""
 
 SERVER_INSTRUCTIONS = (
-    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary, gear, campaign), English and Traditional "
+    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary, gear, campaign, currency), English and Traditional "
     "Chinese. Resolve names with lookup_entity first, then use get_gem / get_passive / "
     "explain_keyword / passives_with_stat / gems_by / supports_for, and for gear get_item / items_by / "
     "modifiers_for. Quote the returned records and "
     "cite the returned source URLs; do not answer numbers from memory. Use refresh_gem only when a "
     "record looks outdated (check fetched_at). "
     "Campaign questions (areas, bosses, quests, rewards of an act): get_area, get_quest, campaign_by. "
+    "Currency questions (what an orb, essence, omen, rune or soul core does, its levels, which items change "
+    "another): get_currency, currency_by; prices, drop chances and crafting steps are not in the data. "
     "For build advice the default goal is a build that clears the campaign: call campaign_stages first and keep "
     "each stage within its limits (max_level on gems_by / supports_for, character_level on verify_build, "
     "by_stage on path_to, stage on export_pob); an endgame build only when asked for. "
@@ -127,6 +131,7 @@ CONFIRM_ABOVE = 60   # gems: ask before fetching more than this many pages in on
 MAX_UPDATE_CALLS = 10
 MAX_ITEMS_CALLS = 8      # 138 requests (69 pages in two languages), ITEMS_BATCH per call
 MAX_GLOSSARY_CALLS = 20   # about 750 requests in all, GLOSSARY_BATCH per call
+MAX_CURRENCY_CALLS = 16   # a first run: 6 listing pages and about 620 item pages (13 calls), CURRENCY_BATCH per call
 
 STATUS_STEPS = f"""\
 Report the state of the local Path of Exile 2 data.
@@ -192,6 +197,15 @@ UPDATE_WHOLE_SET_STEPS = {
    pages of poe2db.tw in two languages, the gem and Jeweller's Orb pages, and PathOfBuilding-PoE2's
    quest rewards.
 2. Report the `stages` (and `previous_stages` when they changed), `areas` and `quests`.
+{ON_ERROR}""",
+    CURRENCY: f"""\
+1. Call update_data with scope="currency". It reads the six listing pages of poe2db.tw (three pages in two
+   languages) and the own page of each item it has not read yet; when the user asks to refresh every item,
+   add older_than_days=0 (or N for pages older than N days). One call makes at most {CURRENCY_BATCH} requests
+   and keeps its progress for 30 minutes; nothing is written until every page is fetched and checked.
+2. While `done` is false, call it again with the same arguments, at most {MAX_CURRENCY_CALLS} calls in total;
+   give one line of progress per call (`fetched`, `left`). A first update reads about 620 item pages.
+3. When `done` is true, report `records`, `categories`, `added`, `removed` and `item_pages_failed`.
 {ON_ERROR}""",
 }
 

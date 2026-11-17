@@ -115,9 +115,11 @@ def _user_errors(fn):
 @server.tool(title="Find a gem, passive or term by name", annotations=READ_ONLY)
 @_user_errors
 def lookup_entity(query: str, kind: str | None = None, limit: int = 5) -> dict:
-    """Resolve a gem, passive node or ascendancy name (English or 繁體中文) to its slug, kind and
-    poe2db URLs. kind filters to one of: skill_gem, spirit_gem, support_gem, passive_keystone,
-    passive_notable, passive_ascendancy, keyword. Matches are exact, then prefix, then substring."""
+    """Resolve a name (English or 繁體中文) to its slug, kind and poe2db URLs: a gem, passive node,
+    glossary term, item base or unique, campaign area, quest or boss, or currency item. kind filters
+    to one of: skill_gem, spirit_gem, support_gem, passive_keystone, passive_notable,
+    passive_ascendancy, keyword, item_base, item_unique, campaign_area, campaign_quest,
+    campaign_boss, currency. Matches are exact, then prefix, then substring."""
     return service().lookup_entity(query, kind=kind, limit=limit)
 
 
@@ -331,6 +333,29 @@ def campaign_by(kind: str, stage: str | None = None, text: str | None = None, li
     return build_tools().campaign.campaign_by(kind, stage=stage, text=text, limit=limit)
 
 
+@server.tool(title="Currency item", annotations=READ_ONLY)
+@_user_errors
+def get_currency(name: str) -> dict:
+    """One currency item by name or slug (English or 繁體中文): an orb, essence, splinter,
+    catalyst, omen, rune or soul core. What it does (effect lines in both languages; runes and
+    soul cores per item class), stack size, minimum modifier level, required level, drop level,
+    tags; `related`: the items whose effects name it (e.g. the omens that change a Chaos Orb). An
+    essence's guaranteed modifiers are in modifiers_for (`note` says which group)."""
+    return build_tools().currency.get_currency(name)
+
+
+@server.tool(title="Filter currency items", annotations=READ_ONLY)
+@_user_errors
+def currency_by(category: str | None = None, text: str | None = None, max_level: int | None = None,
+                limit: int = 30) -> dict:
+    """Currency items by category (currency, essence, splinter, catalyst, omen, augment = runes and
+    soul cores; or 通貨, 精髓, 預兆, 符文), by words in either language in names, effects or tags
+    (e.g. "Exalted Orb" for what changes it, "Fire Resistance", "socket"), and by max_level: drop
+    level (an area level) and required level (a character level) at most this. No filter: the
+    categories with counts. Prices and drop chances are not in the data."""
+    return build_tools().currency.currency_by(category=category, text=text, max_level=max_level, limit=limit)
+
+
 @server.tool(title="Re-fetch one gem page", annotations=NETWORK_WRITE)
 @_user_errors
 def refresh_gem(slug_or_name: str) -> dict:
@@ -368,16 +393,17 @@ def data_status(check_online: bool = False) -> dict:
 @_user_errors
 def update_data(scope: str, names: list[str] | None = None, older_than_days: int | None = None,
                 max_gems: int = DEFAULT_MAX_GEMS, dry_run: bool = False) -> dict:
-    """Re-fetch one data set from its source and replace the local records. Call it only when the
-    user asks for an update. scope is required, one per call (there is no update for everything):
-    skill_gems, spirit_gems, support_gems, passives, items, glossary or ninja. Gem scopes fetch
-    the listing, then gems that are new, changed, broken, named in `names` or older than
-    `older_than_days` (not again within 15 minutes), at most max_gems (1-40) per call; repeat while
-    `left` is above 0, at most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional `names`
-    (item classes, e.g. Bows) and makes at most 20 requests per call; glossary at most 50 requests
-    per call: repeat both while `done` is false (items at most 8 calls, glossary 20). passives (8
-    requests) and ninja (the poe.ninja ladder snapshot, at most 14) take no other argument. A source that no longer parses
-    aborts with nothing written."""
+    """Re-fetch one data set and replace the local records. Call it only when the user asks for an
+    update. scope, one per call (there is no update for everything): skill_gems,
+    spirit_gems, support_gems, passives, items, glossary, ninja, campaign or currency. Gem scopes
+    fetch gems that are new, changed, broken, named in `names` or older than `older_than_days` (not
+    again within 15 minutes), at most max_gems (1-40) per call; repeat while `left` is above 0, at
+    most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional
+    `names` (item classes, e.g. Bows) and makes at most 20 requests per call; glossary at most 50
+    requests per call; currency at most 50 requests per call (item pages not read yet;
+    older_than_days=N re-reads older ones, 0 all): repeat these while `done` is false
+    (items at most 8 calls, glossary 20, currency 16). passives, ninja and campaign take no other
+    argument. A source that no longer parses aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
     if not dry_run and result.get("done", True):   # an unfinished glossary call wrote nothing
@@ -406,8 +432,8 @@ def status() -> str:
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
     """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
-    passives, items, glossary, ninja or campaign. names: optional gem names or item classes,
-    comma-separated."""
+    passives, items, glossary, ninja, campaign or currency. names: optional gem names or item
+    classes, comma-separated."""
     return update_prompt_text(scope, names)
 
 

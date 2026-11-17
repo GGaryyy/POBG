@@ -946,6 +946,47 @@
         "support_gem_levels": 3
       },
       "notes": "Act pages are listed on the Act index page; an Act page without areas (a datamined act not in the game yet) is not a stage. poe2db keeps the Interludes as Act 6: the Act page whose areas are the Interlude page's areas is named Interlude. Each Act page holds the area table (level, bosses, content), the quest list (type, reward, objective), the act map (which areas connect) and the community walkthrough per area, in English and Traditional Chinese. Permanent quest rewards (passive points, Spirit, resistances, choices) come from PoB's QuestRewards.lua (pob2_tree.quest_rewards_url), placed in a stage by its Description. Verified 2026-11-14 for 0.5.5."
+    },
+    "currency": {
+      "kind": "currency",
+      "listings": [
+        {
+          "slug": "Stackable_Currency",
+          "panes": {
+            "StackableCurrencyItem": "currency",
+            "Essence": "essence",
+            "SplinterItem": "splinter",
+            "CatalystItem": "catalyst"
+          }
+        },
+        {
+          "slug": "Omen",
+          "panes": {
+            "OmenItem": "omen"
+          }
+        },
+        {
+          "slug": "Augment",
+          "panes": {
+            "AugmentItem": "augment"
+          }
+        }
+      ],
+      "currency_file": "data/currency/currency.jsonl",
+      "expect_min": {
+        "records": 500,
+        "categories": {
+          "currency": 100,
+          "essence": 60,
+          "splinter": 2,
+          "catalyst": 15,
+          "omen": 30,
+          "augment": 200
+        },
+        "zh_ratio": 0.9,
+        "detail_ratio": 0.9
+      },
+      "notes": "Each listing page holds every item of its tabs in one response (the tabs are only shown and hidden). An entry is a div.col: the name link (its href is the slug), div.property lines (stack size; Minimum Modifier Level, keyword BetterCurrencyMinimumLevel; Maximum Item Level, keyword CurrencyMaximumItemLevel; Limited to), div.requirements, and the effect lines by kind: explicitMod (what it does), implicitMod (a rune or soul core per item class), enchantMod (liquid emotions on a waystone), bondedMod. The category is the English tab id (panes); zh-TW tab ids are Chinese, so zh-TW entries are joined by slug. An item listed in two tabs keeps the first and records the others in also_in. Each item's own page (English) gives DropLevel, Class, Tags and Type as name/value cards (div.card.name-value). Prices (the Economy pages) are not collected. Verified 2026-11-17 for 0.5.5."
     }
   },
   "fields": {
@@ -1175,6 +1216,10 @@
     },
     "item.modifier": {
       "meaning": "A modifier an item class can roll: group (normal, desecrated, corrupted, essence, perfect_essence, socketable), affix (prefix / suffix), required item level, family and tier (1 = highest within the family and group), text with value ranges, en + zh-TW. Whether a given item has it is random; weights are unknown.",
+      "reliability": "ok"
+    },
+    "currency.item": {
+      "meaning": "A currency item (orb, essence, splinter, catalyst, omen, rune or soul core): category (the poe2db tab), stack size, minimum modifier level, maximum item level, limit, required level, effect lines by kind (effects, implicits per item class, enchants, bonded), en + zh-TW; from its own page the drop level, item class, tags and internal type. No prices, drop sources or drop chances.",
       "reliability": "ok"
     }
   },

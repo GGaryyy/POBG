@@ -76,6 +76,7 @@ connect to online MCP servers, and POBG runs on your computer.
 - "What modifiers can a bow roll, and what are the attack speed tiers?"
 - "What does Quill Rain do?"
 - "Which quests in Act 2 give passive points?" "What level is Ogham Manor, and who is the boss?"
+- "What does a Greater Chaos Orb do, and which omens change it?" "Which crafting orbs can drop by level 30?"
 - "Give me a Mercenary grenade build with gear and a PoB code." (by default a build that clears the campaign)
 - "Give me a level 90 lightning Invoker build with full gear and a PoB code." (a level or "late game" gets the
   finished endgame build)
@@ -174,6 +175,7 @@ each one (what it calls, where it decides, when it writes) is drawn in
 | `glossary` | Glossary terms |
 | `ninja` | The poe.ninja ladder snapshot (no character or account names are kept) |
 | `campaign` | The campaign: each act's areas, bosses, quests, permanent rewards and community walkthroughs, and the gem and socket rules campaign builds follow |
+| `currency` | Currency items: orbs, essences, splinters, catalysts, omens, runes and soul cores, with what each does and its drop level; a first update reads about 620 item pages, later ones only new items |
 
 Examples (in Codex write `$` instead of `/`):
 
@@ -196,7 +198,7 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
 ## Limits
 
 - The data is a snapshot (gems 2026-11-10, items, glossary and ladder 2026-11-11, campaign
-  2026-11-14). Balance patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
+  2026-11-14, currency 2026-11-17). Balance patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
 - POBG checks that every name exists and quotes its facts; it does not judge how strong a build
   is or calculate damage. PoB does the maths.
 - Modifiers are random: the gear in an answer is a target to look for, not a promise.
@@ -207,7 +209,9 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
 - A campaign build takes each act's highest area level as the character level. Boss tactics beyond the
   area walkthroughs, the resistance penalty after the acts and drop chances are not in the data; answers
   say so. When 1.0 (Acts 5 and 6) is out, run `update campaign`.
-- Not covered: crafting, currency, spawn weights, endgame items, a few bases and meta gems
+- Currency answers say what each item does, its levels and which items change another; prices, drop
+  chances and crafting steps are not in the data.
+- Not covered: crafting steps, prices, spawn weights, endgame items, a few bases and meta gems
   ([details](docs/data.md#sources-and-scope-of-use)).
 
 ## Data sources and license

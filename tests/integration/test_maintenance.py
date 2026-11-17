@@ -132,7 +132,7 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     status = tool.status()
     sets = {d["name"]: d for d in status["datasets"]}
     assert list(sets) == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja", "campaign",
-                          "entity_index"]
+                          "currency", "entity_index"]
     assert sets["skill_gems"] == {"name": "skill_gems", "update_scope": "skill_gems", "records": 3,
                                   "oldest_fetched_at": FETCHED, "newest_fetched_at": FETCHED,
                                   "oldest_age_days": sets["skill_gems"]["oldest_age_days"]}
@@ -147,7 +147,7 @@ def test_status_reports_counts_dates_and_scopes(tool, base, monkeypatch):
     assert status["catalog"] == {"spec_version": tool.spec.raw["spec_version"], "verified_at": tool.spec.raw["verified_at"],
                                  "pob2_tree_version": "0_5", "tree_data_version": "4.5"}
     assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja",
-                                       "campaign"]
+                                       "campaign", "currency"]
     assert status["not_updatable"] == {}
     assert {d["name"] for d in status["datasets"] if d["update_scope"]} == set(status["update_scopes"])
 

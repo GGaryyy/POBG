@@ -35,7 +35,7 @@ from src.catalog.spec import Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, save_graph
 from src.kg.stats import MIN_PARSED_RATIO, build_stat_index, parse_summary, write_stat_index
 from src.scrapers import collect_glossary as glossary
-from src.scrapers import collect_campaign, collect_items
+from src.scrapers import collect_campaign, collect_currency, collect_items
 from src.scrapers.collect_gems import CollectionError, collect_kind
 from src.scrapers.collect_passives import PassiveBuildError, load_tree_data, write_passives
 from src.scrapers.collect_passives import build as build_passives
@@ -64,7 +64,8 @@ NINJA = "ninja"                  # the poe.ninja ladder snapshot
 GLOSSARY = "glossary"
 ITEMS = "items"
 CAMPAIGN = "campaign"              # acts, areas, quests and the gem / socket rules of campaign stages
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA, CAMPAIGN)
+CURRENCY = "currency"              # orbs, essences, splinters, catalysts, omens, runes and soul cores
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA, CAMPAIGN, CURRENCY)
 WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA, CAMPAIGN)      # re-fetched as a whole: no names, ages, caps or dry run
 NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
@@ -74,6 +75,8 @@ MAX_NAME_LEN = 120
 MAX_OLDER_THAN_DAYS = 3650
 RECENT_SECONDS = 900             # a named or stale gem fetched this recently is not fetched again
 ITEMS_BATCH = 20                 # requests per items call: 10 class pages in two languages, about 600 KB each
+CURRENCY_BATCH = 50              # requests per currency call: item pages are small; under a minute at the polite delay
+MAX_LISTED_SLUGS = 30            # added / removed slugs named in a result; beyond this only the count
 GLOSSARY_BATCH = 50              # requests per glossary call; the run is resumed by the next call
 RUN_CACHE_SECONDS = 1800         # how long a half-finished glossary or items run may be resumed
 GLOSSARY_GEM_PAGES = 20          # gem pages read to find terms that no listing page links
@@ -89,6 +92,8 @@ MIN_LADDER_SKILL_RATIO = 0.5
 PROBE_LANGS = ["en", "zh-tw"]
 CHANGED_NODE_FIELDS = ("name", "name_zh_tw", "type", "stats", "stats_zh_tw", "neighbors")
 NOTHING_WRITTEN = "Nothing was written. Run data_status with check_online=true to see what changed on the site."
+NOTHING_WRITTEN_PAGES = "Nothing was written; the old data stays."      # for pages the online check does not probe
+NOT_FOUND = 404
 REPAIR_HINT = "The data files were updated; run the same update again to rebuild it."
 PARTIAL_WRITE = "Some data files may already be updated; run the same update again to finish it."
 BUSY = "an update, refresh or online check is already running; try again when it has finished"
@@ -131,10 +136,11 @@ class _Budget:
             raise _BudgetSpent
         try:
             body = self.counting(url)
-        except requests.RequestException:
+        except requests.RequestException as exc:
             if url in self.required:
                 raise                      # a page the crawl cannot do without: the call fails, a later call retries it
-            self._remember_failure(url)
+            # a missing page means the site answered: it does not count toward "the site is down"
+            self._remember_failure(url, counts_toward_streak=_status(exc) != NOT_FOUND)
             raise
         self.streak = 0
         if len(body.encode("utf-8")) < MIN_CACHEABLE_BYTES:
@@ -166,6 +172,7 @@ class DataMaintenance:
         self.keywords_path = self.data_dir / "kg" / "keywords.jsonl"
         self.glossary_run = base_dir / "output" / "cache" / "glossary_update"
         self.items_run = base_dir / "output" / "cache" / "items_update"
+        self.currency_run = base_dir / "output" / "cache" / "currency_update"
 
     # -- status ---------------------------------------------------------------
 
@@ -180,7 +187,7 @@ class DataMaintenance:
                         "pob2_tree_version": pob2["version"], "tree_data_version": tree_data["version"]},
             "datasets": [*(self._gem_status(scope) for scope in GEM_SCOPES), self._passive_status(),
                          self._items_status(), self._glossary_status(), self._ladder_status(),
-                         self._campaign_status(), self._index_status()],
+                         self._campaign_status(), self._currency_status(), self._index_status()],
             "update_scopes": list(UPDATE_SCOPES),
             "not_updatable": dict(NOT_UPDATABLE),
         }
@@ -239,6 +246,15 @@ class DataMaintenance:
         return {"name": CAMPAIGN, "update_scope": CAMPAIGN, **_dated(self.base_dir / source["stages_file"]),
                 "areas": len(areas), "quests": len(quests)}
 
+    def _currency_status(self) -> dict:
+        path = self.base_dir / self.spec.source(collect_currency.SOURCE)["currency_file"]
+        rows, _ = _rows(path)
+        categories: dict[str, int] = {}
+        for row in rows:
+            categories[str(row.get("category"))] = categories.get(str(row.get("category")), 0) + 1
+        return {"name": CURRENCY, "update_scope": CURRENCY, **_dated(path), "categories": categories,
+                "without_item_page": sum(1 for row in rows if not row.get("detail_fetched_at"))}
+
     def _index_status(self) -> dict:
         return {"name": "entity_index", "update_scope": None, "note": "rebuilt by every update",
                 **_dated(self.index_path, field="built_at")}
@@ -273,6 +289,8 @@ class DataMaintenance:
                     result = self._update_glossary(counting)
                 elif scope == CAMPAIGN:
                     result = self._update_campaign(counting)
+                elif scope == CURRENCY:
+                    result = self._update_currency(counting, older_than_days)
                 else:
                     result = self._update_gems(scope, names or [], older_than_days, max_gems, dry_run, counting)
         except LockBusy as exc:
@@ -549,6 +567,67 @@ class DataMaintenance:
         return {"stages": [s["id"] for s in result["stages"]], "previous_stages": [s["id"] for s in old],
                 "areas": len(result["areas"]), "quests": len(result["quests"]), **self._rebuild_derived(counting, None)}
 
+    def _update_currency(self, counting: _Counting, older_than_days: int | None) -> dict:
+        """The listing pages again (6 requests) and the own page of each item that has none stored
+        yet, or whose page is older than older_than_days (0: every item). One call makes at most
+        CURRENCY_BATCH requests and keeps the pages under output/cache; the file is written once,
+        when every page is in and the result passes the checks."""
+        path = self.base_dir / self.spec.source(collect_currency.SOURCE)["currency_file"]
+        old, _ = _rows(path)
+        reuse = {r["slug"]: r for r in old if r.get("slug") and _detail_is_fresh(r, older_than_days)}
+        fallback = {r["slug"]: r for r in old if r.get("slug")}      # kept when a page fails on a refresh
+        run = self.currency_run / ("new" if older_than_days is None else f"older_{older_than_days}")
+        listings = collect_currency.listing_urls(self.spec)
+        try:
+            _sweep_stale_runs(self.currency_run)
+            _start_or_resume(run)
+            fetch = _Budget(counting, CURRENCY_BATCH, run / "failed.json", set(listings))
+            records, summary = collect_currency.collect(self.spec, fetch=fetch, cache_dir=run / "pages", reuse=reuse,
+                                                        fallback=fallback)
+        except _BudgetSpent:
+            return self._currency_progress(run, reuse, counting)
+        except ServiceUnavailable:
+            raise                                          # the failure streak: already says what to do
+        except requests.RequestException as exc:      # (a RequestException is also an OSError: keep this first)
+            raise ServiceUnavailable(f"network error: {exc}. Nothing was written; what was fetched so far is kept, "
+                                     "so calling again continues from there") from exc
+        except collect_currency.CurrencyBuildError as exc:
+            shutil.rmtree(run, ignore_errors=True)
+            raise ServiceUnavailable(f"{exc}. {NOTHING_WRITTEN_PAGES}") from exc
+        except OSError as exc:
+            raise ServiceUnavailable(f"the update cache under output/ could not be used ({type(exc).__name__}). "
+                                     f"{NOTHING_WRITTEN_PAGES}") from exc
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
+            traceback.print_exc(file=sys.stderr)
+            raise ServiceUnavailable(f"the currency pages changed shape ({type(exc).__name__}: {exc}). "
+                                     f"{NOTHING_WRITTEN_PAGES}") from exc
+        try:
+            collect_currency.write(self.spec, self.base_dir, records)
+        except OSError as exc:
+            raise ServiceUnavailable(f"the currency file could not be written ({exc}); the old one is kept") from exc
+        derived = self._rebuild_derived(counting, None)
+        shutil.rmtree(run, ignore_errors=True)
+        before, after = {r.get("slug") for r in old}, {r["slug"] for r in records}
+        return {"done": True, "left": 0, "records": len(records),
+                "categories": {c: sum(1 for r in records if r["category"] == c) for c in dict.fromkeys(
+                    r["category"] for r in records)},
+                "item_pages_read": summary["item_pages_read"], "item_pages_reused": summary["item_pages_reused"],
+                "item_pages_failed": summary["item_pages_failed"], **_listed("added", sorted(after - before)),
+                **_listed("removed", sorted(before - after - {None})), **derived}
+
+    def _currency_progress(self, run: Path, reuse: dict[str, dict], counting: _Counting) -> dict:
+        """What an unfinished currency call reports: the pages still to fetch in this run."""
+        failed = set(_read_json(run / "failed.json").get("urls", []))
+        try:
+            left = collect_currency.pending_pages(self.spec, run / "pages", reuse, failed)
+        except (OSError, ValueError) as exc:
+            raise ServiceUnavailable(f"the update cache under output/ could not be read ({type(exc).__name__}); "
+                                     "calling again continues") from exc
+        return {"done": False, "left": left if left is not None else len(collect_currency.listing_urls(self.spec)),
+                "fetched": counting.count,
+                "note": "not finished: call update_data with scope currency (and the same older_than_days) again "
+                        "to continue"}
+
     def _update_ladder(self, counting: _Counting) -> dict:
         """A new poe.ninja snapshot (at most 14 requests). Character and account names are used in
         memory to tell characters apart and are never written."""
@@ -651,6 +730,14 @@ def _check_options(scope: str, names: list[str] | None, older_than_days: int | N
                               "re-fetches whole item class pages (names may limit it to some classes)")
         _check_names(names)
         return
+    if scope == CURRENCY:
+        if names or dry_run or max_gems != DEFAULT_MAX_GEMS:
+            raise BadArgument("names, max_gems and dry_run only apply to the gem scopes; a currency update reads "
+                              "the listing pages and the item pages it has not read yet (older_than_days: also "
+                              "the item pages older than that, 0 for every item)")
+        if older_than_days is not None and not 0 <= older_than_days <= MAX_OLDER_THAN_DAYS:
+            raise BadArgument(f"older_than_days must be between 0 and {MAX_OLDER_THAN_DAYS}")
+        return
     if scope in WHOLE_SET_SCOPES:
         if names or older_than_days is not None or dry_run or max_gems != DEFAULT_MAX_GEMS:
             raise BadArgument("names, older_than_days, max_gems and dry_run only apply to the gem scopes; "
@@ -698,6 +785,27 @@ def _merge_term(old: dict | None, fresh: dict | None) -> dict:
     if any(old.get(field) and not fresh.get(field) for field in GLOSSARY_TEXT_FIELDS):
         merged["fetched_at"] = old.get("fetched_at")
     return merged
+
+
+def _status(exc: requests.RequestException) -> int | None:
+    return getattr(exc.response, "status_code", None)
+
+
+def _listed(key: str, slugs: list[str]) -> dict:
+    """{key: slugs} for a short list; the count and the first few for a long one (a first update adds 600)."""
+    if len(slugs) <= MAX_LISTED_SLUGS:
+        return {key: slugs}
+    return {key: slugs[:MAX_LISTED_SLUGS], f"{key}_count": len(slugs)}
+
+
+def _detail_is_fresh(record: dict, older_than_days: int | None) -> bool:
+    """A stored currency record whose item page need not be read again."""
+    if not record.get("detail_fetched_at"):
+        return False
+    if older_than_days is None:
+        return True
+    age = _age_days(record["detail_fetched_at"])
+    return age is not None and age < older_than_days
 
 
 def _rows(path: Path) -> tuple[list[dict], dict]:

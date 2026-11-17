@@ -37,7 +37,7 @@ UPDATE_SKILL = (ROOT / "skills" / "update" / "SKILL.md").read_text(encoding="utf
 HEAVY_MODULES = ("faiss", "torch", "langchain", "langchain_core", "langgraph", "sentence_transformers", "fastapi")
 TOOL_LIKE = re.compile(r"\b(?:lookup_entity|get_\w+|explain_\w+|passives_\w+|gems_\w+|supports_\w+|"
                        r"reference_\w+|verify_\w+|refresh_\w+|path_to|export_pob|build_workflow|data_status|update_data|items_by|modifiers_for|"
-                       r"campaign_\w+)\b")
+                       r"campaign_\w+|currency_by)\b")
 
 
 def tool_names() -> set[str]:
@@ -183,7 +183,7 @@ def test_status_skill_only_reads():
 def test_update_skill_is_user_invoked_and_requires_a_scope():
     head = frontmatter(UPDATE_SKILL)
     assert head["name"] == "update" and head["disable-model-invocation"] == "true"
-    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign>")
+    assert head["argument-hint"].startswith("<skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign|currency>")
     body = UPDATE_SKILL.split("---", 2)[2]
     assert "$ARGUMENTS" in body and "do not call `update_data`" in body
     assert set(TOOL_LIKE.findall(body)) == {"update_data"}
@@ -210,6 +210,10 @@ def test_update_limits_in_the_texts_match_the_code():
     assert f"at most {ITEMS_BATCH} requests per call" in description
     assert f"at most {ITEMS_BATCH} requests (10 class pages" in skill and f"at most {build_workflow.MAX_ITEMS_CALLS} calls" in skill
     assert f"(1-{MAX_GEMS})" in {t.name: t for t in asyncio.run(server.list_tools())}["update_data"].description
+    from src.tools.maintenance import CURRENCY_BATCH
+    assert f"currency at most {CURRENCY_BATCH} requests per call" in description
+    assert f"currency {build_workflow.MAX_CURRENCY_CALLS})" in description
+    assert f"at most {CURRENCY_BATCH} requests" in skill and f"at most {build_workflow.MAX_CURRENCY_CALLS} calls" in skill
 
 
 def test_project_rules_live_under_dot_claude_not_at_the_plugin_root():

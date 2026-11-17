@@ -10,7 +10,7 @@
 
 | 工具 | 回答什麼 |
 |---|---|
-| `lookup_entity` | 名稱（英文／繁中）→ 實體、種類、兩個 poe2db 網址 |
+| `lookup_entity` | 名稱（英文／繁中）→ 實體、種類、兩個 poe2db 網址（寶石、天賦、名詞、裝備、章節區域／任務／頭目、通貨） |
 | `get_gem`、`get_passive`、`explain_keyword` | 單筆紀錄與其來源 |
 | `passives_with_stat` | 哪些天賦提供某個屬性 |
 | `gems_by` | 依標籤、階級、職業、武器、種類或關鍵字篩選寶石；`max_level` 只留該等級拿得到的寶石 |
@@ -26,13 +26,15 @@
 | `get_area` | 一個章節區域（或頭目所在的區域）：等級、頭目與其獎勵、相連區域、永久獎勵、社群攻略、提到該區域的任務 |
 | `get_quest` | 一個章節任務：類型、中英文的獎勵與目標、所在章節 |
 | `campaign_by` | 依章節或中英文字詞篩選區域、任務、頭目或永久獎勵 |
+| `get_currency` | 一個通貨（寶珠、精髓、裂片、催化劑、預兆、符文或魂核）：中英文效果（符文依裝備類別）、堆疊數量、最小詞綴等級、需求與掉落等級、標籤，以及 `related`：效果提到它的其他通貨。見[下方](#通貨) |
+| `currency_by` | 依類別、中英文字詞或 `max_level`（掉落與需求等級）篩選通貨；不給條件時列出各類別 |
 | `build_workflow` | 有出處的流派回答流程，給不支援 MCP prompt 的用戶端使用 |
 | `refresh_gem` | 重新抓取 poe2db 上的一顆寶石頁面並取代本機紀錄 |
 | `data_status` | 本機資料有哪些、多舊；需要時可檢查線上網站 |
-| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、`passives`、`items`、`glossary`、`ninja`、`campaign`），每次呼叫的請求數有上限 |
+| `update_data` | 重新抓取一類資料（必須指定範圍：三種寶石、`passives`、`items`、`glossary`、`ninja`、`campaign`、`currency`），每次呼叫的請求數有上限 |
 
 Prompt：`build_guide`（流派流程）、`status` 與 `update`（資料指令，見 [data.zh-TW.md](data.zh-TW.md#指令)）。
-只有 `refresh_gem` 與 `update_data` 會變更資料；其餘二十個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
+只有 `refresh_gem` 與 `update_data` 會變更資料；其餘二十二個工具都標示為唯讀，其中只有 `data_status` 在被要求檢查線上網站時會連網。
 
 ## `export_pob`
 
@@ -83,3 +85,23 @@ poe2db 把插曲當成一個章節頁：區域與插曲頁相同的章節頁會�
 帶 `stage` 時，`export_pob` 讓匯入碼符合這些上限：使用該等級；天賦依目標列出的順序點，在該階段的點數處切斷（之後才點得到的目標列在
 `not_exported`）；之後階級的技能與輔助寶石、超過插槽數的輔助、需要更高等級的物品、所有階級都需要更高物品等級的詞綴都不會放入；
 每條詞綴以該等級能出的最高階寫入。匯入碼內含到所選階段為止、每階段各一個天賦樹。
+
+## 通貨
+
+`get_currency` 與 `currency_by` 回答通貨的效果。類別沿用 poe2db 的分頁：
+
+| 類別 | 內容 |
+|---|---|
+| `currency` | 可堆疊通貨分頁：寶珠（含高階／完美版）、碎片、深淵骨頭、精煉情緒、探險與聯盟物品 |
+| `essence` | 精髓 |
+| `splinter` | 裂片 |
+| `catalyst` | 催化劑 |
+| `omen` | 預兆 |
+| `augment` | 符文與魂核（效果依裝備類別列在 `implicits`，另有 `bonded`） |
+
+每筆紀錄有清單頁上的資料（堆疊數量、高階與完美寶珠的 `min_modifier_level`、`max_item_level`、`limit`、`requires_level`、
+中英文效果），以及單頁上的資料（`drop_level`：開始掉落的最低區域等級、`item_class`、`tags`、`type`）。
+`related` 由資料比對得出：英文效果中以完整名稱提到這個通貨的其他通貨，所以「混沌石」會找到影響混沌石的預兆，而不會把提到高階混沌石的句子算進來。
+精髓在各裝備類別保證的詞綴在 `modifiers_for`（group 為 `essence` 或 `perfect_essence`）。
+`drop_level` 是 poe2db 的 DropLevel；只來自特定內容（聯盟機制、頭目、商人）的物品，這個值可能很低（例如 1）。
+價格、掉落來源與機率、製作步驟不在資料中；`not_in_data` 會說明。

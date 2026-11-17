@@ -1,6 +1,6 @@
 # System Flow
 
-Updated 2026-11-12 (0.10.0: gear in Path of Building codes; 0.9.0: PoB codes and the PoB updater).
+Updated 2026-11-17 (0.14.0: currency items; 0.13.0: the campaign; 0.10.0: gear in Path of Building codes; 0.9.0: PoB codes and the PoB updater).
 
 ## System flow
 
@@ -26,6 +26,8 @@ flowchart LR
         GL[collect_glossary.py]
         PN[fetch_poe_ninja_builds.py]
         CI[collect_items.py]
+        CA[collect_campaign.py]
+        CU[collect_currency.py]
     end
 
     subgraph Data["data/"]
@@ -33,6 +35,8 @@ flowchart LR
         PAS[(passive_nodes / passive_edges / classes.json)]
         COM[(poe_ninja_builds)]
         ITM[(items/bases, uniques, modifiers, classes.json)]
+        CAM[(campaign/stages, areas, quests, rules.json)]
+        CUR[(currency/currency.jsonl)]
         IDX[(catalog/entity_index.jsonl)]
         KW[(kg/keywords.jsonl)]
         ST[(kg/passive_stats.jsonl)]
@@ -43,10 +47,10 @@ flowchart LR
     end
 
     subgraph App["src/tools"]
-        LK[lookup.py + items.py]
+        LK[lookup.py + items.py + campaign.py + currency.py]
         BT[build_tools.py + pathing.py]
         MT[maintenance.py: status + scoped update]
-        MCP[MCP server pobg: 18 tools + build_guide / status / update prompts]
+        MCP[MCP server pobg: 24 tools + build_guide / status / update prompts]
         PE[pob_export.py: XML + zlib + base64 build code]
         PU[pob_update.py: CLI, PoB release into a new folder]
     end
@@ -70,6 +74,13 @@ flowchart LR
     P -->|57 item class pages en + zh-TW, embedded ModsView JSON| CI --> ITM
     ITM --> EI
     ITM --> LK
+    P -->|Act pages en + zh-TW, gem and Jeweller's Orb pages| CA
+    POB -->|QuestRewards.lua| CA --> CAM
+    P -->|3 currency listings en + zh-TW, one page per item| CU --> CUR
+    CAM --> EI
+    CAM --> LK
+    CUR --> EI
+    CUR --> LK
     GEM --> EI
     PAS --> EI
     P -->|/tw/ listing names| EI

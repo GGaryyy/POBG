@@ -12,7 +12,7 @@ the `build_workflow` tool) and, for Claude Code, in
 
 | Tool | Answers |
 |---|---|
-| `lookup_entity` | name (English / 繁中) → entity, kind, both poe2db URLs |
+| `lookup_entity` | name (English / 繁中) → entity, kind, both poe2db URLs (gems, passives, glossary terms, items, campaign areas, quests and bosses, currency) |
 | `get_gem`, `get_passive`, `explain_keyword` | one record with its sources |
 | `passives_with_stat` | which passives give a stat |
 | `gems_by` | gems by tag, tier, class, weapon, kind or free text; `max_level` keeps only gems that can be had by that level |
@@ -28,14 +28,16 @@ the `build_workflow` tool) and, for Claude Code, in
 | `get_area` | one campaign area, or the area of a boss: level, bosses and what they grant, connected areas, permanent rewards, the community walkthrough and the quests that name it |
 | `get_quest` | one campaign quest: type, rewards and objectives in both languages, its act |
 | `campaign_by` | campaign areas, quests, bosses or permanent rewards by act and / or words in either language |
+| `get_currency` | one currency item (orb, essence, splinter, catalyst, omen, rune or soul core): effect lines in both languages (runes per item class), stack size, minimum modifier level, required and drop level, tags, and `related`: the items whose effects name it. See [below](#currency) |
+| `currency_by` | currency items by category, words in either language, or `max_level` (drop and required level); no filter lists the categories |
 | `build_workflow` | the step-by-step workflow for a cited build answer, for clients that cannot use MCP prompts |
 | `refresh_gem` | re-fetches one gem page from poe2db and replaces the local record |
 | `data_status` | what the local data holds and how old it is; on request, a check of the live sites |
-| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja, campaign), a bounded number of requests per call |
+| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja, campaign, currency), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the data commands, see
 [data.md](data.md#commands)). Only `refresh_gem` and `update_data` change anything; the other
-twenty tools are marked read-only, and of those only `data_status` can reach the network, when
+twenty-two tools are marked read-only, and of those only `data_status` can reach the network, when
 asked to check the live sites.
 
 ## `export_pob`
@@ -100,3 +102,26 @@ targets are listed and cut at the stage's points (targets beyond it go to `not_e
 support gems of later tiers, more supports than the sockets, items that need a higher level and
 modifiers whose every tier needs a higher item level are left out, and each modifier is written at
 the best tier that level can roll. The code holds one passive tree per stage up to the chosen one.
+
+## Currency
+
+`get_currency` and `currency_by` answer what a currency item does. The categories are poe2db's tabs:
+
+| Category | Holds |
+|---|---|
+| `currency` | the Stackable Currency tab: orbs (with their Greater / Perfect tiers), shards, abyss bones, liquid emotions, expedition and league items |
+| `essence` | essences |
+| `splinter` | splinters |
+| `catalyst` | catalysts |
+| `omen` | omens |
+| `augment` | runes and soul cores (their effect lines are per item class, `implicits`, with `bonded` lines) |
+
+A record carries what the listing page shows (stack size, `min_modifier_level` of Greater and Perfect
+orbs, `max_item_level`, `limit`, `requires_level`, the effect lines in both languages) and what the item's
+own page shows (`drop_level`: the lowest area level it drops in, `item_class`, `tags`, `type`).
+`related` is found in the data: the items whose English effect lines name this one as a whole name, so
+"Chaos Orb" finds the omens that change a Chaos Orb and not a line about a Greater Chaos Orb. What an
+essence guarantees on each item class is in `modifiers_for` (group `essence` or `perfect_essence`).
+`drop_level` is poe2db's DropLevel; an item that only comes from some content (a league mechanic, a boss, a
+vendor) can show a low one, such as 1. Prices, drop sources and chances, and crafting steps are not in the
+data; `not_in_data` says so.

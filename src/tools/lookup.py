@@ -18,7 +18,7 @@ from typing import Callable
 import networkx as nx
 
 from src.catalog.entity_index import PASSIVE_TYPE_TO_KIND, EntityIndex
-from src.catalog.spec import CAMPAIGN_KINDS, GEM_KINDS, ITEM_KINDS, Spec, load_spec
+from src.catalog.spec import CAMPAIGN_KINDS, CURRENCY_KINDS, GEM_KINDS, ITEM_KINDS, Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, load_graph
 from src.scrapers.collect_gems import BROKEN_WARNINGS, DETAIL_CACHE_DIR
 from src.scrapers.collect_passives import ZH_FROM_TREE_DATA
@@ -50,7 +50,8 @@ TREE_DATA_LABEL = "Passive tree data on poe2db"
 LANGS = ("en", "zh-tw")
 LISTING_FIELDS = ("tag_slugs", "attribute_colour", "summary")
 NEGATIVE_KINDS = {"reduced", "less", "slower", "lose"}
-ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword", *ITEM_KINDS, *CAMPAIGN_KINDS)
+ENTITY_KINDS = (*GEM_KINDS, *PASSIVE_TYPE_TO_KIND.values(), "keyword", *ITEM_KINDS, *CAMPAIGN_KINDS,
+                *CURRENCY_KINDS)
 _CJK_RE = re.compile(r"[㐀-鿿]")
 DATA_LOCK = threading.Lock()
 

@@ -1,7 +1,7 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja or campaign); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign> [gem names or item classes, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja, campaign or currency); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign|currency> [gem names or item classes, comma-separated]
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ The first word is the scope; anything after it is a comma-separated list of gem 
 scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`, `items`, `glossary`, `ninja`, `campaign`:** do not call `update_data`. Tell the user to pick one scope,
+`passives`, `items`, `glossary`, `ninja`, `campaign`, `currency`:** do not call `update_data`. Tell the user to pick one scope,
 for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:update` in Codex).
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
@@ -68,6 +68,19 @@ for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:upda
    requests: the Act pages of poe2db.tw in two languages, the gem and Jeweller's Orb pages, and
    PathOfBuilding-PoE2's quest rewards.
 2. Report the `stages` (and `previous_stages` when they changed), `areas` and `quests`.
+
+## `currency`
+
+1. Call `update_data` with `scope: "currency"`. It reads the six listing pages of poe2db.tw
+   (three pages in both languages) and the own page of each item it has not read yet (the drop
+   level). When the user asks to refresh every item, add `older_than_days: 0` (or `N` for pages
+   older than N days). One call makes at most 50 requests and keeps its progress for 30
+   minutes; nothing is written until every page is fetched and checked.
+2. While `done` is false, call it again with the same arguments, at most 16 calls in total;
+   give one line of progress per call (`fetched`, `left`). A first update reads about 620 item
+   pages; later ones only new items.
+3. When `done` is true, report `records`, `categories`, `added`, `removed` and
+   `item_pages_failed`.
 
 ## Always
 

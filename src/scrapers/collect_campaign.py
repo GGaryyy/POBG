@@ -45,6 +45,7 @@ from src.scrapers.common import (
     slug_from_href,
     write_jsonl,
 )
+from src.scrapers.item_page import drop_level, item_fields
 
 # ---------------------------------------------------------------------------
 # CONSTANTS
@@ -415,16 +416,10 @@ def parse_listing_slugs(html: str) -> list[str]:
 
 
 def parse_item_page(html: str) -> dict:
-    """{"name", "drop_level", "text"} of one item page (its first item table and its mod lines)."""
-    soup = make_soup(html)
-    fields = {}
-    for row in soup.select("div.card table tbody tr"):
-        cells = [c.get_text(" ", strip=True) for c in row.select("td")]
-        if len(cells) == 2 and cells[0] in ("DropLevel", "BaseType") and cells[0] not in fields:
-            fields[cells[0]] = cells[1]
-    level = fields.get("DropLevel")
-    return {"name": fields.get("BaseType"), "drop_level": int(level) if level and level.isdigit() else None,
-            "text": [t for t in (node_text(n) for n in soup.select(".explicitMod")) if t]}
+    """{"name", "drop_level", "text"} of one item page (its facts box and its mod lines)."""
+    fields = item_fields(html)
+    return {"name": fields.get("BaseType"), "drop_level": drop_level(fields),
+            "text": [t for t in (node_text(n) for n in make_soup(html).select(".explicitMod")) if t]}
 
 
 # ---------------------------------------------------------------------------

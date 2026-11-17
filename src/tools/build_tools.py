@@ -23,6 +23,7 @@ from src.catalog.entity_index import PASSIVE_TYPE_TO_KIND, make_aliases
 from src.catalog.spec import GEM_KINDS, ITEM_KINDS
 from src.scrapers.common import clean_text
 from src.tools.campaign import CampaignLookup
+from src.tools.currency import CurrencyLookup
 from src.tools.items import ITEM_KIND_NAMES, AmbiguousItem, ItemLookup, item_fact_lines
 from src.tools.lookup import (
     BadArgument,
@@ -372,6 +373,7 @@ class BuildTools:
         self._finder: PassivePathfinder | None = None
         self.items = ItemLookup(lookup)
         self.campaign = CampaignLookup(lookup)
+        self.currency = CurrencyLookup(lookup)
         self._stats_by_node: dict[str, list[dict]] | None = None
 
     # -- verification ---------------------------------------------------------
