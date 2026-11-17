@@ -39,9 +39,11 @@ uv run --frozen --no-dev --directory /absolute/path/to/POBG python -m src.tools.
 Plugin（server + `/pobg:poe2-advisor` skill）：
 
 ```
-/plugin marketplace add GGaryyy/POBG
-/plugin install pobg@pobg
+claude plugin marketplace add GGaryyy/POBG
+claude plugin install pobg@pobg
 ```
+
+在 Claude Code 裡也可以用 `/plugin marketplace add GGaryyy/POBG` 與 `/plugin install pobg@pobg` 安裝，要一次輸入一行。
 
 plugin 會把 Python 環境放在 plugin 自己的資料夾裡。若是在 clone 下來的 repo 中工作，改從資料夾載入 plugin：
 `claude --plugin-dir .`（repo 沒有專案層級的 `.mcp.json`，所以 server 不會被註冊兩次）。

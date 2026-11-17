@@ -42,9 +42,11 @@ Reports from other clients are welcome — open an issue with the client name an
 Plugin (server + `/pobg:poe2-advisor` skill):
 
 ```
-/plugin marketplace add GGaryyy/POBG
-/plugin install pobg@pobg
+claude plugin marketplace add GGaryyy/POBG
+claude plugin install pobg@pobg
 ```
+
+The same two commands work inside Claude Code as `/plugin marketplace add GGaryyy/POBG` and `/plugin install pobg@pobg`, typed one at a time.
 
 The plugin keeps its Python environment in the plugin's own data folder. Working inside a
 clone of this repo instead, load the plugin from the folder: `claude --plugin-dir .` (the repo

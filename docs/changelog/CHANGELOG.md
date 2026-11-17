@@ -8,6 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic V
 ### Added
 - READMEs: how to update an installed plugin in Claude Code and Codex.
 
+### Changed
+- READMEs and `docs/clients*.md`: Claude Code is installed from a terminal (`claude plugin marketplace add`,
+  `claude plugin install`), the same way as Codex; the in-app `/plugin` lines are kept as a note.
+
 ## [0.14.0] - 2026-11-17
 
 Currency items (`docs/plan_currency.md`): the first step toward gear crafting. What each orb,

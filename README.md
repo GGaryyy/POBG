@@ -35,14 +35,15 @@ not tested, so we cannot say how it behaves there. macOS and Linux need nothing 
 
 ### Claude Code (recommended)
 
-Type these lines inside Claude Code **one at a time** (wait for the first to finish; pasting both at once makes Claude Code read them as one source):
+Run these two lines in a terminal (not inside Claude Code):
 
 ```
-/plugin marketplace add GGaryyy/POBG
-/plugin install pobg@pobg
+claude plugin marketplace add GGaryyy/POBG
+claude plugin install pobg@pobg
 ```
 
-Start a new conversation and ask a question. The first start takes a little longer while uv sets up
+Start `claude` and ask a question. (Inside Claude Code the same two commands are `/plugin marketplace add GGaryyy/POBG`
+and `/plugin install pobg@pobg`, typed one at a time: pasting both at once is read as one source.) The first start takes a little longer while uv sets up
 Python and about 40 packages. Commands start with `/pobg:` (for example `/pobg:status`; see [Commands](#commands)).
 
 ### Codex CLI (recommended)

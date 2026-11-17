@@ -27,14 +27,15 @@ Claude Code 我們建議在 WSL 裡使用；Codex CLI 在 PowerShell 或 cmd 上
 
 ### Claude Code（建議）
 
-在 Claude Code 裡**一次輸入一行**（等第一行完成再輸入第二行，兩行一起貼上會被當成同一個來源）：
+在終端機執行這兩行（不是在 Claude Code 的對話裡）：
 
 ```
-/plugin marketplace add GGaryyy/POBG
-/plugin install pobg@pobg
+claude plugin marketplace add GGaryyy/POBG
+claude plugin install pobg@pobg
 ```
 
-開一個新對話直接提問。第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。指令以 `/pobg:` 開頭
+啟動 `claude` 直接提問。（在 Claude Code 裡也可以安裝：`/plugin marketplace add GGaryyy/POBG` 與
+`/plugin install pobg@pobg`，要一次輸入一行，兩行一起貼上會被當成同一個來源。）第一次啟動時 uv 要準備 Python 與約 40 個套件，會稍久一點。指令以 `/pobg:` 開頭
 （例如 `/pobg:status`，見[指令](#指令)）。
 
 ### Codex CLI（建議）
