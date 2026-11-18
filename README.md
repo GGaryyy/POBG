@@ -128,10 +128,11 @@ Every build answer contains:
 - **Passives**: the targets, the route to reach them and the points used out of 123 (+8
   ascendancy).
 - **Gear**: a base or unique per slot, and for rares up to 3 prefixes and 3 suffixes to look
-  for, in order of importance, with an **in-game search string** per slot: paste it into the stash
-  or a vendor's search box and the items with those modifiers light up.
+  for, in order of importance, with an **in-game search string** per slot (**in testing**, see
+  [Limits](#limits)): paste it into the stash or a vendor's search box and the items with those
+  modifiers light up.
 - **Map stages**: the waystone modifiers that work against this build (quoted from the data) and a
-  search string that leaves them out, so the waystones still lit are the ones to run.
+  search string that leaves them out (**in testing**), so the waystones still lit are the ones to run.
 - **Attributes and Spirit**: what the build needs against what it has, and what to change when
   it falls short.
 - **Compared with the ladder**: what this build shares with ladder characters on poe.ninja
@@ -244,11 +245,14 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
   and monster damage by area level is not in the data; PoB shows whether the resistances make up for the
   penalty. Boss tactics beyond the area walkthroughs, map bosses and drop chances are not in the data;
   answers say so. When 1.0 (Acts 5 and 6) is out, run `update campaign` and `update atlas`.
-- Search strings are regular expressions, like the ones [poe2.re](https://poe2.re) and Cabbage Forge
-  make: each piece is run against every modifier, name and property line the data has for that item
-  class (or for waystones) and matches only the wanted modifier. Lines the data does not have (rarity,
-  item level, a waystone's pack size) are not checked: try a string in the game first, in your client's
-  language.
+- **Search strings are in testing: they have not been tried in the game yet.** They are regular
+  expressions, like the ones [poe2.re](https://poe2.re) and Cabbage Forge make; each piece is checked
+  against every modifier, name, property and requirement line the data has for that item class (or for
+  waystones), and against the lines every item shows (rarity, item level, quality), and matches only the
+  wanted modifier. Not checked: a rare item's random name, other item classes in the same stash, and in
+  Traditional Chinese the fixed lines the data has no wording for. Until they are confirmed in the game,
+  check that the right items light up, or compare with poe2.re, before relying on a string; use the
+  string in your client's language.
 - Currency answers say what each item does, its levels and which items change another; prices, drop
   chances and crafting steps are not in the data.
 - Not covered: crafting steps, prices, spawn weights, endgame items, a few bases and meta gems

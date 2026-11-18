@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- READMEs: in-game search strings are marked as in testing (not yet tried in the game), in the build answer
+  list and under Limits, with what is and is not checked and how to check a string before relying on it.
+
 ## [0.15.2] - 2026-11-18
 
 Fixes from the independent review of 0.15.1 (`docs/reports/code_review_2026-11-18.md`; plan:
