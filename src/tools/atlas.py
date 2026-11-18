@@ -143,11 +143,13 @@ class AtlasLookup:
         return list(groups.values())
 
     def labels(self) -> dict[str, list[str]]:
-        """Other text on a waystone, by language: the tier names and the labels of their property lines."""
+        """Other text on a waystone, by language: the tier names ("en", "zh-tw") and the labels of
+        their property lines ("en_properties", "zh-tw_properties", e.g. "Area Level")."""
         self._load()
         labels = self.atlas.get("labels") or {}
-        return {"en": [t["name"].casefold() for t in self.atlas["tiers"]] + [x.casefold() for x in labels.get("en", [])],
-                "zh-tw": [t["name_zh_tw"] for t in self.atlas["tiers"] if t.get("name_zh_tw")] + list(labels.get("zh-tw", []))}
+        return {"en": [t["name"] for t in self.atlas["tiers"]],
+                "zh-tw": [t["name_zh_tw"] for t in self.atlas["tiers"] if t.get("name_zh_tw")],
+                "en_properties": list(labels.get("en", [])), "zh-tw_properties": list(labels.get("zh-tw", []))}
 
     def sources(self) -> list[dict]:
         self._load()

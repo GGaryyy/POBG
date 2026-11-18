@@ -148,14 +148,28 @@ model writing one:
 | `gear` | an item class (as for `modifiers_for`) and whole modifiers | `"piece|piece"`: items with any of them light up; several strings when over the limit, each usable on its own |
 | `maps` | the waystone modifiers to leave out: a `waystone_mods` entry's `text` or `id`, one of its lines, or its words (numbers may be left out) | `"!piece|piece"`: waystones with any of them stay dark; pieces that do not fit the limit are in `left_out` |
 
-Each piece is a piece of a modifier's wording that no other text of that item class holds: every modifier
-group (also corrupted, essence and rune lines), and the names, implicits and property labels of its bases;
-for waystones, every other waystone modifier and the tier names and property labels from the Waystones
-page. Several English words come before one, and a lone word is never "from" or "increased"; Chinese pieces
-are runs of Chinese characters, preferably three and at the start or end of a run, not starting or ending
-with 的, 上 and the like. Pieces hold no numbers and never cross a line, so one string serves every tier and
-stage. A piece that is shared anyway is listed in `also_matches`; a modifier with no wording in a language
-is in that language's `missing` (the string is then not complete); each row says which modifier it
-`matched`. The syntax (quotes, `|`, `!`) and the 250-character limit come from community guides, not
-from GGG (`atlas.search` in the catalog); the game also searches an item's name and other lines, so a
-string should be tried in the game, in the client's language.
+The game reads the string as a regular expression, line by line and in any case (seen in the output of
+poe2.re and Cabbage Forge on 2026-11-18; GGG does not document it). Each piece is one stretch of one of the
+modifier's lines, numbers written as `\d+`, optionally tied to the line's start (`^`) or end (`$`), e.g.
+`\d+ phys`, `m life$`, `焰抗`. The shortest such piece is chosen (at equal length one tied to the end) that,
+run with Python's `re`:
+
+- matches that line on every tier of the modifier, at both ends of each range;
+- matches no other line of the item class: every modifier of every group (corrupted, essence and rune
+  lines too), modifier names, base and unique names, implicits and property lines with their values
+  (`Physical Damage: 13-18`). For waystones: every other waystone modifier, the tier names and their
+  property lines (`Area Level: 65`).
+
+A hybrid modifier is two lines; the piece comes from the line no other modifier has. The same sentence on
+another modifier (another group's copy, or a hybrid's line) cannot be told apart by any expression: it is
+listed in `shared_with`, and such items light up too. When every piece matches something else, the one
+with the fewest is used and the rest is in `also_matches`. A modifier with no wording in a language is in
+that language's `missing` (the string is then not complete); each row says which modifier it `matched`.
+
+On real data (0.15.1): every one of the 1,895 normal modifiers of every item class gets a piece; none has
+`also_matches` in English and one in Chinese; pieces average 7.1 characters in English and 3.4 in
+Chinese; the 35 waystone modifiers all get a piece of their own (4.3 and 2.1 characters on average); the
+slowest call takes about 0.4 s. Not checked, because the data does not have them: rarity, item level and
+requirement lines, a rare item's random name, a waystone's pack size, rarity, drop chance and revive
+lines. The 250-character limit is the one both tools show (`atlas.search` in the catalog). A string
+should be tried in the game, in the client's language, and given unchanged: the backslashes matter.

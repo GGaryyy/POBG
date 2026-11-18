@@ -372,11 +372,14 @@ def waystone_mods(text: str | None = None, affix: str | None = None, limit: int 
 @_user_errors
 def search_string(kind: str, modifiers: list[str], item: str | None = None) -> dict:
     """A string for the in-game search box of the stash or a vendor, worked out from the data
-    (never write one yourself), in English and 繁體中文 (the client's language). kind "gear": item
-    (an item class, base or unique, as for modifiers_for) and modifiers (whole modifiers as
-    modifiers_for shows them): items with any of them light up. kind "maps": modifiers are the
-    waystone modifiers to leave out (as waystone_mods shows them): waystones with none of them stay
-    lit. `also_matches` lists what a piece also matches; `unmatched` what was not found."""
+    (never write one yourself): a regular expression (\\d+, ^, $), in English and 繁體中文 (the
+    client's language); give it unchanged, in a code block. kind "gear": item (an item class,
+    base or unique, as for modifiers_for) and modifiers (whole modifiers as modifiers_for shows
+    them): items with any of them light up. kind "maps": the waystone modifiers to leave out (a
+    waystone_mods `text` or `id`): waystones with none of them stay lit. Each piece is checked
+    with a regex engine against every line of that item class. `also_matches`: other lines a
+    piece matches; `shared_with`: the same sentence in another modifier (cannot be told apart);
+    `unmatched`, `missing`, `left_out`: what is not in the string."""
     return build_tools().search.search_string(kind, modifiers, item=item)
 
 

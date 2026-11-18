@@ -1,75 +1,135 @@
-"""The pieces and strings of search_string.py, on hand-made modifier wordings."""
+"""The lines, pieces and strings of search_string.py, on hand-made modifier wordings. Every piece
+is checked the way the game uses it: a regular expression, line by line, in any case."""
 
 from __future__ import annotations
+
+import re
+
+import pytest
 
 from src.tools import search_string as ss
 
 
-def pieces(line: str, minimum: int = 4) -> list[str]:
-    return list(ss._pieces(line, minimum))
+def hits(regex: str, line: str) -> bool:
+    return bool(re.search(regex, line, re.IGNORECASE))
 
 
-# -- pieces --------------------------------------------------------------------------------------------------
-
-def test_english_pieces_are_whole_words_without_numbers_or_symbols():
-    found = pieces("# to maximum life")
-    assert "maximum life" in found and "maximum" in found and "life" in found
-    assert not any(p in found for p in ("to m", "aximum", "o max", "# to"))
-    assert all("#" not in p and "+" not in p for p in pieces("+#% to fire resistance (#)"))
+def tiers_of(*lines_per_tier: str) -> list[list[list[str]]]:
+    """Tiers of a one-line modifier, each as the item shows it."""
+    return [[ss.shown(line)] for line in lines_per_tier]
 
 
-def test_english_pieces_keep_a_possessive_and_skip_short_and_function_words():
-    found = pieces("monster's damage from crits")
-    assert "monster's" in found and "from" not in found and "damage from crits" in found
-    assert "from crits" not in found and "monster's damage from" not in found      # no "from" at an edge
-    assert all(len(p) >= 4 for p in pieces("a to of life"))
+def others_of(*lines: str) -> list[str]:
+    return [form for line in lines for form in ss.shown(line)]
 
 
-def test_chinese_pieces_are_runs_of_chinese_without_particles_at_the_edges():
-    found = pieces("怪物身上的詛咒具有#%更少效果", minimum=2)
-    assert "詛咒" in found and "更少效果" in found
-    assert not any(p[0] in ss.CJK_EDGE or p[-1] in ss.CJK_EDGE for p in found)
-    assert "上的" not in found and "%更" not in found
+# -- lines ---------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("line, forms", [
+    ("+(31—33) to Strength", ["+31 to strength", "+33 to strength"]),
+    ("Adds (37—55) to (63—94) Physical Damage", ["adds 37 to 63 physical damage", "adds 55 to 94 physical damage"]),
+    ("35% increased Movement Speed", ["35% increased movement speed"]),
+    ("(1.5—2.5)% of Damage Leeched", ["1.5% of damage leeched", "2.5% of damage leeched"]),
+    ("(-10—-3)% maximum Player Resistances", ["-10% maximum player resistances", "-3% maximum player resistances"]),
+    ("附加(9—14)至(15—22)火焰傷害", ["附加9至15火焰傷害", "附加14至22火焰傷害"]),
+])
+def test_a_line_is_shown_at_the_low_and_the_high_end_of_its_ranges(line, forms):
+    assert ss.shown(line) == forms
 
 
-def test_shortest_piece_avoids_every_other_modifier():
-    others = [("b", ["#% increased maximum life"]), ("c", ["# to maximum mana"])]
-    piece, clashes = ss.shortest_piece(["# to maximum life"], others, 4)
-    assert (piece, clashes) == ("to maximum life", [])
+def test_a_hybrid_modifier_is_two_lines():
+    assert ss.split_lines("(15—19)% increased Physical Damage\n+(16—20) to Accuracy Rating") == [
+        "(15—19)% increased Physical Damage", "+(16—20) to Accuracy Rating"]
+    assert ss.split_lines(None) == [] and ss.split_lines(" \n ") == []
 
 
-def test_shortest_piece_reports_what_it_also_matches_when_nothing_is_unique():
-    others = [("b", ["fire damage taken"]), ("c", ["more fire damage"])]
-    piece, clashes = ss.shortest_piece(["fire damage"], others, 4)
-    assert (piece, clashes) == ("fire damage", ["fire damage taken", "more fire damage"])
+def test_the_search_form_marks_each_number_once():
+    assert ss.search_form("adds 37 to 63 physical damage") == "adds # to # physical damage"
+    assert ss.search_form("1.5% of damage leeched") == "#% of damage leeched"
+    assert ss.search_form("+31 to strength") == "+# to strength"
 
 
-def test_shortest_piece_with_no_lines_is_none():
-    assert ss.shortest_piece([], [("b", ["life"])], 4) == (None, [])
+def test_a_piece_writes_numbers_as_digits_and_escapes_special_characters():
+    assert ss.to_regex("+# to strength") == r"\+\d+ to strength"
+    assert ss.to_regex("# (a.b)?") == r"\d+ \(a\.b\)\?"
+    assert ss.to_regex("火焰傷") == "火焰傷"
 
 
-def test_tiers_that_differ_only_in_numbers_share_a_piece():
-    # the wording is the template (numbers as #): the piece is found in every tier's own text
-    piece, _ = ss.shortest_piece(["monsters deal #% of damage as extra fire"],
-                                 [("b", ["#% increased waystones found in area"])], 4)
-    tiers = ["monsters deal (5—9)% of damage as extra fire", "monsters deal (15—19)% of damage as extra fire"]
-    assert piece == "extra fire" and all(piece in tier for tier in tiers)
+# -- candidates ----------------------------------------------------------------------------------------------
+
+def test_candidates_are_valid_shortest_first_and_tied_to_the_end_first_at_equal_length():
+    found = ss.candidates(["+31 to strength"], 3)
+    assert all(re.compile(c) for c in found)
+    assert [len(c) for c in found] == sorted(len(c) for c in found)
+    four = [c for c in found if len(c) == 4]
+    assert four[0] == "gth$" and "stre" in four                       # tied to the end first
+    assert r"\+\d+ to strength$" in found and r"^\+\d+ to strength$" in found
+    assert not any(c.strip("^$") != c.strip("^$").strip() for c in found)     # no space at an edge
 
 
-def test_several_words_come_before_a_shorter_single_word():
-    piece, _ = ss.shortest_piece(["# to maximum life"], [("b", ["# to maximum mana"])], 4)
-    assert piece == "maximum life"                                  # not "life"
+def test_candidates_hold_enough_letters_and_never_a_quote_or_bang():
+    assert not any('"' in c or "!" in c for c in ss.candidates(['say "hi"! now'], 3))
+    assert all(len(ss.LETTER_RE.findall(c.replace(r"\d+", ""))) >= 3 for c in ss.candidates(["+31 to strength"], 3))
+    assert all(len(ss.LETTER_RE.findall(c.replace(r"\d+", ""))) >= 2 for c in ss.candidates(["增加35%移動速度"], 2))
 
 
-def test_pieces_never_cross_a_line_break():
-    found = pieces("#% increased armour\nadds # to # physical damage")
-    assert found and not any("\n" in p for p in found) and "physical damage" in found
+# -- the best piece ------------------------------------------------------------------------------------------
+
+def test_the_piece_matches_every_tier_and_no_other_line():
+    tiers = tiers_of("Adds (3—4) to (6—7) Physical Damage", "Adds (37—55) to (63—94) Physical Damage")
+    others = others_of("(170—179)% increased Physical Damage", "Physical Damage: 13-18", "Adds (2—3) to (4—5) Fire Damage")
+    found = ss.best_piece(tiers, others, 3)
+    assert found.clashes == [] and found.piece
+    assert all(hits(found.piece, form) for tier in tiers for form in tier[0])
+    assert not any(hits(found.piece, line) for line in others)
 
 
-def test_a_chinese_piece_at_a_run_edge_comes_before_one_inside_it():
-    # 暴擊時 ends the first run; 物遭暴 sits inside it
-    piece, _ = ss.shortest_piece(["怪物遭暴擊時，減少#%承受的額外傷害"], [("b", ["怪物額外傷害"])], 2)
-    assert piece == "怪物遭"
+def test_adds_physical_damage_never_matches_the_weapon_property_line():
+    found = ss.best_piece(tiers_of("Adds (37—55) to (63—94) Physical Damage"),
+                          others_of("Physical Damage: 13-18", "(170—179)% increased Physical Damage"), 3)
+    assert not hits(found.piece, "physical damage: 13-18") and not hits(found.piece, "170% increased physical damage")
+
+
+def test_two_chinese_modifiers_get_different_pieces():
+    added = ss.best_piece(tiers_of("附加(37—55)至(63—94)物理傷害"), others_of("增加(170—179)%物理傷害", "物理傷害: 13-18"), 2)
+    more = ss.best_piece(tiers_of("增加(170—179)%物理傷害"), others_of("附加(37—55)至(63—94)物理傷害", "物理傷害: 13-18"), 2)
+    assert added.piece != more.piece and not added.clashes and not more.clashes
+    assert not hits(added.piece, "增加170%物理傷害") and not hits(more.piece, "附加37至63物理傷害")
+    assert not hits(added.piece, "物理傷害: 13-18") and not hits(more.piece, "物理傷害: 13-18")
+
+
+def test_the_same_wording_elsewhere_is_shared_not_a_clash():
+    tiers = tiers_of("(26—28)% increased Attack Speed")
+    others = others_of("(5—7)% increased Attack Speed", "+(16—20) to Accuracy Rating", "(10—15)% increased Attack Damage")
+    found = ss.best_piece(tiers, others, 3)
+    assert found.clashes == [] and found.shared == ["#% increased attack speed"]
+    assert not hits(found.piece, "10% increased attack damage")
+
+
+def test_a_hybrid_modifier_is_found_by_its_unshared_line():
+    tiers = [[ss.shown("(15—19)% increased Physical Damage"), ss.shown("+(16—20) to Accuracy Rating")]]
+    others = others_of("(170—179)% increased Physical Damage", "+(30—40) to Strength")
+    found = ss.best_piece(tiers, others, 3)
+    assert found.shared == [] and hits(found.piece, "+16 to accuracy rating")
+    assert not hits(found.piece, "170% increased physical damage")
+
+
+def test_when_every_piece_clashes_the_fewest_clashes_are_reported():
+    # a quote never goes into a piece, so only "fire" is left, and another line has it
+    found = ss.best_piece(tiers_of('fire "x"'), others_of('fire "y"', "ice"), 3)
+    assert found.piece == "fir" and found.clashes == ['fire "y"']          # the shortest of the equal ones
+
+
+def test_no_piece_when_the_line_has_too_few_letters():
+    assert ss.best_piece(tiers_of("+(1—2) a"), others_of("ice"), 3) == ss.Found(None)
+
+
+def test_modifier_names_and_item_text_are_other_lines():
+    found = ss.best_piece(tiers_of("+(5—8) to Dexterity"), others_of("of the Mongoose", "Dexterity: 12"), 3)
+    assert not hits(found.piece, "dexterity: 12") and not hits(found.piece, "of the mongoose")
+    text = ss.item_text([{"name": "Shortbow", "implicits": ["+50% Surpassing chance"], "properties": ["Physical Damage: 7-14"]}],
+                        [{"name": "Quill Rain"}], "")
+    assert text == ["Shortbow", "+50% Surpassing chance", "Physical Damage: 7-14", "Quill Rain"]
 
 
 # -- packing -------------------------------------------------------------------------------------------------
@@ -77,7 +137,6 @@ def test_a_chinese_piece_at_a_run_edge_comes_before_one_inside_it():
 def test_pack_joins_pieces_in_quotes_and_splits_wanted_gear():
     strings, left = ss.pack(["alpha", "beta", "gamma"], 14, leave_out=False)
     assert strings == ['"alpha|beta"', '"gamma"'] and left == []
-    assert all(len(s) <= 14 for s in strings)
 
 
 def test_pack_keeps_pieces_to_leave_out_in_one_string():
@@ -86,19 +145,12 @@ def test_pack_keeps_pieces_to_leave_out_in_one_string():
 
 
 def test_pack_reports_a_piece_longer_than_the_limit():
-    strings, left = ss.pack(["a" * 20], 10, leave_out=False)
-    assert strings == [] and left == ["a" * 20]
-    strings, left = ss.pack(["abc", "a" * 20, "def"], 12, leave_out=False)     # also after another piece
+    assert ss.pack(["a" * 20], 10, leave_out=False) == ([], ["a" * 20])
+    strings, left = ss.pack(["abc", "a" * 20, "def"], 12, leave_out=False)
     assert strings == ['"abc"', '"def"'] and left == ["a" * 20]
 
 
-def test_names_takes_the_words_without_numbers():
-    assert ss._names("monsters deal of damage as extra fire", "monsters deal #% of damage as extra fire")
-    assert ss._names("extra fire", "monsters deal #% of damage as extra fire")
-    assert not ss._names("extra cold", "monsters deal #% of damage as extra fire")
-    assert ss._names("額外火焰", "怪物造成等同於傷害#%的額外火焰傷害")
-    assert not ss._names("冰冷", "怪物造成等同於傷害#%的額外火焰傷害")
-
+# -- avoided waystone modifiers --------------------------------------------------------------------------------
 
 def keyed(*families):
     return [((f"k{i}",), {"templates": lines, "templates_zh_tw": [], "tiers": [{"id": f"waystone_{i}", "lines": lines}]})
@@ -115,3 +167,9 @@ def test_avoided_takes_an_id_a_whole_text_a_line_or_words():
     assert ss._avoided("waystone_9", entries) == ([], "no waystone modifier has the id waystone_9")
     assert "too short" in ss._avoided("e", entries)[1]
     assert ss._avoided("frozen solid", entries)[1] == "no waystone modifier has these words"
+
+
+def test_names_takes_the_words_without_numbers():
+    assert ss._names("monsters deal of damage as extra fire", "monsters deal #% of damage as extra fire")
+    assert not ss._names("extra cold", "monsters deal #% of damage as extra fire")
+    assert ss._names("額外火焰", "怪物造成等同於傷害#%的額外火焰傷害")

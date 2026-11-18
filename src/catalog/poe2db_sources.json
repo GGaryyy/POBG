@@ -1026,9 +1026,9 @@
       "endgame_trials_notes": "The third and fourth sets of ascendancy points, from the Trial Type table on poe2db's Ascendancy_class page (Community Wiki part: Ascension 2 / 4 / 6 / 8 at Level 22 / 38 / 60 / 80; 'Total 8 Ascendancy points'). Applied to the map stages only; the page also says the third set can be had before maps. Hand-checked 2026-11-17 for 0.5.5.",
       "search": {
         "max_chars": 250,
-        "min_fragment_ascii": 4,
+        "min_fragment_ascii": 3,
         "min_fragment_cjk": 2,
-        "notes": "In-game search (stash and vendor windows): text in quotes, | for either, ! to leave out. The 250-character limit is from a community guide (2026), not from GGG; older posts give a shorter one."
+        "notes": "In-game search (stash and vendor windows) is a regular expression matched line by line in any case: text in quotes, | for either, ! to leave out, ^ and $ for a line's start and end, \\d+ for a number. Seen in the output of poe2.re and Cabbage Forge on 2026-11-18 (poe2.re's own pieces use \\d+, ^ and $, never .*); not documented by GGG. The 250-character limit is the one both tools show. min_fragment_*: letters (or Chinese characters) a piece holds at least."
       },
       "expect_min": {
         "tiers": 10,

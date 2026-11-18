@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shutil
 import xml.etree.ElementTree as ET
 
@@ -246,36 +247,64 @@ def test_waystone_mods_refuses_bad_arguments(tools):
 
 
 # -- search strings --------------------------------------------------------------------------------------------
+# The game reads a string as a regular expression, line by line, in any case: so do these tests.
 
-def other_map_lines(tools, lang: str, leave: set[str]) -> list[str]:
-    key = "templates" if lang == "en" else "templates_zh_tw"
-    return [line for f in tools.atlas.families() if not {t["id"] for t in f["tiers"]} & leave for line in f[key]]
+def hits(regex: str, line: str) -> bool:
+    return bool(re.search(regex, line, re.IGNORECASE))
+
+
+def map_lines(tools, lang: str) -> dict[str, list[str]]:
+    """Every shown waystone line in the data, by modifier id (both ends of each range)."""
+    field_name = "lines" if lang == "en" else "lines_zh_tw"
+    return {t["id"]: [form for line in t[field_name] for form in ss.shown(line)]
+            for f in tools.atlas.families() for t in f["tiers"]}
+
+
+def family_ids(tools, member: str) -> set[str]:
+    return next({t["id"] for t in f["tiers"]} for f in tools.atlas.families() if member in {t["id"] for t in f["tiers"]})
+
+
+def assert_leaves_out(tools, res, ids: set[str]):
+    """Each piece matches a line of each named modifier and no line of any other waystone modifier,
+    tier name or property line."""
+    labels = tools.atlas.labels()
+    for lang in ("en", "zh-tw"):
+        lines = map_lines(tools, lang)
+        other = [line for mod_id, forms in lines.items() if mod_id not in ids for line in forms]
+        other += labels[lang] + [f"{label}: 65" for label in labels[f"{lang}_properties"]]
+        pieces = [row["piece"] for row in res[lang]["pieces"]]
+        assert res[lang]["strings"] == ['"!' + "|".join(pieces) + '"']
+        for mod_id in ids:
+            assert any(hits(p, line) for p in pieces for line in lines[mod_id]), (lang, mod_id)
+        assert not any(hits(p, line) for p in pieces for line in other), lang
 
 
 def test_map_string_leaves_out_the_named_modifiers_only(tools):
     res = tools.search.search_string("maps", ["less effect of Curses on Monsters",
                                               "Monsters take 22% reduced Extra Damage from Critical Hits"])
-    for lang in ("en", "zh-tw"):
-        string = res[lang]["strings"][0]
-        assert string.startswith('"!') and string.endswith('"') and len(res[lang]["strings"]) == 1
-        pieces = [row["piece"] for row in res[lang]["pieces"]]
-        assert string == '"!' + "|".join(pieces) + '"' and all(row["also_matches"] == [] for row in res[lang]["pieces"])
-        assert not any(p in line for p in pieces for line in other_map_lines(tools, lang, {"waystone_5", "waystone_6"}))
-        assert not any(ch.isdigit() for p in pieces for ch in p)
-    assert res["en"]["strings"] == ['"!less effect|extra damage"'] and res["zh-tw"]["strings"] == ['"!少效果|外傷害"']
+    assert_leaves_out(tools, res, {"waystone_5", "waystone_6"})
     assert [row["id"] for row in res["en"]["pieces"]] == ["waystone_6", "waystone_5"]
     assert res["en"]["pieces"][0]["matched"].startswith("(20—30)% less effect of Curses")
+    assert all(row["also_matches"] == [] for lang in ("en", "zh-tw") for row in res[lang]["pieces"])
     assert res["unmatched"] == [] and res["kind"] == "maps" and "stay dark" in res["how_to_use"]
 
 
-def test_map_string_pieces_never_match_the_tier_names_or_property_labels(tools):
+def test_every_waystone_modifier_gets_a_piece_of_its_own(tools):
+    for family in tools.atlas.families():
+        ids = {t["id"] for t in family["tiers"]}
+        res = tools.search.search_string("maps", [family["tiers"][0]["id"]])
+        assert_leaves_out(tools, res, ids)
+        assert all(len(p) <= 20 for lang in ("en", "zh-tw") for p in (row["piece"] for row in res[lang]["pieces"]))
+
+
+def test_map_pieces_never_match_the_tier_names_or_property_lines(tools):
     labels = tools.atlas.labels()
-    assert "area level" in labels["en"] and "區域等級" in labels["zh-tw"] and "waystone (tier 16)" in labels["en"]
-    for text in ("Rare Monsters have additional Modifiers", "Monsters deal of Damage as Extra Fire"):
-        res = tools.search.search_string("maps", [text])
-        for lang in ("en", "zh-tw"):
-            piece = res[lang]["pieces"][0]["piece"]
-            assert piece and not any(piece in label for label in labels[lang])
+    assert labels["en_properties"] == ["Area Level"] and labels["zh-tw_properties"] == ["區域等級"]
+    assert "Waystone (Tier 16)" in labels["en"] and "換界石（階級 16）" in labels["zh-tw"]
+    res = tools.search.search_string("maps", ["Rare Monsters have additional Modifiers"])
+    for lang in ("en", "zh-tw"):
+        piece = res[lang]["pieces"][0]["piece"]
+        assert not any(hits(piece, line) for line in labels[lang] + ["area level: 65", "區域等級: 65"])
 
 
 def test_waystone_mods_text_and_id_go_straight_into_search_string(tools):
@@ -283,14 +312,14 @@ def test_waystone_mods_text_and_id_go_straight_into_search_string(tools):
     by_text = tools.search.search_string("maps", [curses["text"]])
     by_id = tools.search.search_string("maps", [curses["id"]])
     assert by_text["unmatched"] == [] and by_id["unmatched"] == []
-    assert by_text["en"]["strings"] == by_id["en"]["strings"] == ['"!less effect"']
+    assert by_text["en"]["strings"] == by_id["en"]["strings"] and by_text["zh-tw"]["strings"] == by_id["zh-tw"]["strings"]
+    assert_leaves_out(tools, by_id, {"waystone_6"})
 
 
-def test_fire_names_both_tiers_of_one_modifier_with_one_piece(tools):
+def test_one_piece_leaves_out_both_tiers_of_a_modifier(tools):
     res = tools.search.search_string("maps", ["Extra Fire"])
-    assert len(res["en"]["pieces"]) == 1 and res["en"]["strings"] == ['"!extra fire"']
-    assert all("extra fire" in line.casefold() for m in tools.atlas.waystone_mods(text="Extra Fire")["modifiers"]
-               for line in m["lines"][:1])
+    assert len(res["en"]["pieces"]) == 1
+    assert_leaves_out(tools, res, family_ids(tools, "waystone_3"))
 
 
 def test_a_modifier_without_chinese_lines_is_listed_as_missing(env, tmp_path):
@@ -313,23 +342,66 @@ def test_map_string_reports_what_it_cannot_place(tools, monkeypatch):
 
 
 def test_map_string_keeps_everything_to_leave_out_in_one_string(tools, monkeypatch):
+    full = tools.search.search_string("maps", ["less effect of Curses on Monsters", "Cursed with Enfeeble",
+                                               "Extra Damage from Critical Hits"])
+    pieces = [row["piece"] for row in full["en"]["pieces"]]
+    limit = len('"!' + "|".join(pieces[:2]) + '"')
     raw = json.loads(json.dumps(tools.lookup.spec.raw))
-    raw["sources"]["atlas"]["search"]["max_chars"] = 30
+    raw["sources"]["atlas"]["search"]["max_chars"] = limit
     monkeypatch.setattr(tools.search, "spec", type(tools.lookup.spec)(raw))
     res = tools.search.search_string("maps", ["less effect of Curses on Monsters", "Cursed with Enfeeble",
                                               "Extra Damage from Critical Hits"])
-    pieces = [row["piece"] for row in res["en"]["pieces"]]
-    assert res["en"]["strings"] == ['"!less effect|extra damage"'] and res["en"]["left_out"] == [pieces[1]]
-    assert sorted(res["en"]["strings"][0][2:-1].split("|") + res["en"]["left_out"]) == sorted(pieces)
+    assert res["en"]["strings"] == ['"!' + "|".join(pieces[:2]) + '"'] and res["en"]["left_out"] == [pieces[2]]
+
+
+def bow_lines(tools, lang: str) -> dict[tuple, list[str]]:
+    """Every shown line of the Bows modifier page, by modifier (every group), plus the bases' and
+    uniques' text under ("item",)."""
+    from src.tools.items import _families
+    families = _families(tools.items.modifiers["Bows"])
+    lines = {ss._key(f): [form for t in f["tiers"] for line in ss.split_lines(t[ss.text_field(lang)])
+                          for form in ss.shown(line)] for f in families}
+    suffix = "" if lang == "en" else "_zh_tw"
+    names = [t[f"name{suffix}"] for f in families for t in f["tiers"] if t.get(f"name{suffix}")]
+    bases = [b for b in tools.items.bases.values() if b.get("mod_page") == "Bows"]
+    lines[("item",)] = [form for line in names + ss.item_text(bases, list(tools.items.uniques.values()), suffix)
+                        for form in ss.shown(line)]
+    return lines
+
+
+def assert_lights_up(tools, res, wanted: list[str]):
+    """Each wanted modifier's lines are matched by a piece; no other line of the class is."""
+    keys = {ss._key(tools.items.check_affix("Bows", text)["family"]) for text in wanted}
+    for lang in ("en", "zh-tw"):
+        lines = bow_lines(tools, lang)
+        pieces = [row["piece"] for row in res[lang]["pieces"]]
+        wanted_forms = {ss.search_form(form) for key in keys for form in lines[key]}
+        for key in keys:
+            assert any(hits(p, form) for p in pieces for form in lines[key]), (lang, key)
+        other = [form for key, forms in lines.items() if key not in keys for form in forms
+                 if ss.search_form(form) not in wanted_forms]          # the same wording in another group is the same line
+        assert not any(hits(p, form) for p in pieces for form in other), lang
 
 
 def test_gear_string_lights_up_the_wanted_modifiers_of_the_class(tools):
-    res = tools.search.search_string("gear", ["Adds # to # Fire Damage", "#% increased Attack Speed"], item="Bows")
+    wanted = ["Adds # to # Fire Damage", "#% increased Attack Speed"]
+    res = tools.search.search_string("gear", wanted, item="Bows")
     assert res["item_class"] == "Bows" and res["unmatched"] == []
-    assert res["en"]["strings"] == ['"fire damage|attack speed"'] and res["zh-tw"]["strings"] == ['"火焰傷|擊速度"']
+    assert_lights_up(tools, res, wanted)
     assert all(row["also_matches"] == [] for lang in ("en", "zh-tw") for row in res[lang]["pieces"])
+    assert res["en"]["strings"] == ['"' + "|".join(row["piece"] for row in res["en"]["pieces"]) + '"']
     assert res["en"]["pieces"][0]["matched"] == "Adds (62—84) to (95—145) Fire Damage"
     assert res["sources"][0]["url"] == "https://poe2db.tw/us/Bows" and "light up" in res["how_to_use"]
+
+
+def test_every_normal_modifier_of_the_class_gets_a_piece_of_its_own(tools):
+    from src.tools.items import _families
+    tools.items.resolve_page("Bows")                      # loads the item data
+    for family in _families([r for r in tools.items.modifiers["Bows"] if r["group"] == "normal"]):
+        text = family["tiers"][0]["text"]
+        res = tools.search.search_string("gear", [text], item="Bows")
+        assert res["unmatched"] == [], text
+        assert_lights_up(tools, res, [text])
 
 
 def test_gear_string_reports_modifiers_the_class_does_not_roll(tools):
@@ -340,19 +412,18 @@ def test_gear_string_reports_modifiers_the_class_does_not_roll(tools):
 
 def test_gear_string_in_chinese_takes_chinese_input(tools):
     res = tools.search.search_string("gear", ["附加 # 至 # 火焰傷害"], item="弓")
-    assert res["zh-tw"]["strings"] == ['"火焰傷"'] and res["en"]["strings"] == ['"fire damage"']
+    assert_lights_up(tools, res, ["Adds # to # Fire Damage"])
     assert "倉庫" in res["how_to_use"] and "字串必須" in res["not_checked"][1]
 
 
-def test_gear_pieces_are_checked_against_the_bases_and_every_modifier_group(tools):
-    others = {"bases": ["shortbow", "dualstring bow", "physical damage", "attacks per second"],
-              "groups": ["reduced attribute requirements", "increased area of effect for attacks"]}
+def test_gear_pieces_never_match_the_bases_names_or_property_lines(tools):
     res = tools.search.search_string("gear", ["+# to Dexterity"], item="Bows")
-    piece = res["en"]["pieces"][0]["piece"]
-    assert piece == "to dexterity" and not any(piece in text for texts in others.values() for text in texts)
-    base_text = ss._base_text(list(tools.items.bases.values()), "")
-    assert "physical damage" in base_text and "shortbow" in base_text
-    assert any("surpassing chance" in line for line in base_text)            # implicits, numbers as #
+    for lang in ("en", "zh-tw"):
+        piece = res[lang]["pieces"][0]["piece"]
+        assert not any(hits(piece, line) for line in bow_lines(tools, lang)[("item",)]), lang
+    text = ss.item_text(list(tools.items.bases.values()), [], "")
+    assert "Physical Damage: 7-14" in text and "Shortbow" in text
+    assert any("Surpassing chance" in line for line in text)
 
 
 @pytest.mark.parametrize("kind, modifiers, item, message", [
@@ -438,7 +509,8 @@ def test_atlas_tools_through_the_server(env, monkeypatch):
     mods = json.loads(asyncio.run(mcp_server.server.call_tool("waystone_mods", {"affix": "prefix"})).content[0].text)
     assert mods["total"] == 1
     found = asyncio.run(mcp_server.server.call_tool("search_string", {"kind": "maps", "modifiers": ["Extra Fire"]}))
-    assert json.loads(found.content[0].text)["en"]["strings"] == ['"!extra fire"']
+    body = json.loads(found.content[0].text)
+    assert body["en"]["strings"] == ['"!' + body["en"]["pieces"][0]["piece"] + '"'] and body["unmatched"] == []
     acts = asyncio.run(mcp_server.server.call_tool("campaign_stages", {"maps": False}))
     assert [s["id"] for s in json.loads(acts.content[0].text)["stages"]] == ACTS
     with pytest.raises(ToolError, match="kind must be one of"):

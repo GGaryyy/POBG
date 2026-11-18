@@ -3,6 +3,33 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.15.1] - 2026-11-18
+
+In-game search strings are regular expressions now (`docs/plan_atlas_stages.md`, "3b 修訂"). Compared
+with poe2.re and Cabbage Forge by the user, 0.15.0's strings were wrong apart from `|` and `!`: the game
+reads the search as a regular expression line by line, so `physical damage` lit up every weapon through its
+`Physical Damage: 13-18` line, and two Chinese modifiers could get the same piece.
+
+### Changed
+- `search_string` (`src/tools/search_string.py`, rewritten): a piece is one stretch of one line of the
+  modifier, numbers as `\d+`, optionally tied to the line's start (`^`) or end (`$`); the shortest one that,
+  run with Python's `re`, matches that line on every tier (both ends of each range) and no other line of
+  the item class — every modifier of every group, modifier names, base and unique names, implicits and
+  property lines with their values — or, for waystones, no other waystone modifier, tier name or property
+  line. A hybrid modifier is two lines; the same sentence on another modifier is reported in `shared_with`.
+  The catalog's syntax note now names the two tools it was checked against; the shortest English piece is
+  3 letters.
+- `atlas.labels()` gives the tier names and the property labels apart, so property lines are checked with
+  a value in them.
+- The workflow, the `poe2-advisor` skill and the tool description say the string is a regular expression to
+  be copied unchanged into a code block.
+- `docs/tools*.md`, READMEs (limits), version 0.15.1.
+
+### Fixed
+- 0.15.0's strings: pieces that matched property lines or other modifiers, Chinese pieces shared by two
+  modifiers, hybrid modifiers checked as one line, and a check that missed the same sentence with other
+  numbers.
+
 ## [0.15.0] - 2026-11-17
 
 Builds that reach Tier 16 maps (`docs/plan_atlas_stages.md`). A league starter has to lead from the

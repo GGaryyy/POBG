@@ -36,8 +36,9 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
    Prices, drop chances and crafting steps are not in the data (`not_in_data`): say so.
    For waystone (map) modifiers use `waystone_mods` (by `text` in either language, `affix`).
    For an in-game search string use `search_string` (kind `gear`: an item class and whole
-   modifiers; kind `maps`: the waystone modifiers to leave out). Never write a search string
-   yourself: give the returned one, in the client's language, and say it should be tried in the game.
+   modifiers; kind `maps`: the waystone modifiers to leave out). The string is a regular expression
+   (`\d+`, `^`, `$`). Never write or retype one yourself: copy the returned one unchanged into a code
+   block, in the client's language, and say it should be tried in the game.
 3. Quote the returned record and link the returned `sources`. If `fetched_at` looks old and
    the user needs current numbers, call `refresh_gem` (one page, the only network call).
 4. Nothing found → say it is not in the local data and show the closest names from `lookup_entity`.
@@ -103,8 +104,9 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
      `rewards` and `bosses`. What `campaign_stages` lists in `not_in_data` (boss tactics, map
      bosses) is not in the local data: say so instead of guessing.
    - Search strings for gear: for each slot with target modifiers call `search_string` once
-     (kind `gear`, the slot's item class, its target modifiers). The pieces hold no numbers, so
-     one string serves every stage: give it with the slot's gear the first time it appears.
+     (kind `gear`, the slot's item class, its target modifiers). A piece matches every tier of
+     its modifier, so one string serves every stage: give it with the slot's gear the first time
+     it appears.
    - Map stages: call `waystone_mods` and name only the waystone modifiers whose lines work
      directly against what the verified build relies on (quote the lines, e.g. less effect of
      curses for a curse build, reduced extra damage from critical hits for a crit build). Then
@@ -112,9 +114,11 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
      stay lit are the ones to run. When no modifier works against the build, say so; never call
      the other modifiers safe.
    - Give each search string in the answer's language and say the game client's language must
-     match (the `zh-tw` string for a Traditional Chinese client), what `also_matches`, `left_out`
-     or `missing` report (a string with `left_out` or `missing` is not complete), and that the
-     string should be tried in the game.
+     match (the `zh-tw` string for a Traditional Chinese client), what `also_matches`,
+     `shared_with` (the same sentence on another modifier: it lights up too), `left_out` or
+     `missing` report (a string with `left_out` or `missing` is not complete), and that the
+     string should be tried in the game. Copy each string unchanged into a code block: the
+     backslashes in `\d+` matter.
    - Modifiers are random (drops, vendors and currency all roll them), so present each slot's
      modifiers as targets in order of importance, not as what the item will have; getting
      all of them usually takes crafting. Quote the tier range from `verify_build`.

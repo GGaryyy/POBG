@@ -244,9 +244,11 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
   and monster damage by area level is not in the data; PoB shows whether the resistances make up for the
   penalty. Boss tactics beyond the area walkthroughs, map bosses and drop chances are not in the data;
   answers say so. When 1.0 (Acts 5 and 6) is out, run `update campaign` and `update atlas`.
-- Search strings are worked out from the modifiers in the data and checked against every modifier of
-  that item class (or every waystone modifier), but the game also searches an item's name and other
-  lines: try a string in the game first. Use the string in your client's language.
+- Search strings are regular expressions, like the ones [poe2.re](https://poe2.re) and Cabbage Forge
+  make: each piece is run against every modifier, name and property line the data has for that item
+  class (or for waystones) and matches only the wanted modifier. Lines the data does not have (rarity,
+  item level, a waystone's pack size) are not checked: try a string in the game first, in your client's
+  language.
 - Currency answers say what each item does, its levels and which items change another; prices, drop
   chances and crafting steps are not in the data.
 - Not covered: crafting steps, prices, spawn weights, endgame items, a few bases and meta gems

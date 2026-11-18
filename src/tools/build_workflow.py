@@ -83,15 +83,16 @@ BUILD_WORKFLOW = """\
    modifiers that level can roll); Spirit and persistent skills; ascendancy (trial and points);
    resistance_penalty; for an act, its permanent quest rewards and bosses from campaign_stages.
    Search strings: for each gear slot with target modifiers call search_string (kind "gear", the slot's
-   item class and its target modifiers) once; the pieces hold no numbers, so one string serves every
-   stage: give it with the slot's gear the first time. For the map stages call waystone_mods and name
+   item class and its target modifiers) once; a piece matches every tier of its modifier, so one
+   string serves every stage: give it with the slot's gear the first time. For the map stages call waystone_mods and name
    only the waystone modifiers whose lines work directly against what the verified build relies on
    (quote the lines; e.g. less effect of curses for a curse build); then call search_string (kind
    "maps", those modifiers) and give the string: waystones that stay lit are the ones to run. When no
-   modifier works against the build, say so; never call the other modifiers safe. Give each string in
-   the answer's language and say the client's language must match (the zh-tw string for a Traditional
-   Chinese client), what also_matches, left_out or missing report, and that it should be tried in the
-   game. Damage and survival are not calculated:
+   modifier works against the build, say so; never call the other modifiers safe. A string is a
+   regular expression (\\d+, ^, $): copy it exactly as returned into a code block, never retype or
+   shorten it. Give each string in the answer's language and say the client's language must match (the
+   zh-tw string for a Traditional Chinese client), what also_matches, shared_with, left_out or missing
+   report, and that it should be tried in the game. Damage and survival are not calculated:
    say so, and that PoB shows whether the resistances make up for the penalty. What campaign_stages
    lists in `not_in_data` (boss tactics, map bosses) is not in the local data: say so instead of
    guessing. """ + WRITING_RULES + """ Modifiers are random: present the
