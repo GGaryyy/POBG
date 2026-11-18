@@ -42,6 +42,7 @@ from src.tools.lookup import (
     level_argument,
 )
 from src.tools.pathing import PassivePathfinder
+from src.tools.search_string import SearchStrings
 from src.tools.pob_export import (
     ATTRIBUTES,
     GEM_LEVEL,
@@ -211,7 +212,7 @@ TEXT = {
         "pob_title": "{name} (POBG)",
         "level_word": "level",
         "after_stage": "reached only after {stage}: that stage's passive points are spent by then",
-        "pob_stage": ("Campaign stage {name}: character level {level}, {passive_points} passive points "
+        "pob_stage": ("Stage {name}: character level {level}, {passive_points} passive points "
                       "({quest_passive_points} from quests), {ascendancy_points} ascendancy points, skill gems up to "
                       "level {skill_gem_level}, support gems up to tier {support_gem_tier}, {support_sockets} support "
                       "sockets, {quest_spirit} Spirit from quests. The code holds {trees} passive tree(s), one per "
@@ -300,7 +301,7 @@ TEXT = {
         "pob_title": "{name}（POBG）",
         "level_word": "等級",
         "after_stage": "要到 {stage} 之後才點得到：該階段的天賦點已用完",
-        "pob_stage": ("章節階段 {name}：角色等級 {level}，天賦點 {passive_points} 點（其中任務 {quest_passive_points} 點），"
+        "pob_stage": ("階段 {name}：角色等級 {level}，天賦點 {passive_points} 點（其中任務 {quest_passive_points} 點），"
                       "昇華點 {ascendancy_points} 點，技能寶石最高 {skill_gem_level} 級，輔助寶石最高第 {support_gem_tier} 階，"
                       "輔助插槽 {support_sockets} 個，任務精魂 {quest_spirit}。匯入碼含 {trees} 個天賦樹，每個階段一個"
                       "（PoB：天賦頁上方的天賦樹清單）；技能與裝備是本階段的，較早階段天賦樹的屬性點也依這些技能與裝備的需求分配。"),
@@ -374,6 +375,8 @@ class BuildTools:
         self.items = ItemLookup(lookup)
         self.campaign = CampaignLookup(lookup)
         self.currency = CurrencyLookup(lookup)
+        self.atlas = self.campaign.atlas
+        self.search = SearchStrings(self.items, self.atlas, lookup.spec)
         self._stats_by_node: dict[str, list[dict]] | None = None
 
     # -- verification ---------------------------------------------------------

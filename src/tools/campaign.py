@@ -9,6 +9,9 @@ trials whose area level the stage reaches; Spirit from the quest rewards up to t
 highest skill gem level from the gem level table; the support gem tier from the drop level of
 each Uncut Support Gem; support sockets from the Jeweller's Orbs that drop by then. What the data
 does not hold is listed in `not_in_data`, so an answer can say so instead of guessing.
+
+With the atlas data (data/atlas), the map stages follow the acts (Tier 1 / 10 / 16 waystones in
+0.5, see atlas.py) under the same rules, and every stage has the resistance penalty of its level.
 """
 
 from __future__ import annotations
@@ -20,6 +23,8 @@ import threading
 
 from src.catalog.spec import INTERLUDE_STAGE
 from src.scrapers.common import clean_text, read_jsonl
+from src.tools.atlas import NOT_IN_DATA as ATLAS_NOT_IN_DATA
+from src.tools.atlas import AtlasLookup, tier_from_words
 from src.tools.lookup import (
     BadArgument,
     LookupService,
@@ -54,10 +59,14 @@ REWARD_TAGS = (   # what a permanent reward gives, so it can be found in either 
     (re.compile(r"Strength|Dexterity|Intelligence|Attributes", re.I), ("attributes", "屬性")),
     (re.compile(r"Armour|Evasion|Energy Shield|Deflection", re.I), ("defences", "防禦")),
 )
+CAMPAIGN_KIND, MAPS_KIND = "campaign", "maps"
 LEVEL_GAP = 3                 # PoB placing a stage's rewards this many levels higher than poe2db is worth a note
+PENALTY_NOT_IN_DATA = {      # what the atlas data answers when it is there
+    "en": "The elemental resistance penalty after the acts: not in the local data (update_data scope atlas adds it).",
+    "zh-tw": "各章節後的元素抗性懲罰：本機資料沒有（update_data 範圍 atlas 會加上）。",
+}
 NOT_IN_DATA = {
     "en": [
-        "The elemental resistance penalty after the acts: not in the local data.",
         "Boss mechanics and fight tips beyond the area walkthroughs: not in the local data.",
         "Drop chances: uncut gems and Jeweller's Orbs drop at random from their drop level; the limits say what can "
         "drop by then, not what a character has.",
@@ -65,7 +74,6 @@ NOT_IN_DATA = {
         "The character level a player reaches depends on play; `level` is the highest area level of the stage.",
     ],
     "zh-tw": [
-        "各章節後的元素抗性懲罰：本機資料沒有。",
         "頭目的機制與打法（區域攻略以外）：本機資料沒有。",
         "掉落機率：未切割寶石與工匠石自其掉落等級起隨機掉落；上限表示到此時可能掉落的，不代表角色一定已取得。",
         "裝備上的精魂（權杖、項鍊、胸甲）不計入階段總數，只計任務獎勵的精魂。",
@@ -74,14 +82,21 @@ NOT_IN_DATA = {
 }
 LIMIT_NOTES = {
     "en": "Points: level points (level - 1) plus quest points so far; PoB counts quest points both as passive "
-          "and as weapon-set points, and a reward PoB places in no act (the Epilog) counts in the last stage. "
+          "and as weapon-set points, and a reward PoB places in no act (the Epilog) counts in the last act. "
           "Gem level: the highest the level allows; a skill or Spirit gem tier is taken as usable from the level "
           "that gem level needs. Support tier: the highest Uncut Support Gem level that drops by this area level. "
           "Sockets: what the Jeweller's Orbs that drop by then set.",
     "zh-tw": "天賦點：等級點數（等級 − 1）加上到此為止的任務點數；PoB 把任務點數同時算作天賦點與武器切換點，"
-             "PoB 沒有放進任何章節的獎勵（尾聲）計入最後階段。"
+             "PoB 沒有放進任何章節的獎勵（尾聲）計入最後一章。"
              "寶石等級：該等級可用的最高等級；技能與精魂寶石的階級，以該寶石等級所需的角色等級起算。輔助寶石階級：到此區域等級會掉落的最高未切割輔助寶石等級。"
              "插槽：到此時會掉落的工匠石能設定的數量。",
+}
+MAP_NOTES = {
+    "en": " Map stages: the level is the waystone tier's area level; ascendancy points add the endgame trials "
+          "whose level the stage reaches (poe2db Ascendancy class page). resistance_penalty: the elemental "
+          "resistance penalty from that level on (poe2db Waystones page).",
+    "zh-tw": "地圖階段：等級是該換界石階級的區域等級；昇華點加上該等級可進行的後期試煉（poe2db 昇華職業頁）。"
+             "resistance_penalty：從該等級起的元素抗性懲罰（poe2db 換界石頁）。",
 }
 
 
@@ -96,6 +111,8 @@ class CampaignLookup:
         self.areas: dict[str, dict] = {}
         self.quests: dict[str, dict] = {}
         self.rules: dict = {}
+        self.atlas = AtlasLookup(lookup)
+        self.atlas_problem: str | None = None     # why there are no map stages
 
     def _load(self) -> None:
         with self._lock:
@@ -114,22 +131,39 @@ class CampaignLookup:
             except (ValueError, KeyError, TypeError, OSError) as exc:
                 raise ServiceUnavailable(f"the campaign data is unreadable ({type(exc).__name__}); "
                                          "update it with update_data scope campaign") from exc
+            for entry in stages:
+                entry.setdefault("kind", CAMPAIGN_KIND)
+            try:
+                stages += self.atlas.map_stages(stages[-1]["order"] if stages else 0,
+                                                stages[-1]["area_level_max"] if stages else 0)
+                self.atlas_problem = None
+            except ServiceUnavailable as exc:
+                self.atlas_problem = str(exc)
             self.stages, self.areas, self.quests, self.rules = stages, areas, quests, rules
             self._loaded = True
 
     # -- stages ------------------------------------------------------------------
 
-    def campaign_stages(self, lang: str | None = None) -> dict:
-        """Every stage with its limits, permanent rewards, trials and bosses."""
+    def campaign_stages(self, lang: str | None = None, maps: bool = True) -> dict:
+        """Every stage with its limits, permanent rewards, trials and bosses; with maps=False the
+        acts only."""
         self._load()
         lang = _lang(lang) or "en"
-        return {
+        if not isinstance(maps, bool):
+            raise BadArgument("maps must be true or false")
+        chosen = [s for s in self.stages if maps or s["kind"] == CAMPAIGN_KIND]
+        has_atlas = self.atlas_problem is None
+        not_in_data = ([] if has_atlas else [PENALTY_NOT_IN_DATA[lang]]) + NOT_IN_DATA[lang]
+        result = {
             "lang": lang,
-            "stages": [self.stage_limits(stage["id"], lang) for stage in self.stages],
-            "how": LIMIT_NOTES[lang],
-            "not_in_data": NOT_IN_DATA[lang],
+            "stages": [self.stage_limits(stage["id"], lang) for stage in chosen],
+            "how": LIMIT_NOTES[lang] + (MAP_NOTES[lang] if has_atlas and maps else ""),
+            "not_in_data": not_in_data + (ATLAS_NOT_IN_DATA[lang] if has_atlas and maps else []),
             "rules_sources": self.rules.get("sources", {}),
         }
+        if maps and not has_atlas:
+            result["maps_note"] = f"no map stages: {self.atlas_problem}"
+        return result
 
     def stage_limits(self, stage: str | int, lang: str = "en") -> dict:
         """One stage: its limits (cumulative up to and including it) and what it gives."""
@@ -148,7 +182,7 @@ class CampaignLookup:
                        *(orb["sockets"] for orb in self.rules.get("socket_orbs", []) if orb["drop_level"] <= level)])
         pob_levels = [r["area_level"] for r in current["rewards"] if r.get("area_level") and not r.get("placed")]
         result = {
-            "id": current["id"], "order": current["order"], "name": current["name"],
+            "id": current["id"], "order": current["order"], "kind": current["kind"], "name": current["name"],
             "name_zh_tw": current.get("name_zh_tw"),
             "area_levels": [current["area_level_min"], level],
             "limits": {
@@ -171,6 +205,12 @@ class CampaignLookup:
                         {"label": "PathOfBuilding-PoE2 QuestRewards.lua",
                          "url": self.rules.get("sources", {}).get("quest_rewards")}],
         }
+        if self.atlas_problem is None:
+            result["limits"]["resistance_penalty"] = self.atlas.penalty_at(level)
+        if current["kind"] == MAPS_KIND:
+            result["tier"] = current["tier"]
+            result["sources"] = [*self.atlas.sources(),
+                                 {"label": "poe2db Ascendancy class (endgame trials)", "url": self.atlas.trials_source()}]
         if pob_levels and max(pob_levels) - level >= LEVEL_GAP:
             result["level_note"] = (f"PoB places this stage's quest rewards at area levels up to {max(pob_levels)}, "
                                     f"above poe2db's {level}: the areas may scale with the character.")
@@ -184,6 +224,9 @@ class CampaignLookup:
             raise BadArgument("stage must not be empty")
         _cap(stage, "stage")
         wanted = clean_text(str(stage)).casefold()
+        tier = tier_from_words(wanted)
+        if tier is not None:
+            wanted = f"maps_t{tier}"
         match = STAGE_WORDS.match(wanted.replace("_", " "))
         if match:
             wanted = f"act_{match.group(1)}"
@@ -195,11 +238,6 @@ class CampaignLookup:
                 return entry
         known = ", ".join(f"{s['id']} ({s['name']})" for s in self.stages)
         raise NotFound(f"no campaign stage matches {stage!r}; stages: {known}")
-
-    def stage_for_level(self, level: int) -> dict | None:
-        """The first stage whose highest area level reaches `level` (None: past the campaign)."""
-        self._load()
-        return next((s for s in self.stages if s["area_level_max"] >= level), None)
 
     def _stage_bosses(self, stage: dict, lang: str) -> list[dict]:
         out = []
@@ -336,7 +374,7 @@ class CampaignLookup:
         return out
 
     def _stage_sources(self, stage: str | None) -> list[dict]:
-        stages = [s for s in self.stages if stage is None or s["id"] == stage]
+        stages = [s for s in self.stages if (stage is None and s["kind"] == CAMPAIGN_KIND) or s["id"] == stage]
         return [{"label": f"poe2db {s['name']}", "url": s["url_en"]} for s in stages] + \
                [{"label": "PathOfBuilding-PoE2 QuestRewards.lua", "url": self.rules.get("sources", {}).get("quest_rewards")}]
 

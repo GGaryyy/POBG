@@ -27,6 +27,7 @@ Path of Building。
 | `ninja` | poe.ninja 目前聯盟的新快照：職業、等級、技能、keystone。不保留角色或帳號名稱 | 最多 14 |
 | `campaign` | 章節：poe2db 中英文的章節頁（區域的等級、頭目與其獎勵、任務、章節地圖、社群攻略）、PoB 的任務獎勵，以及章節階段上限用到的寶石與工匠石頁 | 約 26 |
 | `currency` | 通貨：poe2db `Stackable_Currency`、`Omen`、`Augment` 三個清單頁（中英文：效果、堆疊數量、最小詞綴等級、限制、需求等級）與每個通貨的單頁（掉落等級、類別、標籤）。已讀過的單頁會保留；`older_than_days` 會重讀較舊的（0：全部） | 6 個清單頁，加上還沒讀過的單頁；每次最多 50 個，第一次約 620 個單頁（約 13 次），之後只讀新的 |
+| `atlas` | poe2db `Waystones` 換界石頁的中英文版：換界石階級與區域等級（流派的地圖階段）、各等級的元素抗性懲罰、換界石詞綴（地圖階段要避開的詞綴與 `search_string` 使用）。不讀地圖頭目、褻瀆詞綴與輿圖天賦 | 2 |
 
 範例：`/pobg:update skill_gems`、`/pobg:update support_gems Fire Attunement, Brutality I`、`/pobg:update items Bows`、
 「更新超過 30 天的技能寶石」。
@@ -75,12 +76,13 @@ uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"    
 | PathOfBuilding-PoE2 | `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/dev/src/TreeData/0_5/tree.json` 與 `…/dev/src/Data/QuestRewards.lua`（probe 另會列出 `https://api.github.com/repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/TreeData?ref=dev`） | 天賦樹結構：所有節點、連線、名稱、屬性、keystone／notable 標記、職業起點、昇華、座標；PoB 用來算角色等級的章節表與精魂任務獎勵 | 重建天賦樹時抓 2 個檔案 |
 | poe2db 章節頁 | `https://poe2db.tw/us/{slug}` 與 `https://poe2db.tw/tw/{slug}`：`Act`（索引頁）、其列出且有區域的每個 `Act_N`、`Interlude`；`Uncut_Skill_Gem`、`Uncut_Spirit_Gem`、`Uncut_Support_Gems` 與其五個等級頁、三種工匠石頁（僅英文） | 區域（名稱、等級、城鎮、傳送點、頭目與其獎勵、章節地圖上的相連、社群攻略）、任務（類型、獎勵、目標）、技能寶石等級表、切割階級、未切割輔助寶石與工匠石的掉落等級 | 執行 `update campaign` 時約 25 頁，間隔 0.8 秒；加上 PoB 的 `QuestRewards.lua`（永久任務獎勵）約 26 個請求 |
 | poe2db 通貨頁 | `https://poe2db.tw/us/{slug}` 與 `https://poe2db.tw/tw/{slug}`：清單頁 `Stackable_Currency`、`Omen`、`Augment`；每個通貨的英文單頁（`/us/Chaos_Orb` 等）。不讀 `Economy` 價格頁 | 通貨：類別、中英文效果、堆疊數量、最小詞綴等級、限制、需求等級、掉落等級、類別、標籤（620 個） | 每次更新 6 個清單頁；單頁每個通貨讀一次，指定 `older_than_days` 才重讀 |
+| poe2db 換界石頁 | `https://poe2db.tw/us/Waystones` 與 `https://poe2db.tw/tw/Waystones` | 換界石階級與區域等級（16 階）、Level Resist Penalty 表（7 列）、換界石詞綴與其中英文行（106 個） | 執行 `update atlas` 時 2 頁，間隔 0.8 秒。第三、四組昇華點（60 與 80 級）是人工自 `/us/Ascendancy_class` 讀取一次，存在目錄裡 |
 | poe.ninja | `https://poe.ninja/poe2/api/data/index-state`、`https://poe.ninja/poe2/api/builds/{version}/search`、`https://poe.ninja/poe2/api/builds/dictionary/{hash}` | 天梯角色的職業、等級、主技能、寶石、keystone、聯盟、排名。角色名稱與帳號名稱在寫入前就丟棄 | 每份快照約 600 個角色（數種排序各取前 100 名）：執行 `update ninja` 時最多 14 個請求，間隔 0.8 秒。本 repo 內的快照抓於 2026-11-11，聯盟為「Runes of Aldur」 |
 
 請求方式：
 
 - 對 poe2db 與 GitHub 的請求會以
-  `POBG/0.14 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
+  `POBG/0.15 (+https://github.com/GGaryyy/POBG; research scraper)` 表明身分，每個頁面或檔案
   請求前等待 0.8 秒（hover 片段 0.3 秒），最多嘗試三次。`refresh_gem` 同樣等待 0.8 秒，一次只發一個請求。
 - poe2db 的 `robots.txt` 只禁止 `/*/marked` 與 `/*/markdown_history`，兩者都不會被請求。單一天賦節點頁面
   （每頁 1.2 MB）刻意不抓。
@@ -88,7 +90,7 @@ uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"    
   公開 API，格式以前就改過，所以抓到的快照看起來不對時程式會拒絕寫入。它送出同樣表明身分的 `User-Agent`，
   請求之間等待 0.8 秒。
 - 本 repo 內的快照：寶石抓於 2026-11-10，名詞解釋、天梯與裝備抓於 2026-11-11，天賦樹 `0_5`（poe2db 天賦樹資料 `4.5`）
-  與其任務獎勵抓於 2026-11-12，章節抓於 2026-11-14（0.5.5 版：第 1–4 章與插曲），通貨抓於 2026-11-17。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
+  與其任務獎勵抓於 2026-11-12，章節抓於 2026-11-14（0.5.5 版：第 1–4 章與插曲），通貨與輿圖抓於 2026-11-17。工具回傳的每筆紀錄都會註明自己的 `fetched_at`。
 
 沒有蒐集：有 103 種基底（多為符文鍛造版本，以及永恆珠寶 Timeless Jewel）不在任何詞綴頁上，`modifiers_for` 無法回答它們；
 poe2db 元技能寶石頁上有 13 顆寶石（Cast on Death、Demon Magus 等）不在任何寶石列表上。
@@ -107,6 +109,7 @@ uv run python -m src.scrapers.collect_passives && uv run python -m src.scrapers.
 uv run python -m src.scrapers.collect_items      # 138 個裝備類別頁：基底、傳奇、詞綴
 uv run python -m src.scrapers.collect_campaign   # 約 26 個請求：章節、區域、任務、階段規則
 uv run python -m src.scrapers.collect_currency   # 6 個清單頁 + 每個新通貨一個單頁（第一次約 620 個）
+uv run python -m src.scrapers.collect_atlas      # 2 個請求：換界石階級、抗性懲罰、換界石詞綴
 uv run python -m src.catalog.entity_index build   # 雙語名稱索引（寶石、天賦、名詞解釋、裝備、章節、通貨）
 uv run python -m src.kg.stats && uv run python -m src.kg.build_graph
 ```

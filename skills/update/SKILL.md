@@ -1,7 +1,7 @@
 ---
 name: update
-description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja, campaign or currency); there is no update for everything.
-argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign|currency> [gem names or item classes, comma-separated]
+description: Update one local Path of Exile 2 data set from its source. A scope is required (skill_gems, spirit_gems, support_gems, passives, items, glossary, ninja, campaign, currency or atlas); there is no update for everything.
+argument-hint: <skill_gems|spirit_gems|support_gems|passives|items|glossary|ninja|campaign|currency|atlas> [gem names or item classes, comma-separated]
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ The first word is the scope; anything after it is a comma-separated list of gem 
 scopes) or item classes such as `Bows`, `Body Armours` (`items`).
 
 **No scope, or a word that is not one of `skill_gems`, `spirit_gems`, `support_gems`,
-`passives`, `items`, `glossary`, `ninja`, `campaign`, `currency`:** do not call `update_data`. Tell the user to pick one scope,
+`passives`, `items`, `glossary`, `ninja`, `campaign`, `currency`, `atlas`:** do not call `update_data`. Tell the user to pick one scope,
 for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:update` in Codex).
 
 ## Gem scopes (`skill_gems`, `spirit_gems`, `support_gems`)
@@ -81,6 +81,13 @@ for example `pobg:update skill_gems` (`/pobg:update` in Claude Code, `$pobg:upda
    pages; later ones only new items.
 3. When `done` is true, report `records`, `categories`, `added`, `removed` and
    `item_pages_failed`.
+
+## `atlas`
+
+1. Call `update_data` with `scope: "atlas"` and no other argument. It makes 2 requests: the
+   Waystones page of poe2db.tw in both languages (waystone tiers and their area levels, the
+   resistance penalty, the waystone modifiers).
+2. Report `waystone_tiers`, `area_levels`, `resistance_penalty_rows` and `waystone_modifiers`.
 
 ## Always
 

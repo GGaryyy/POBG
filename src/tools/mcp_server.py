@@ -229,8 +229,9 @@ def path_to(class_name: str, targets: list[str], ascendancy: str | None = None, 
     passive, 8 ascendancy), the ordered `path` with each node's stats, `stat_totals` for the whole
     route, per-target `points_alone` / `added_points`, plus `unverified` and `unreachable`
     targets. The route is a good approximation, not a guaranteed minimum. by_stage=true takes the
-    targets in the order listed (most important first) and returns `stages`: for each campaign
-    stage, the points it allows, the nodes allocated by its end and the targets reached."""
+    targets in the order listed (most important first) and returns `stages`: for each stage (acts,
+    then map stages), the points it allows, the nodes allocated by its end and the targets reached;
+    `after_campaign` on the last row lists targets not reached by the last stage."""
     return build_tools().path_to(class_name, targets, ascendancy=ascendancy, lang=lang, by_stage=by_stage)
 
 
@@ -296,14 +297,15 @@ def modifiers_for(item: str, group: str = "normal", affix: str | None = None, te
 
 @server.tool(title="Campaign stages and their limits", annotations=READ_ONLY)
 @_user_errors
-def campaign_stages(lang: str | None = None) -> dict:
-    """The campaign act by act (Act 1 ... the Interludes), each with the limits a build has by its
+def campaign_stages(lang: str | None = None, maps: bool = True) -> dict:
+    """The stages of a build, act by act (Act 1 ... the Interludes) and then the map stages
+    (waystone Tier 1, 10, 16; maps=false leaves them out), each with the limits a build has by its
     end, worked out from the data: character level (highest area level), passive points (level
     points plus quest points so far), ascendancy points (trials reached), quest Spirit, highest
-    skill gem level and cuttable tiers, support gem tier, support sockets. Also each stage's
-    permanent quest rewards, trials and bosses, and `not_in_data`: what the answer must not
-    guess. Call it first for a campaign build."""
-    return build_tools().campaign.campaign_stages(lang=lang)
+    skill gem level and cuttable tiers, support gem tier, support sockets, resistance_penalty.
+    Also each act's permanent quest rewards, trials and bosses, and `not_in_data`: what the answer
+    must not guess. Call it first for a build."""
+    return build_tools().campaign.campaign_stages(lang=lang, maps=maps)
 
 
 @server.tool(title="Campaign area or boss", annotations=READ_ONLY)
@@ -356,6 +358,28 @@ def currency_by(category: str | None = None, text: str | None = None, max_level:
     return build_tools().currency.currency_by(category=category, text=text, max_level=max_level, limit=limit)
 
 
+@server.tool(title="Waystone modifiers", annotations=READ_ONLY)
+@_user_errors
+def waystone_mods(text: str | None = None, affix: str | None = None, limit: int = 40) -> dict:
+    """The modifiers a waystone (map) can have, one entry per modifier with its tiers, lines in
+    English and 繁體中文: what makes monsters harder (extra damage, crits, life, curses) and what it
+    gives (more waystones, rarity). text: words in either language; affix: prefix or suffix. Use it
+    to name the map modifiers a build should leave out, quoting the lines."""
+    return build_tools().atlas.waystone_mods(text=text, affix=affix, limit=limit)
+
+
+@server.tool(title="In-game search string", annotations=READ_ONLY)
+@_user_errors
+def search_string(kind: str, modifiers: list[str], item: str | None = None) -> dict:
+    """A string for the in-game search box of the stash or a vendor, worked out from the data
+    (never write one yourself), in English and 繁體中文 (the client's language). kind "gear": item
+    (an item class, base or unique, as for modifiers_for) and modifiers (whole modifiers as
+    modifiers_for shows them): items with any of them light up. kind "maps": modifiers are the
+    waystone modifiers to leave out (as waystone_mods shows them): waystones with none of them stay
+    lit. `also_matches` lists what a piece also matches; `unmatched` what was not found."""
+    return build_tools().search.search_string(kind, modifiers, item=item)
+
+
 @server.tool(title="Re-fetch one gem page", annotations=NETWORK_WRITE)
 @_user_errors
 def refresh_gem(slug_or_name: str) -> dict:
@@ -394,16 +418,16 @@ def data_status(check_online: bool = False) -> dict:
 def update_data(scope: str, names: list[str] | None = None, older_than_days: int | None = None,
                 max_gems: int = DEFAULT_MAX_GEMS, dry_run: bool = False) -> dict:
     """Re-fetch one data set and replace the local records. Call it only when the user asks for an
-    update. scope, one per call (there is no update for everything): skill_gems,
-    spirit_gems, support_gems, passives, items, glossary, ninja, campaign or currency. Gem scopes
-    fetch gems that are new, changed, broken, named in `names` or older than `older_than_days` (not
-    again within 15 minutes), at most max_gems (1-40) per call; repeat while `left` is above 0, at
-    most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional
+    update. scope, one per call (no update for everything): skill_gems,
+    spirit_gems, support_gems, passives, items, glossary, ninja, campaign, currency or atlas. Gem
+    scopes fetch gems that are new, changed, broken, named in `names` or older than `older_than_days`
+    (not again within 15 minutes), at most max_gems (1-40) per call; repeat while `left` is above 0,
+    at most 10 calls. dry_run reports what would be fetched and writes nothing. items takes optional
     `names` (item classes, e.g. Bows) and makes at most 20 requests per call; glossary at most 50
     requests per call; currency at most 50 requests per call (item pages not read yet;
     older_than_days=N re-reads older ones, 0 all): repeat these while `done` is false
-    (items at most 8 calls, glossary 20, currency 16). passives, ninja and campaign take no other
-    argument. A source that no longer parses aborts with nothing written."""
+    (items at most 8 calls, glossary 20, currency 16). passives, ninja, campaign and atlas take no
+    other argument. A source that no longer parses aborts with nothing written."""
     result = maintenance().update(scope, names=names, older_than_days=older_than_days, max_gems=max_gems,
                                   dry_run=dry_run)
     if not dry_run and result.get("done", True):   # an unfinished glossary call wrote nothing
@@ -432,7 +456,7 @@ def status() -> str:
 @server.prompt()
 def update(scope: str = "", names: str = "") -> str:
     """Update one data set from its source. scope: skill_gems, spirit_gems, support_gems,
-    passives, items, glossary, ninja, campaign or currency. names: optional gem names or item
+    passives, items, glossary, ninja, campaign, currency or atlas. names: optional gem names or item
     classes, comma-separated."""
     return update_prompt_text(scope, names)
 

@@ -84,6 +84,10 @@ POBG 在 Claude Code 中有四個指令。這份文件畫出每個指令從輸�
 
 ![/pobg:update currency](img/update-currency.zh-TW.svg)
 
+### `atlas`
+
+![/pobg:update atlas](img/update-atlas.zh-TW.svg)
+
 ## `/pobg:update-pob <資料夾>`：更新你的 Path of Building
 
 出處：[`skills/update-pob/SKILL.md`](../../skills/update-pob/SKILL.md)、`src/tools/pob_update.py`。

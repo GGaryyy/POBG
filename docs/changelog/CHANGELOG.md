@@ -3,14 +3,77 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.15.0] - 2026-11-17
+
+Builds that reach Tier 16 maps (`docs/plan_atlas_stages.md`). A league starter has to lead from the
+acts straight into maps, so a build answer now goes on after the acts with map stages Tier 1, 10 and
+16, and gives in-game search strings for the gear it names and for the waystones it can run. Boss
+fights beyond maps are not planned; whether a build clears Tier 16 is not proven (damage and survival
+are not calculated).
 
 ### Added
+- `atlas` data and update scope (`src/scrapers/collect_atlas.py`, 2 requests): poe2db's `Waystones` page in
+  English and Chinese — the waystone tiers and their area levels (Tier 1 = 65 … Tier 16 = 80), the Level
+  Resist Penalty table, and the 106 waystone modifiers with their lines in both languages (Chinese rows
+  joined by place, checked by level and prefix / suffix). Nothing is written when a stage tier is missing,
+  rows are too few or too little Chinese is found. `data_status` reports it.
+- Map stages in `campaign_stages` (`src/tools/atlas.py`): `maps_t1`, `maps_t10`, `maps_t16` after the acts
+  (catalog `atlas.stage_tiers`), each held to the same rules: level = the tier's area level, passive points
+  and gem limits as for the acts, and ascendancy points with the third and fourth sets at levels 60 and 80
+  (hand-checked on poe2db's Ascendancy_class page, catalog `atlas.endgame_trials`). `path_to(by_stage)`,
+  `verify_build(character_level)` and `export_pob(stage)` take them as they take the acts: a code for
+  `stage="T16"` holds one passive tree per stage at level 80. `maps: false` lists the acts only;
+  `find_stage` takes `T16`, `tier 16`, `第 16 階`.
+- `resistance_penalty` in every stage's limits (from the penalty table), so "the resistance penalty after
+  the acts" is no longer listed as missing.
+- Tool `waystone_mods`: waystone modifiers grouped by wording with their tiers, by words in either language
+  or by prefix / suffix.
+- Tool `search_string` (`src/tools/search_string.py`): a string for the in-game search box, worked out from
+  the data in English and Chinese. `gear`: the shortest piece of each wanted modifier that no other modifier
+  of the item class (nor a base name) holds, joined with `|`. `maps`: the waystone modifiers to leave out,
+  after `!`. English pieces are whole words (not a lone word such as "from" or "increased"), Chinese pieces
+  are runs of Chinese characters not starting or ending with 的, 上 and the like; pieces hold no numbers, so
+  one string serves every tier. `also_matches`, `left_out` and `unmatched` say what could not be placed
+  cleanly. The 250-character limit and the syntax come from community guides (catalog `atlas.search`).
+- Tests: `tests/atlas_support.py` (synthetic Waystones page), `tests/unit/test_collect_atlas.py` (19),
+  `tests/unit/test_search_string.py` (15), `tests/integration/test_atlas_tools.py` (63).
+- `docs/flow/img/update-atlas.{en,zh-TW}.svg`.
 - READMEs: how to update an installed plugin in Claude Code and Codex.
 
 ### Changed
+- The default build is a staged build up to Tier 16: the workflow (`build_workflow.py`, `poe2-advisor`
+  skill, server instructions) plans the last map stage first, writes the resistance penalty for each
+  stage, gives one search string per gear slot, and for the map stages names only the waystone modifiers
+  whose lines work against the verified build and gives a string that leaves them out. A campaign-only
+  build is made when asked; the ladder comparison covers the whole build at Tier 16.
+- `export_pob`'s first note says "Stage …" ("階段 …") instead of "Campaign stage …", as a stage can be a
+  map stage. A campaign-only build otherwise differs from 0.14.0 only by each stage's `kind` and
+  `resistance_penalty` (with the atlas data) and by the penalty no longer being listed as missing.
+- Search-string pieces prefer several English words (or three Chinese characters at a run's edge) over
+  one word, as a lone word is more likely to match text the data does not have.
+
+### Removed
+- `CampaignLookup.stage_for_level`, which nothing called.
+- `update_data`, the `update` and `status` skills and prompts list the `atlas` scope; 26 tools.
+- READMEs, `docs/tools*.md` (new section on map stages and search strings), `docs/data*.md`,
+  `docs/flow/` (advisor and update charts, a chart for `update atlas`, system flow), ROADMAP.
 - READMEs and `docs/clients*.md`: Claude Code is installed from a terminal (`claude plugin marketplace add`,
   `claude plugin install`), the same way as Codex; the in-app `/plugin` lines are kept as a note.
+- Version 0.15.0; User-Agent `POBG/0.15`.
+
+### Fixed
+- `collect_atlas.main` passes its cache folder at call time (found by a test: a default argument would
+  have kept the folder chosen at import).
+- Found by the independent review (`docs/reports/code_review_2026-11-17_02.md`), before release:
+  a `waystone_mods` entry's `text` was refused by `search_string` (it now takes the `text`, the `id`, a
+  line or words); atlas files that parse but have the wrong shape broke every campaign tool (they now
+  leave the acts and say why); a modifier without Chinese lines was dropped silently from the zh-tw string
+  (now in `missing`); gear pieces could cross a line break; gear pieces were checked against two
+  modifier groups and base names only (now every group and the bases' implicits and property labels);
+  the waystone labels were hand-written, with an invented Chinese word (now the tier names and property
+  labels from the page); the area level was the first number of a tier entry (now its labelled line,
+  with checks that levels rise and penalties fall); a typographic minus; non-text arguments; avoid
+  entries of one or two letters; T1's area range now starts after the last act.
 
 ## [0.14.0] - 2026-11-17
 

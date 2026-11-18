@@ -20,32 +20,32 @@
      "kind": "action",
      "row": 1,
      "col": 0,
-     "zh": "套用流程：poe2-advisor skill、build_guide prompt 或 build_workflow 工具\n決定目標：預設是打通章節的流派，先呼叫 campaign_stages 取得每個階段的上限\n指定的等級高於章節結束，或說要輿圖／後期時，才做終局流派",
-     "en": "Apply the workflow: the poe2-advisor skill, the build_guide prompt or the build_workflow tool\nDecide the goal: by default a build that clears the campaign; call campaign_stages for each stage's limits\nAn endgame build only for a level above the campaign's end, or maps / late game"
+     "zh": "套用流程：poe2-advisor skill、build_guide prompt 或 build_workflow 工具\n決定目標：預設是打通章節、再打到 T16 地圖的分階段流派，先呼叫 campaign_stages 取得每個階段的上限\n只要章節時只排章節；指定的等級高於 T16，或要後期成品時，才做終局流派",
+     "en": "Apply the workflow: the poe2-advisor skill, the build_guide prompt or the build_workflow tool\nDecide the goal: by default a staged build that clears the campaign and runs maps up to Tier 16; call campaign_stages for each stage's limits\nThe acts only when asked; an endgame build only for a level above Tier 16 or a finished late-game build"
     },
     {
      "id": "C",
      "kind": "action",
      "row": 2,
      "col": 0,
-     "zh": "步驟 2：由資料找候選。每個選擇都要有資料上的理由，不能是「天梯都在用」\nlookup_entity、gems_by、supports_for、passives_with_stat、get_gem、get_passive\n章節流派：先排最後階段，再往前排各階段；以階段等級當 max_level 篩選",
-     "en": "Step 2: gather candidates from the data. Every choice needs a reason from the records, never 'ladder characters use it'\nlookup_entity, gems_by, supports_for, passives_with_stat, get_gem, get_passive\nCampaign build: plan the last stage first, then each earlier one, with the stage's level as max_level"
+     "zh": "步驟 2：由資料找候選。每個選擇都要有資料上的理由，不能是「天梯都在用」\nlookup_entity、gems_by、supports_for、passives_with_stat、get_gem、get_passive\n分階段流派：先排最後階段，再往前排各階段；以階段等級當 max_level 篩選",
+     "en": "Step 2: gather candidates from the data. Every choice needs a reason from the records, never 'ladder characters use it'\nlookup_entity, gems_by, supports_for, passives_with_stat, get_gem, get_passive\nStaged build: plan the last stage first, then each earlier one, with the stage's level as max_level"
     },
     {
      "id": "C2",
      "kind": "action",
      "row": 3,
      "col": 0,
-     "zh": "裝備：items_by、get_item 選基底或傳奇，modifiers_for 選目標詞綴\n每件最多 3 條前綴 + 3 條後綴，依重要性排列；章節流派每個技能最多該階段的輔助插槽數",
-     "en": "Gear: items_by and get_item for a base or unique, modifiers_for for target modifiers\nAt most 3 prefixes + 3 suffixes per item, in order of importance. Campaign build: at most the stage's support sockets per skill"
+     "zh": "裝備：items_by、get_item 選基底或傳奇，modifiers_for 選目標詞綴\n每件最多 3 條前綴 + 3 條後綴，依重要性排列；分階段流派每個技能最多該階段的輔助插槽數",
+     "en": "Gear: items_by and get_item for a base or unique, modifiers_for for target modifiers\nAt most 3 prefixes + 3 suffixes per item, in order of importance. Staged build: at most the stage's support sockets per skill"
     },
     {
      "id": "D",
      "kind": "action",
      "row": 4,
      "col": 0,
-     "zh": "步驟 3：verify_build\n一次送出所有寶石、天賦、裝備與目標詞綴\n章節流派加上最後階段的 character_level：too_early 的拿掉或移到之後的階段",
-     "en": "Step 3: verify_build\nAll gems, passives, items and target modifiers in one call\nCampaign build: with the last stage's character_level; drop what is too_early or move it to a later stage"
+     "zh": "步驟 3：verify_build\n一次送出所有寶石、天賦、裝備與目標詞綴\n分階段流派加上最後階段的 character_level：too_early 的拿掉或移到之後的階段",
+     "en": "Step 3: verify_build\nAll gems, passives, items and target modifiers in one call\nStaged build: with the last stage's character_level; drop what is too_early or move it to a later stage"
     },
     {
      "id": "E",
@@ -68,8 +68,8 @@
      "kind": "action",
      "row": 6,
      "col": 0,
-     "zh": "步驟 5：path_to\n職業或昇華 + 已驗證的天賦 → 路線、順序、點數\n章節流派：天賦依重要性排列並傳 by_stage=true → 每個階段點到哪",
-     "en": "Step 5: path_to\nClass or ascendancy + verified passives → route, order, points\nCampaign build: targets most important first, by_stage=true → what each stage reaches"
+     "zh": "步驟 5：path_to\n職業或昇華 + 已驗證的天賦 → 路線、順序、點數\n分階段流派：天賦依重要性排列並傳 by_stage=true → 每個階段點到哪",
+     "en": "Step 5: path_to\nClass or ascendancy + verified passives → route, order, points\nStaged build: targets most important first, by_stage=true → what each stage reaches"
     },
     {
      "id": "I",
@@ -92,16 +92,16 @@
      "kind": "action",
      "row": 8,
      "col": 0,
-     "zh": "步驟 6：reference_builds\n讀天梯快照，只用來說明與主流的差異；不含角色名稱\n章節流派只比較主技能與昇華；天梯沒有資料時照實說",
-     "en": "Step 6: reference_builds\nReads the ladder snapshot, only to say how the build differs. No character names\nCampaign build: main skill and ascendancy only; say so when it has no data"
+     "zh": "步驟 6：reference_builds\n讀天梯快照，只用來說明與主流的差異；不含角色名稱\n章節與前段地圖只比較主技能與昇華，T16 完整比較；天梯沒有資料時照實說",
+     "en": "Step 6: reference_builds\nReads the ladder snapshot, only to say how the build differs. No character names\nActs and early map stages: main skill and ascendancy only, Tier 16 the whole build; say so when it has no data"
     },
     {
      "id": "L",
      "kind": "action",
      "row": 9,
      "col": 0,
-     "zh": "步驟 7：撰寫回答\n數字、消耗、標籤、效果只用 verified 的事實\n目標詞綴是要找的目標；不計算傷害\n章節流派每階段一段：等級與點數、技能、天賦、裝備、精魂與昇華、任務獎勵與頭目",
-     "en": "Step 7: write the answer\nNumbers, costs, tags and effects from verified facts only\nTarget modifiers are goals to look for. Damage is not calculated\nCampaign build: one section per stage: level and points, skills, passives, gear, Spirit and ascendancy, rewards and bosses"
+     "zh": "步驟 7：撰寫回答\n數字、消耗、標籤、效果只用 verified 的事實\n目標詞綴是要找的目標；不計算傷害\n分階段流派每階段一段：等級與點數、技能、天賦、裝備、精魂與昇華、抗性懲罰、章節的任務獎勵與頭目\n每個裝備部位一串 search_string；地圖階段用 waystone_mods 找剋制流派的詞綴，附排除它們的搜尋字串",
+     "en": "Step 7: write the answer\nNumbers, costs, tags and effects from verified facts only\nTarget modifiers are goals to look for. Damage is not calculated\nStaged build: one section per stage: level and points, skills, passives, gear, Spirit and ascendancy, resistance penalty, an act's rewards and bosses\nOne search_string per gear slot; map stages: waystone_mods for modifiers against the build, and a search string leaving them out"
     },
     {
      "id": "M",
@@ -116,8 +116,8 @@
      "kind": "action",
      "row": 11,
      "col": 0,
-     "zh": "步驟 9：export_pob\n職業、targets、技能組、裝備\n章節流派傳 stage（最後階段）：匯入碼含每階段一個天賦樹；終局流派指定等級時傳 character_level",
-     "en": "Step 9: export_pob\nClass, targets, skill groups, gear\nCampaign build: stage = the last stage, one passive tree per stage; endgame: character_level when a level was asked for"
+     "zh": "步驟 9：export_pob\n職業、targets、技能組、裝備\n分階段流派傳 stage（最後階段，通常是 maps_t16）：匯入碼含每階段一個天賦樹；終局流派指定等級時傳 character_level",
+     "en": "Step 9: export_pob\nClass, targets, skill groups, gear\nStaged build: stage = the last stage (usually maps_t16), one passive tree per stage; endgame: character_level when a level was asked for"
     },
     {
      "id": "O",
@@ -757,8 +757,8 @@
      "kind": "action",
      "row": 4,
      "col": 0,
-     "zh": "依範圍進入對應的流程（各有一張圖）\nskill_gems、spirit_gems、support_gems → 寶石\npassives → 天賦樹\nitems → 裝備\nglossary → 名詞解釋\nninja → 天梯（poe.ninja）\ncampaign → 章節\ncurrency → 通貨",
-     "en": "The scope decides the flow (one chart each)\nskill_gems, spirit_gems, support_gems → gems\npassives → passive tree\nitems → items\nglossary → glossary\nninja → ladder (poe.ninja)\ncampaign → campaign\ncurrency → currency",
+     "zh": "依範圍進入對應的流程（各有一張圖）\nskill_gems、spirit_gems、support_gems → 寶石\npassives → 天賦樹\nitems → 裝備\nglossary → 名詞解釋\nninja → 天梯（poe.ninja）\ncampaign → 章節\ncurrency → 通貨\natlas → 輿圖（換界石）",
+     "en": "The scope decides the flow (one chart each)\nskill_gems, spirit_gems, support_gems → gems\npassives → passive tree\nitems → items\nglossary → glossary\nninja → ladder (poe.ninja)\ncampaign → campaign\ncurrency → currency\natlas → atlas (waystones)",
      "align": "left"
     },
     {
@@ -1902,6 +1902,120 @@
     {
      "from": "J",
      "to": "K",
+     "route": "v"
+    }
+   ]
+  },
+  {
+   "id": "update-atlas",
+   "title": {
+    "zh": "/pobg:update atlas",
+    "en": "/pobg:update atlas"
+   },
+   "nodes": [
+    {
+     "id": "A",
+     "kind": "start",
+     "row": 0,
+     "col": 0,
+     "zh": "範圍是 atlas（不接受其他參數）",
+     "en": "The scope is atlas (no other argument)"
+    },
+    {
+     "id": "B",
+     "kind": "action",
+     "row": 1,
+     "col": 0,
+     "zh": "一次呼叫，2 個請求，間隔 0.8 秒\npoe2db 換界石頁（中英）",
+     "en": "One call, 2 requests, 0.8 s apart\npoe2db's Waystones page (English and Chinese)"
+    },
+    {
+     "id": "C",
+     "kind": "action",
+     "row": 2,
+     "col": 0,
+     "zh": "換界石階級與區域等級、抗性懲罰表\n換界石詞綴：中文以列的位置合併，核對等級與前後綴",
+     "en": "Waystone tiers and area levels, the resistance penalty table\nWaystone modifiers: Chinese rows joined by place, checked by level and prefix / suffix"
+    },
+    {
+     "id": "D",
+     "kind": "action",
+     "row": 3,
+     "col": 0,
+     "zh": "不收：地圖頭目、褻瀆詞綴、輿圖天賦",
+     "en": "Not taken: map bosses, desecrated modifiers, atlas passives"
+    },
+    {
+     "id": "E",
+     "kind": "decision",
+     "row": 4,
+     "col": 0,
+     "zh": "達到下限？\n階級數、地圖階段的階級（1、10、16）都在、懲罰表列數、詞綴數、中文比例",
+     "en": "Above the minimums?\nTiers, the map stage tiers (1, 10, 16) all there, penalty rows, modifiers, Chinese share"
+    },
+    {
+     "id": "F",
+     "kind": "stop",
+     "row": 4,
+     "col": 1,
+     "zh": "拒絕寫入，保留舊資料",
+     "en": "Refused. The old data stays"
+    },
+    {
+     "id": "G",
+     "kind": "action",
+     "row": 5,
+     "col": 0,
+     "zh": "寫入 data/atlas/atlas.json 與 waystone_mods.jsonl\n流派階段表在章節後接上 T1、T10、T16",
+     "en": "Writes data/atlas/atlas.json and waystone_mods.jsonl\nThe stage table gets Tier 1, 10 and 16 after the acts"
+    },
+    {
+     "id": "H",
+     "kind": "end",
+     "row": 6,
+     "col": 0,
+     "zh": "回報 waystone_tiers、area_levels、resistance_penalty_rows、waystone_modifiers",
+     "en": "Report waystone_tiers, area_levels, resistance_penalty_rows and waystone_modifiers"
+    }
+   ],
+   "edges": [
+    {
+     "from": "A",
+     "to": "B",
+     "route": "v"
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "route": "v"
+    },
+    {
+     "from": "C",
+     "to": "D",
+     "route": "v"
+    },
+    {
+     "from": "D",
+     "to": "E",
+     "route": "v"
+    },
+    {
+     "from": "E",
+     "to": "F",
+     "route": "h",
+     "zh": "否",
+     "en": "no"
+    },
+    {
+     "from": "E",
+     "to": "G",
+     "route": "v",
+     "zh": "是",
+     "en": "yes"
+    },
+    {
+     "from": "G",
+     "to": "H",
      "route": "v"
     }
    ]

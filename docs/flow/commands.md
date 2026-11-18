@@ -97,6 +97,10 @@ scope. The update changes the copy of `data/` the server runs from.
 
 ![/pobg:update currency](img/update-currency.en.svg)
 
+### `atlas`
+
+![/pobg:update atlas](img/update-atlas.en.svg)
+
 ## `/pobg:update-pob <folder>`: update your Path of Building
 
 From [`skills/update-pob/SKILL.md`](../../skills/update-pob/SKILL.md) and

@@ -100,7 +100,9 @@ connect to online MCP servers, and POBG runs on your computer.
 - "What does Quill Rain do?"
 - "Which quests in Act 2 give passive points?" "What level is Ogham Manor, and who is the boss?"
 - "What does a Greater Chaos Orb do, and which omens change it?" "Which crafting orbs can drop by level 30?"
-- "Give me a Mercenary grenade build with gear and a PoB code." (by default a build that clears the campaign)
+- "Which waystone modifiers are there, and which ones hurt a curse build?"
+- "Give me a Mercenary grenade build with gear and a PoB code." (by default a build that clears the campaign
+  and runs maps up to Tier 16)
 - "Give me a level 90 lightning Invoker build with full gear and a PoB code." (a level or "late game" gets the
   finished endgame build)
 
@@ -111,12 +113,14 @@ You can ask in Traditional Chinese too; see the [繁體中文 README](README.zh-
 The assistant builds from the data, not from what is popular, and checks every name before it
 writes.
 
-**By default a build is made to clear the campaign**, act by act (Act 1, Act 2, …, the Interludes):
-each act's level, passive and ascendancy points, the skills and supports usable by then, the passives
-reached, gear that level can have, Spirit, and the act's permanent quest rewards and bosses. These
-limits are worked out from the data (the `campaign` scope under [Commands](#commands)). A level above
-the end of the campaign (e.g. 90), or asking for maps / late game, gets the finished build with
-top-tier gear.
+**By default a build is made to clear the campaign and then run maps up to Tier 16 waystones**,
+stage by stage (Act 1, Act 2, …, the Interludes, then Tier 1, 10 and 16 maps): each stage's level,
+passive and ascendancy points, the skills and supports usable by then, the passives reached, gear that
+level can have, Spirit, the elemental resistance penalty, and for an act its permanent quest rewards
+and bosses. These limits are worked out from the data (the `campaign` and `atlas` scopes under
+[Commands](#commands)). Ask for the campaign only and you get the acts only. A level above Tier 16's
+(80), or a finished late-game build, gets the finished build with top-tier gear. Boss fights beyond
+maps are not planned.
 
 Every build answer contains:
 
@@ -124,7 +128,10 @@ Every build answer contains:
 - **Passives**: the targets, the route to reach them and the points used out of 123 (+8
   ascendancy).
 - **Gear**: a base or unique per slot, and for rares up to 3 prefixes and 3 suffixes to look
-  for, in order of importance.
+  for, in order of importance, with an **in-game search string** per slot: paste it into the stash
+  or a vendor's search box and the items with those modifiers light up.
+- **Map stages**: the waystone modifiers that work against this build (quoted from the data) and a
+  search string that leaves them out, so the waystones still lit are the ones to run.
 - **Attributes and Spirit**: what the build needs against what it has, and what to change when
   it falls short.
 - **Compared with the ladder**: what this build shares with ladder characters on poe.ninja
@@ -143,15 +150,16 @@ gems it does not know and may refuse the tree version or ascendancy.
 
 **What the code holds:** class and ascendancy, the passive route, skill groups with their
 supports, gear, and PoB Configuration options. Notes about the build are in PoB's **Notes** tab.
-A campaign build's code holds **one passive tree per act** (switch between them in the tree list at
-the top of PoB's Tree tab); skills, gear and level are the last act's.
+A staged build's code holds **one passive tree per stage** (switch between them in the tree list at
+the top of PoB's Tree tab); skills, gear and level are the last stage's.
 
 **Worked out from the data, not guessed by the AI:**
 
 - Character level, from the points spent (123 points is level 100), or the level you asked for; for a
-  campaign build, the act's level (its highest area level).
-- A campaign build's limits: passive and ascendancy points, skill gem level, support gem tier and
-  support sockets, from the act pages, PoB's quest rewards and the drop levels of gems and Jeweller's Orbs.
+  staged build, the stage's level (an act's highest area level, a map stage's waystone area level).
+- A staged build's limits: passive and ascendancy points, skill gem level, support gem tier, support
+  sockets and the resistance penalty, from the act pages, the Waystones page, PoB's quest rewards and the
+  drop levels of gems and Jeweller's Orbs.
 - Each skill gem's level: the highest that character level can use.
 - Which attribute each attribute passive takes: what the gems and gear require first.
 - Spirit: what the persistent skills reserve against quest rewards, a sceptre and Spirit on
@@ -160,7 +168,7 @@ the top of PoB's Tree tab); skills, gear and level are the last act's.
 **Assumptions to know about:**
 
 - **Gear values are an ideal.** Every modifier is at the top of its best tier (e.g. "+(100—119)
-  to maximum Life" becomes "+119"); for a campaign build, the best tier an item of that level can
+  to maximum Life" becomes "+119"); for a staged build, the best tier an item of that level can
   roll. Real items roll lower; edit them in PoB's Items tab. Choosing a tier or value is planned for
   later. Quality, runes, soul cores, sockets and jewels are not
   included; without a weapon, attack skills show as disabled.
@@ -199,6 +207,7 @@ each one (what it calls, where it decides, when it writes) is drawn in
 | `ninja` | The poe.ninja ladder snapshot (no character or account names are kept) |
 | `campaign` | The campaign: each act's areas, bosses, quests, permanent rewards and community walkthroughs, and the gem and socket rules campaign builds follow |
 | `currency` | Currency items: orbs, essences, splinters, catalysts, omens, runes and soul cores, with what each does and its drop level; a first update reads about 620 item pages, later ones only new items |
+| `atlas` | Waystone tiers and their area levels, the elemental resistance penalty, and waystone modifiers (2 requests) |
 
 Examples (in Codex write `$` instead of `/`):
 
@@ -221,17 +230,23 @@ terminal there. Request counts per scope and more notes: [docs/data.md](docs/dat
 ## Limits
 
 - The data is a snapshot (gems 2026-11-10, items, glossary and ladder 2026-11-11, campaign
-  2026-11-14, currency 2026-11-17). Balance patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
+  2026-11-14, currency and atlas 2026-11-17). Balance patches change numbers; `/pobg:status` shows the age and `/pobg:update` refreshes it.
 - POBG checks that every name exists and quotes its facts; it does not judge how strong a build
   is or calculate damage. PoB does the maths.
 - Modifiers are random: the gear in an answer is a target to look for, not a promise.
 - The passive route is a good one, not a proven shortest one; weapon-set passive points and
   jewels are not planned.
 - The ladder comparison uses a sample of about 600 characters near the top of several rankings.
-  Ladder characters are endgame characters: a campaign build compares only the main skill and ascendancy.
-- A campaign build takes each act's highest area level as the character level. Boss tactics beyond the
-  area walkthroughs, the resistance penalty after the acts and drop chances are not in the data; answers
-  say so. When 1.0 (Acts 5 and 6) is out, run `update campaign`.
+  Ladder characters are endgame characters: the acts and early map stages compare only the main skill and
+  ascendancy, Tier 16 the whole build.
+- A staged build takes each act's highest area level, and each map stage's waystone area level, as the
+  character level. Whether a build clears Tier 16 is not proven: damage and survival are not calculated,
+  and monster damage by area level is not in the data; PoB shows whether the resistances make up for the
+  penalty. Boss tactics beyond the area walkthroughs, map bosses and drop chances are not in the data;
+  answers say so. When 1.0 (Acts 5 and 6) is out, run `update campaign` and `update atlas`.
+- Search strings are worked out from the modifiers in the data and checked against every modifier of
+  that item class (or every waystone modifier), but the game also searches an item's name and other
+  lines: try a string in the game first. Use the string in your client's language.
 - Currency answers say what each item does, its levels and which items change another; prices, drop
   chances and crafting steps are not in the data.
 - Not covered: crafting steps, prices, spawn weights, endgame items, a few bases and meta gems

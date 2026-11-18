@@ -19,25 +19,27 @@ the `build_workflow` tool) and, for Claude Code, in
 | `supports_for` | every support gem that can support a skill; `max_level` as in `gems_by` |
 | `reference_builds` | what ladder characters run (class, main skill, rank, gems, keystones — no character names); a build answer uses it to show how the generated build differs from the ladder, not to pick the build |
 | `verify_build` | checks a draft build's gems, passives, items and target modifiers ("Rings: +#% to Fire Resistance": the whole modifier, at most 3 prefixes and 3 suffixes per item; a partial wording comes back with candidates); returns facts, removed names and a finished source list; `character_level` moves what cannot be had yet to `too_early` and gives each modifier the best tier that level rolls |
-| `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route); `by_stage` takes the targets in the order listed and cuts the route at each campaign stage's points |
-| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route, skill groups ("skill: support, support"), gear ("slot: item; modifier; modifier") and PoB Configuration options; names that do not verify, supports that cannot support the skill and modifiers the item cannot roll are listed in `not_exported` instead; `stage` holds the code to a campaign stage, with one passive tree per stage. See [below](#export_pob) |
+| `path_to` | which passives to allocate, in order, to reach target passives from a class start; points against the 123 / 8 limits and the route's stat totals (approximate route); `by_stage` takes the targets in the order listed and cuts the route at each stage's points (acts and map stages) |
+| `export_pob` | a Path of Building build code: class, ascendancy, the `path_to` route, skill groups ("skill: support, support"), gear ("slot: item; modifier; modifier") and PoB Configuration options; names that do not verify, supports that cannot support the skill and modifiers the item cannot roll are listed in `not_exported` instead; `stage` holds the code to a stage (an act or a map stage such as `maps_t16` / `T16`), with one passive tree per stage. See [below](#export_pob) |
 | `get_item` | one gear base (properties, requirements, implicit) or unique item (its modifiers), with sources |
 | `items_by` | bases and uniques by item class, kind, required level or text |
 | `modifiers_for` | what an item class (or a base or unique's class) can roll: modifiers grouped by family, every tier's level and value range, prefix or suffix; also desecrated, essence, corrupted and socketable effects |
-| `campaign_stages` | the campaign act by act, each with the limits a build has by its end (level, passive and ascendancy points, quest Spirit, skill gem level and tiers, support gem tier, support sockets), its permanent quest rewards, trials and bosses, and what the data does not hold. See [below](#campaign-stages) |
+| `campaign_stages` | the stages of a build: the acts, then the map stages (waystone Tier 1, 10, 16; `maps: false` leaves them out), each with the limits a build has by its end (level, passive and ascendancy points, quest Spirit, skill gem level and tiers, support gem tier, support sockets, resistance penalty), an act's permanent quest rewards, trials and bosses, and what the data does not hold. See [below](#campaign-stages) |
 | `get_area` | one campaign area, or the area of a boss: level, bosses and what they grant, connected areas, permanent rewards, the community walkthrough and the quests that name it |
 | `get_quest` | one campaign quest: type, rewards and objectives in both languages, its act |
 | `campaign_by` | campaign areas, quests, bosses or permanent rewards by act and / or words in either language |
 | `get_currency` | one currency item (orb, essence, splinter, catalyst, omen, rune or soul core): effect lines in both languages (runes per item class), stack size, minimum modifier level, required and drop level, tags, and `related`: the items whose effects name it. See [below](#currency) |
 | `currency_by` | currency items by category, words in either language, or `max_level` (drop and required level); no filter lists the categories |
+| `waystone_mods` | the modifiers a waystone can have, one entry per modifier with its tiers, lines in both languages; by words or prefix / suffix. See [below](#map-stages-and-search-strings) |
+| `search_string` | an in-game search string worked out from the data, in English and 繁中: gear with any of the wanted modifiers of an item class lights up, or waystones with any of the named modifiers stay dark. See [below](#map-stages-and-search-strings) |
 | `build_workflow` | the step-by-step workflow for a cited build answer, for clients that cannot use MCP prompts |
 | `refresh_gem` | re-fetches one gem page from poe2db and replaces the local record |
 | `data_status` | what the local data holds and how old it is; on request, a check of the live sites |
-| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja, campaign, currency), a bounded number of requests per call |
+| `update_data` | re-fetches one data set (a scope is required: three gem kinds, passives, items, glossary, ninja, campaign, currency, atlas), a bounded number of requests per call |
 
 Prompts: `build_guide` (the build workflow), `status` and `update` (the data commands, see
 [data.md](data.md#commands)). Only `refresh_gem` and `update_data` change anything; the other
-twenty-two tools are marked read-only, and of those only `data_status` can reach the network, when
+twenty-four tools are marked read-only, and of those only `data_status` can reach the network, when
 asked to check the live sites.
 
 ## `export_pob`
@@ -79,23 +81,28 @@ passive; see `tests/unit/test_config_rules.py` for the sentences they are held t
 
 ## Campaign stages
 
-A build answer is by default a campaign build: one that clears the campaign, given stage by stage.
-`campaign_stages` gives each stage's limits, cumulative up to its end, all from the data:
+A build answer is by default a staged build: one that clears the campaign and then runs maps up to
+Tier 16 waystones, given stage by stage (the acts, then Tier 1, 10 and 16 maps). `campaign_stages`
+gives each stage's limits, cumulative up to its end, all from the data:
 
 | Limit | Worked out from |
 |---|---|
-| `level` | the highest area level of the stage on poe2db's Act page (towns left out) |
+| `level` | an act: the highest area level of the stage on poe2db's Act page (towns left out); a map stage: the waystone tier's area level on poe2db's Waystones page (Tier 1 = 65, Tier 10 = 74, Tier 16 = 80 in 0.5.5) |
 | `passive_points` | `level` − 1, plus the quest passive points of PoB's QuestRewards.lua up to the stage (PoB counts them as passive and as weapon-set points) |
-| `ascendancy_points` | 2 for each campaign trial (Trial of the Sekhemas, the Trial of Chaos) whose area level the stage reaches |
+| `ascendancy_points` | 2 for each campaign trial (Trial of the Sekhemas, the Trial of Chaos) whose area level the stage reaches; map stages add the endgame trials the catalog lists (`atlas.endgame_trials`: the third set at level 60, the fourth at 80, hand-checked on poe2db's Ascendancy_class page) |
 | `quest_spirit` | the "+N to Spirit" quest rewards up to the stage |
 | `skill_gem_level`, `skill_gem_tiers`, `spirit_gem_tiers` | the highest gem level the level allows (Uncut Skill Gem's level table) and the gemcutting tiers up to it |
 | `support_gem_tier` | the highest Uncut Support Gem level that drops by the stage's area level |
 | `support_sockets` | what the Jeweller's Orbs that drop by then set a skill to (2 before any) |
+| `resistance_penalty` | the elemental resistance penalty from the stage's level on (the Waystones page's Level Resist Penalty table: −10 from 16 … −60 from 65); only with the atlas data |
 
 poe2db keeps the Interludes as an Act: the Act page whose areas are the Interlude page's is named
 after it, and an Act page without areas (a datamined act not yet in the game) is not a stage, so new
 acts follow the data. `not_in_data` lists what answers must not guess: boss tactics beyond the area
-walkthroughs, the resistance penalty after the acts, drop chances, Spirit from gear.
+walkthroughs, drop chances, Spirit from gear, and with the map stages: monster damage by area level, map
+bosses and pinnacle fights, how Tier 16 waystones are obtained. Without the atlas data the stages are
+the acts only, and `maps_note` says to run `update atlas`. `find_stage` (and `stage` on `export_pob`)
+takes `maps_t16`, `T16`, `tier 16`, `第 16 階`.
 
 With `stage`, `export_pob` holds the code to those limits: the level, the route taken in the order the
 targets are listed and cut at the stage's points (targets beyond it go to `not_exported`), skill and
@@ -125,3 +132,30 @@ essence guarantees on each item class is in `modifiers_for` (group `essence` or 
 `drop_level` is poe2db's DropLevel; an item that only comes from some content (a league mechanic, a boss, a
 vendor) can show a low one, such as 1. Prices, drop sources and chances, and crafting steps are not in the
 data; `not_in_data` says so.
+
+## Map stages and search strings
+
+`waystone_mods` lists the 106 waystone modifiers of poe2db's Waystones page grouped by wording (a
+modifier's tiers differ only in their numbers), with every line in both languages: what makes monsters
+harder and what the map gives for it. A build answer names only the modifiers whose lines work against
+what the verified build relies on, quoting them; it never calls the others safe.
+
+`search_string` works out a string for the in-game search box (stash and vendor windows) instead of the
+model writing one:
+
+| Kind | Input | String |
+|---|---|---|
+| `gear` | an item class (as for `modifiers_for`) and whole modifiers | `"piece|piece"`: items with any of them light up; several strings when over the limit, each usable on its own |
+| `maps` | the waystone modifiers to leave out: a `waystone_mods` entry's `text` or `id`, one of its lines, or its words (numbers may be left out) | `"!piece|piece"`: waystones with any of them stay dark; pieces that do not fit the limit are in `left_out` |
+
+Each piece is a piece of a modifier's wording that no other text of that item class holds: every modifier
+group (also corrupted, essence and rune lines), and the names, implicits and property labels of its bases;
+for waystones, every other waystone modifier and the tier names and property labels from the Waystones
+page. Several English words come before one, and a lone word is never "from" or "increased"; Chinese pieces
+are runs of Chinese characters, preferably three and at the start or end of a run, not starting or ending
+with 的, 上 and the like. Pieces hold no numbers and never cross a line, so one string serves every tier and
+stage. A piece that is shared anyway is listed in `also_matches`; a modifier with no wording in a language
+is in that language's `missing` (the string is then not complete); each row says which modifier it
+`matched`. The syntax (quotes, `|`, `!`) and the 250-character limit come from community guides, not
+from GGG (`atlas.search` in the catalog); the game also searches an item's name and other lines, so a
+string should be tried in the game, in the client's language.

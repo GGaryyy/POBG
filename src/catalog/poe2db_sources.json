@@ -987,6 +987,56 @@
         "detail_ratio": 0.9
       },
       "notes": "Each listing page holds every item of its tabs in one response (the tabs are only shown and hidden). An entry is a div.col: the name link (its href is the slug), div.property lines (stack size; Minimum Modifier Level, keyword BetterCurrencyMinimumLevel; Maximum Item Level, keyword CurrencyMaximumItemLevel; Limited to), div.requirements, and the effect lines by kind: explicitMod (what it does), implicitMod (a rune or soul core per item class), enchantMod (liquid emotions on a waystone), bondedMod. The category is the English tab id (panes); zh-TW tab ids are Chinese, so zh-TW entries are joined by slug. An item listed in two tabs keeps the first and records the others in also_in. Each item's own page (English) gives DropLevel, Class, Tags and Type as name/value cards (div.card.name-value). Prices (the Economy pages) are not collected. Verified 2026-11-17 for 0.5.5."
+    },
+    "atlas": {
+      "kind": "atlas",
+      "slug": "Waystones",
+      "panes": {
+        "en": {
+          "tiers": "WaystonesItem",
+          "mods": "WaystonesMods",
+          "penalty": "LevelResistPenalty",
+          "area_level_label": "Area Level"
+        },
+        "zh-tw": {
+          "tiers": "換界石物品",
+          "mods": "換界石Mods",
+          "penalty": "LevelResistPenalty",
+          "area_level_label": "區域等級"
+        }
+      },
+      "atlas_file": "data/atlas/atlas.json",
+      "mods_file": "data/atlas/waystone_mods.jsonl",
+      "stage_tiers": [1, 10, 16],
+      "endgame_trials": [
+        {
+          "area_level": 60,
+          "points": 2,
+          "trial": "Trial of the Sekhemas, third floor (Djinn Barya, Level 60)",
+          "trial_zh_tw": "絲克瑪試煉第三層（等級 60）"
+        },
+        {
+          "area_level": 80,
+          "points": 2,
+          "trial": "Trial of the Sekhemas, fourth floor (Djinn Barya, Level 80), or the Trial of Chaos with ten trials (Level 80)",
+          "trial_zh_tw": "絲克瑪試煉第四層（等級 80），或十關的混沌試煉（等級 80）"
+        }
+      ],
+      "endgame_trials_slug": "Ascendancy_class",
+      "endgame_trials_notes": "The third and fourth sets of ascendancy points, from the Trial Type table on poe2db's Ascendancy_class page (Community Wiki part: Ascension 2 / 4 / 6 / 8 at Level 22 / 38 / 60 / 80; 'Total 8 Ascendancy points'). Applied to the map stages only; the page also says the third set can be had before maps. Hand-checked 2026-11-17 for 0.5.5.",
+      "search": {
+        "max_chars": 250,
+        "min_fragment_ascii": 4,
+        "min_fragment_cjk": 2,
+        "notes": "In-game search (stash and vendor windows): text in quotes, | for either, ! to leave out. The 250-character limit is from a community guide (2026), not from GGG; older posts give a shorter one."
+      },
+      "expect_min": {
+        "tiers": 10,
+        "mods": 60,
+        "penalty_rows": 5,
+        "zh_ratio": 0.8
+      },
+      "notes": "One page, every table in one response (tabs are only shown and hidden). Waystone tiers: div.col entries, the name link 'Waystone (Tier N)' and a div.property 'Area Level: N'. Resistance penalty: a two-column table (Level, Resist Penalty). Waystone modifiers: a table of Level, Pre/Suf and Description (lines split at <br>); the zh-TW table lists the same rows in the same order, so rows join by place and are checked by level and prefix / suffix. The tab ids differ by language (panes). Map bosses (EndGame Maps), desecrated waystone modifiers and the Kirac table are not collected. Verified 2026-11-17 for 0.5.5."
     }
   },
   "fields": {

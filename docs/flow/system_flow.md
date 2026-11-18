@@ -1,6 +1,6 @@
 # System Flow
 
-Updated 2026-11-17 (0.14.0: currency items; 0.13.0: the campaign; 0.10.0: gear in Path of Building codes; 0.9.0: PoB codes and the PoB updater).
+Updated 2026-11-17 (0.15.0: map stages up to Tier 16 and in-game search strings; 0.14.0: currency items; 0.13.0: the campaign; 0.10.0: gear in Path of Building codes; 0.9.0: PoB codes and the PoB updater).
 
 ## System flow
 
@@ -28,6 +28,7 @@ flowchart LR
         CI[collect_items.py]
         CA[collect_campaign.py]
         CU[collect_currency.py]
+        AT[collect_atlas.py]
     end
 
     subgraph Data["data/"]
@@ -37,6 +38,7 @@ flowchart LR
         ITM[(items/bases, uniques, modifiers, classes.json)]
         CAM[(campaign/stages, areas, quests, rules.json)]
         CUR[(currency/currency.jsonl)]
+        ATL[(atlas/atlas.json, waystone_mods.jsonl)]
         IDX[(catalog/entity_index.jsonl)]
         KW[(kg/keywords.jsonl)]
         ST[(kg/passive_stats.jsonl)]
@@ -47,10 +49,10 @@ flowchart LR
     end
 
     subgraph App["src/tools"]
-        LK[lookup.py + items.py + campaign.py + currency.py]
-        BT[build_tools.py + pathing.py]
+        LK[lookup.py + items.py + campaign.py + currency.py + atlas.py]
+        BT[build_tools.py + pathing.py + search_string.py]
         MT[maintenance.py: status + scoped update]
-        MCP[MCP server pobg: 24 tools + build_guide / status / update prompts]
+        MCP[MCP server pobg: 26 tools + build_guide / status / update prompts]
         PE[pob_export.py: XML + zlib + base64 build code]
         PU[pob_update.py: CLI, PoB release into a new folder]
     end
@@ -77,6 +79,8 @@ flowchart LR
     P -->|Act pages en + zh-TW, gem and Jeweller's Orb pages| CA
     POB -->|QuestRewards.lua| CA --> CAM
     P -->|3 currency listings en + zh-TW, one page per item| CU --> CUR
+    P -->|Waystones page en + zh-TW: tiers, resistance penalty, waystone modifiers| AT --> ATL
+    ATL -->|map stages after the acts, penalty per stage| LK
     CAM --> EI
     CAM --> LK
     CUR --> EI

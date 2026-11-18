@@ -23,7 +23,7 @@ pytestmark = pytest.mark.integration
 TOOLS = ["lookup_entity", "get_gem", "get_passive", "passives_with_stat", "explain_keyword", "gems_by",
          "supports_for", "reference_builds", "verify_build", "path_to", "export_pob", "get_item", "items_by",
          "modifiers_for", "campaign_stages", "get_area", "get_quest", "campaign_by", "get_currency",
-         "currency_by", "refresh_gem", "build_workflow",
+         "currency_by", "waystone_mods", "search_string", "refresh_gem", "build_workflow",
          "data_status", "update_data"]
 LADDER = Path(__file__).resolve().parents[1] / "fixtures" / "jsonl" / "poe_ninja_builds.jsonl"
 
@@ -163,7 +163,7 @@ def prompt_text(name, args):
 
 def test_server_version_is_package_version():
     from src import __version__
-    assert __version__ == "0.14.0" and mcp_server.server.version == __version__
+    assert __version__ == "0.15.0" and mcp_server.server.version == __version__
     assert mcp_server.server.name == mcp_server.SERVER_NAME == "pobg"
 
 
@@ -447,7 +447,7 @@ def test_data_status_through_the_server_uses_the_loaded_folder_and_no_network(fr
     assert status["data_dir"] == str(service.base_dir / "data") and "online" not in status
     assert {d["name"]: d["records"] for d in status["datasets"]}["skill_gems"] == 3
     assert status["update_scopes"] == ["skill_gems", "spirit_gems", "support_gems", "passives", "items", "glossary", "ninja",
-                                       "campaign", "currency"]
+                                       "campaign", "currency", "atlas"]
     assert calls == []
 
 

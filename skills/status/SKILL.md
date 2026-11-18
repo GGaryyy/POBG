@@ -14,6 +14,6 @@ description: Show what the local Path of Exile 2 data holds and how old it is (r
 4. When something should be updated, name the command `pobg:update <scope>`
    (`/pobg:update` in Claude Code, `$pobg:update` in Codex) with one of
    `skill_gems`, `spirit_gems`, `support_gems`, `passives`, `items`, `glossary`, `ninja`, `campaign`,
-   `currency`.
+   `currency`, `atlas`.
 
 Do not call `update_data` from this skill.

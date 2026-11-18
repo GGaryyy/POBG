@@ -1,0 +1,157 @@
+{
+ "tiers": [
+  {
+   "tier": 1,
+   "name": "Waystone (Tier 1)",
+   "slug": "Waystone_%28Tier_1%29",
+   "area_level": 65,
+   "name_zh_tw": "換界石（階級 1）"
+  },
+  {
+   "tier": 2,
+   "name": "Waystone (Tier 2)",
+   "slug": "Waystone_%28Tier_2%29",
+   "area_level": 66,
+   "name_zh_tw": "換界石（階級 2）"
+  },
+  {
+   "tier": 3,
+   "name": "Waystone (Tier 3)",
+   "slug": "Waystone_%28Tier_3%29",
+   "area_level": 67,
+   "name_zh_tw": "換界石（階級 3）"
+  },
+  {
+   "tier": 4,
+   "name": "Waystone (Tier 4)",
+   "slug": "Waystone_%28Tier_4%29",
+   "area_level": 68,
+   "name_zh_tw": "換界石（階級 4）"
+  },
+  {
+   "tier": 5,
+   "name": "Waystone (Tier 5)",
+   "slug": "Waystone_%28Tier_5%29",
+   "area_level": 69,
+   "name_zh_tw": "換界石（階級 5）"
+  },
+  {
+   "tier": 6,
+   "name": "Waystone (Tier 6)",
+   "slug": "Waystone_%28Tier_6%29",
+   "area_level": 70,
+   "name_zh_tw": "換界石（階級 6）"
+  },
+  {
+   "tier": 7,
+   "name": "Waystone (Tier 7)",
+   "slug": "Waystone_%28Tier_7%29",
+   "area_level": 71,
+   "name_zh_tw": "換界石（階級 7）"
+  },
+  {
+   "tier": 8,
+   "name": "Waystone (Tier 8)",
+   "slug": "Waystone_%28Tier_8%29",
+   "area_level": 72,
+   "name_zh_tw": "換界石（階級 8）"
+  },
+  {
+   "tier": 9,
+   "name": "Waystone (Tier 9)",
+   "slug": "Waystone_%28Tier_9%29",
+   "area_level": 73,
+   "name_zh_tw": "換界石（階級 9）"
+  },
+  {
+   "tier": 10,
+   "name": "Waystone (Tier 10)",
+   "slug": "Waystone_%28Tier_10%29",
+   "area_level": 74,
+   "name_zh_tw": "換界石（階級 10）"
+  },
+  {
+   "tier": 11,
+   "name": "Waystone (Tier 11)",
+   "slug": "Waystone_%28Tier_11%29",
+   "area_level": 75,
+   "name_zh_tw": "換界石（階級 11）"
+  },
+  {
+   "tier": 12,
+   "name": "Waystone (Tier 12)",
+   "slug": "Waystone_%28Tier_12%29",
+   "area_level": 76,
+   "name_zh_tw": "換界石（階級 12）"
+  },
+  {
+   "tier": 13,
+   "name": "Waystone (Tier 13)",
+   "slug": "Waystone_%28Tier_13%29",
+   "area_level": 77,
+   "name_zh_tw": "換界石（階級 13）"
+  },
+  {
+   "tier": 14,
+   "name": "Waystone (Tier 14)",
+   "slug": "Waystone_%28Tier_14%29",
+   "area_level": 78,
+   "name_zh_tw": "換界石（階級 14）"
+  },
+  {
+   "tier": 15,
+   "name": "Waystone (Tier 15)",
+   "slug": "Waystone_%28Tier_15%29",
+   "area_level": 79,
+   "name_zh_tw": "換界石（階級 15）"
+  },
+  {
+   "tier": 16,
+   "name": "Waystone (Tier 16)",
+   "slug": "Waystone_%28Tier_16%29",
+   "area_level": 80,
+   "name_zh_tw": "換界石（階級 16）"
+  }
+ ],
+ "resistance_penalty": [
+  {
+   "level": 1,
+   "penalty": 0
+  },
+  {
+   "level": 16,
+   "penalty": -10
+  },
+  {
+   "level": 33,
+   "penalty": -20
+  },
+  {
+   "level": 45,
+   "penalty": -30
+  },
+  {
+   "level": 54,
+   "penalty": -40
+  },
+  {
+   "level": 60,
+   "penalty": -50
+  },
+  {
+   "level": 65,
+   "penalty": -60
+  }
+ ],
+ "labels": {
+  "en": [
+   "Area Level"
+  ],
+  "zh-tw": [
+   "區域等級"
+  ]
+ },
+ "url_en": "https://poe2db.tw/us/Waystones",
+ "url_zh_tw": "https://poe2db.tw/tw/Waystones",
+ "fetched_at": "2026-11-17T14:29:30.588265+00:00"
+}

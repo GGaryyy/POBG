@@ -35,7 +35,7 @@ from src.catalog.spec import Spec, load_spec
 from src.kg.build_graph import GRAPH_PATH, build_knowledge_graph, save_graph
 from src.kg.stats import MIN_PARSED_RATIO, build_stat_index, parse_summary, write_stat_index
 from src.scrapers import collect_glossary as glossary
-from src.scrapers import collect_campaign, collect_currency, collect_items
+from src.scrapers import collect_atlas, collect_campaign, collect_currency, collect_items
 from src.scrapers.collect_gems import CollectionError, collect_kind
 from src.scrapers.collect_passives import PassiveBuildError, load_tree_data, write_passives
 from src.scrapers.collect_passives import build as build_passives
@@ -65,8 +65,9 @@ GLOSSARY = "glossary"
 ITEMS = "items"
 CAMPAIGN = "campaign"              # acts, areas, quests and the gem / socket rules of campaign stages
 CURRENCY = "currency"              # orbs, essences, splinters, catalysts, omens, runes and soul cores
-UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA, CAMPAIGN, CURRENCY)
-WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA, CAMPAIGN)      # re-fetched as a whole: no names, ages, caps or dry run
+ATLAS = "atlas"                    # waystone tiers, the resistance penalty and waystone modifiers
+UPDATE_SCOPES = (*GEM_SCOPES, PASSIVES, ITEMS, GLOSSARY, NINJA, CAMPAIGN, CURRENCY, ATLAS)
+WHOLE_SET_SCOPES = (PASSIVES, GLOSSARY, NINJA, CAMPAIGN, ATLAS)      # re-fetched as a whole: no names, ages, caps or dry run
 NOT_UPDATABLE: dict[str, str] = {}      # data sets without an update scope, with the reason
 DEFAULT_MAX_GEMS = 20
 MAX_GEMS = 40                    # detail pages per call: keeps one tool call under about a minute
@@ -187,7 +188,8 @@ class DataMaintenance:
                         "pob2_tree_version": pob2["version"], "tree_data_version": tree_data["version"]},
             "datasets": [*(self._gem_status(scope) for scope in GEM_SCOPES), self._passive_status(),
                          self._items_status(), self._glossary_status(), self._ladder_status(),
-                         self._campaign_status(), self._currency_status(), self._index_status()],
+                         self._campaign_status(), self._currency_status(), self._atlas_status(),
+                         self._index_status()],
             "update_scopes": list(UPDATE_SCOPES),
             "not_updatable": dict(NOT_UPDATABLE),
         }
@@ -255,8 +257,16 @@ class DataMaintenance:
         return {"name": CURRENCY, "update_scope": CURRENCY, **_dated(path), "categories": categories,
                 "without_item_page": sum(1 for row in rows if not row.get("detail_fetched_at"))}
 
+    def _atlas_status(self) -> dict:
+        """Records are the waystone modifiers; waystone_tiers come from atlas.json."""
+        source = self.spec.source(collect_atlas.SOURCE)
+        atlas = _read_json(self.base_dir / source["atlas_file"])
+        tiers = atlas.get("tiers") if isinstance(atlas, dict) else None
+        return {"name": ATLAS, "update_scope": ATLAS, **_dated(self.base_dir / source["mods_file"]),
+                "waystone_tiers": len(tiers) if isinstance(tiers, list) else 0}
+
     def _index_status(self) -> dict:
-        return {"name": "entity_index", "update_scope": None, "note": "rebuilt by every update",
+        return {"name": "entity_index", "update_scope": None, "note": "rebuilt by every update that adds names (every scope but atlas)",
                 **_dated(self.index_path, field="built_at")}
 
     # -- update ---------------------------------------------------------------
@@ -291,6 +301,8 @@ class DataMaintenance:
                     result = self._update_campaign(counting)
                 elif scope == CURRENCY:
                     result = self._update_currency(counting, older_than_days)
+                elif scope == ATLAS:
+                    result = self._update_atlas(counting)
                 else:
                     result = self._update_gems(scope, names or [], older_than_days, max_gems, dry_run, counting)
         except LockBusy as exc:
@@ -566,6 +578,27 @@ class DataMaintenance:
             raise ServiceUnavailable(f"a data file could not be written ({exc}). {PARTIAL_WRITE}") from exc
         return {"stages": [s["id"] for s in result["stages"]], "previous_stages": [s["id"] for s in old],
                 "areas": len(result["areas"]), "quests": len(result["quests"]), **self._rebuild_derived(counting, None)}
+
+    def _update_atlas(self, counting: _Counting) -> dict:
+        """The Waystones page again, in both languages (2 requests); nothing is written when it no
+        longer parses into the catalog's minimums."""
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                result = collect_atlas.collect(self.spec, fetch=counting, cache_dir=Path(tmp))
+        except (collect_atlas.AtlasBuildError, requests.RequestException) as exc:
+            raise ServiceUnavailable(f"{exc}. {NOTHING_WRITTEN_PAGES}") from exc
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
+            traceback.print_exc(file=sys.stderr)
+            raise ServiceUnavailable(f"the Waystones page changed shape ({type(exc).__name__}: {exc}). "
+                                     f"{NOTHING_WRITTEN_PAGES}") from exc
+        try:
+            collect_atlas.write(self.spec, self.base_dir, result)
+        except OSError as exc:
+            raise ServiceUnavailable(f"a data file could not be written ({exc}). {PARTIAL_WRITE}") from exc
+        tiers = result["atlas"]["tiers"]
+        return {"waystone_tiers": len(tiers), "area_levels": [tiers[0]["area_level"], tiers[-1]["area_level"]],
+                "resistance_penalty_rows": len(result["atlas"]["resistance_penalty"]),
+                "waystone_modifiers": len(result["mods"])}
 
     def _update_currency(self, counting: _Counting, older_than_days: int | None) -> dict:
         """The listing pages again (6 requests) and the own page of each item that has none stored

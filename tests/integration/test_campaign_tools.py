@@ -249,7 +249,7 @@ def test_stage_export_holds_one_tree_per_stage_and_the_stage_level(tools, monkey
     assert res["summary"]["points"]["passive"] == {"used": 6, "limit": 6, "over": False}
     assert [e["input"] for e in res["not_exported"]] == ["Heart of Ice"]
     assert "after Act 2" in res["not_exported"][0]["reason"]
-    assert res["notes"][0].startswith("Campaign stage Act 2: character level 28")
+    assert res["notes"][0].startswith("Stage Act 2: character level 28")
 
 
 def test_stage_export_holds_gems_sockets_and_spirit_to_the_stage(tools, monkeypatch):

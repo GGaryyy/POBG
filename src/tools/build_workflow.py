@@ -11,6 +11,7 @@ skills/update in the plugin) are the user-facing commands over data_status and u
 from __future__ import annotations
 
 from src.tools.maintenance import (
+    ATLAS,
     CAMPAIGN,
     CURRENCY,
     CURRENCY_BATCH,
@@ -42,52 +43,67 @@ WRITING_RULES = (
 )
 
 BUILD_WORKFLOW = """\
-1. Read the request and answer in the user's language. Decide the goal. The default is a campaign build: a
-   build that clears the campaign, given stage by stage. Make an endgame build (the steps without the
-   campaign parts) only when the user names a level above the last stage's level or asks for maps,
-   endgame or a late-game build. For a campaign build call campaign_stages first: each stage's limits
-   (level, passive and ascendancy points, gem level and tiers, support tier and sockets, quest Spirit)
-   come from it, never from your own estimate.
+1. Read the request and answer in the user's language. Decide the goal. The default is a staged build: a
+   build that clears the campaign and then runs maps up to Tier 16 waystones, given stage by stage (the
+   acts, then the map stages Tier 1, 10 and 16). When the user asks only for the campaign, use the acts
+   only (campaign_stages with maps=false). Make an endgame build (the steps without the stage parts) only
+   when the user names a level above the last stage's level or asks for a finished late-game build; boss
+   fights beyond maps are not planned. For a staged build call campaign_stages first: each stage's limits
+   (level, passive and ascendancy points, gem level and tiers, support tier and sockets, quest Spirit,
+   resistance_penalty) come from it, never from your own estimate.
 2. Generate the build from the data, not from the ladder: gather candidates with lookup_entity, gems_by, supports_for, passives_with_stat, get_gem and get_passive.
    For gear, pick bases or uniques with items_by and get_item, and for each slot the target modifiers
    with modifiers_for, at most 3 prefixes and 3 suffixes, in order of importance (written
    "item: modifier", the whole modifier as modifiers_for shows it; for armour name the base).
    Every choice needs a reason from these records (what the gem, passive or item does), never
-   "ladder characters use it". For a campaign build, plan the end of the last stage first, then each
+   "ladder characters use it". For a staged build, plan the end of the last stage first, then each
    earlier stage: pass the stage's level as max_level to gems_by, supports_for, items_by and
    modifiers_for so that every choice can be had by then, and give a skill at most the stage's
    support_sockets supports.
 3. Call verify_build once with every gem, passive, item and target modifier the draft build uses
    (lists take 40 entries, affixes 60). With a whole set of gear, or on a repeat check, pass
-   detail="brief": you already hold the records from the lookups. For a campaign build pass the last
+   detail="brief": you already hold the records from the lookups. For a staged build pass the last
    stage's level as character_level: drop what is in `too_early` or move it to a later stage.
 4. For each entry in `unverified`: drop the name, or replace it from its `suggestions` or a new search.
    Call verify_build again with the final list. Do this at most twice; after that, drop what is still unverified.
 5. Call path_to with the class (or ascendancy) and the verified passives. State the points it reports
    against the limits; when `over` is true, drop the passives with the largest `added_points` and call it again.
-   For a campaign build list the targets most important first and pass by_stage=true: `stages` gives
-   each stage's points and the passives reached by its end; targets in `after_campaign` are not reached.
+   For a staged build list the targets most important first and pass by_stage=true: `stages` gives
+   each stage's points and the passives reached by its end; targets in `after_campaign` are not reached
+   by the last stage.
 6. Compare with the ladder: call reference_builds (class and/or main skill) now, after the build is
    drafted. Use it only to say how the build differs from what ladder characters run: what is the same,
    what this build uses that they do not, what they use that it does not, with counts. Ladder characters
-   are endgame characters: for a campaign build compare the main skill and ascendancy only. When it has
+   are endgame characters: for the acts and the first map stages compare the main skill and ascendancy
+   only, and the whole build at the last map stage. When it has
    no matching characters, say so. When the user asks what is popular, reference_builds is the answer itself.
 7. Write the build from the `verified` facts, with a short "compared with the ladder" section. For a
-   campaign build write one section per stage, in this order: level and points; skills and supports
+   staged build write one section per stage, in this order: level and points; skills and supports
    (what to use, and when to switch to the main skill); passives reached; gear (bases, and target
-   modifiers that level can roll); Spirit and persistent skills; ascendancy (trial and points); the
-   stage's permanent quest rewards and bosses from campaign_stages. What campaign_stages lists in
-   `not_in_data` (boss tactics, the resistance penalty) is not in the local data: say so instead of
+   modifiers that level can roll); Spirit and persistent skills; ascendancy (trial and points);
+   resistance_penalty; for an act, its permanent quest rewards and bosses from campaign_stages.
+   Search strings: for each gear slot with target modifiers call search_string (kind "gear", the slot's
+   item class and its target modifiers) once; the pieces hold no numbers, so one string serves every
+   stage: give it with the slot's gear the first time. For the map stages call waystone_mods and name
+   only the waystone modifiers whose lines work directly against what the verified build relies on
+   (quote the lines; e.g. less effect of curses for a curse build); then call search_string (kind
+   "maps", those modifiers) and give the string: waystones that stay lit are the ones to run. When no
+   modifier works against the build, say so; never call the other modifiers safe. Give each string in
+   the answer's language and say the client's language must match (the zh-tw string for a Traditional
+   Chinese client), what also_matches, left_out or missing report, and that it should be tried in the
+   game. Damage and survival are not calculated:
+   say so, and that PoB shows whether the resistances make up for the penalty. What campaign_stages
+   lists in `not_in_data` (boss tactics, map bosses) is not in the local data: say so instead of
    guessing. """ + WRITING_RULES + """ Modifiers are random: present the
    target modifiers as goals to look for, not as what the item will have, and say that damage is not calculated.
 8. End the answer with `sources_markdown` from the last verify_build call, unchanged. It already lists
    the names that were not found. Add `source_markdown` from reference_builds below it, and for a
-   campaign build the stage pages from campaign_stages.
+   staged build the stage pages from campaign_stages.
 9. Give a Path of Building code: call export_pob with the class (or ascendancy), the verified passives
    as `targets` (most important first), one "skill: support, support" entry per skill group, main skill
    first, and one "slot: item; modifier; modifier" entry per verified item in `gear` (a rare's verified
-   target modifiers; nothing after a unique). For a campaign build pass `stage` = the last stage's id
-   (not character_level): the code then holds one passive tree per stage, and level, gems, sockets,
+   target modifiers; nothing after a unique). For a staged build pass `stage` = the last stage's id
+   (not character_level; maps_t16, or the last act for a campaign-only build): the code then holds one passive tree per stage, and level, gems, sockets,
    gear and Spirit follow that stage. For an endgame build pass `character_level` when the user asked
    for a build at a level. Gear values are written at the top of each modifier's best tier (for a
    stage: the best tier its level can roll): say the PoB numbers are a goal, since modifiers are
@@ -100,7 +116,7 @@ BUILD_WORKFLOW = """\
    options in `summary.config` with their evidence: PoB's damage assumes them."""
 
 SERVER_INSTRUCTIONS = (
-    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary, gear, campaign, currency), English and Traditional "
+    "Path of Exile 2 data from poe2db.tw (gems, passive tree, glossary, gear, campaign, currency, atlas), English and Traditional "
     "Chinese. Resolve names with lookup_entity first, then use get_gem / get_passive / "
     "explain_keyword / passives_with_stat / gems_by / supports_for, and for gear get_item / items_by / "
     "modifiers_for. Quote the returned records and "
@@ -109,9 +125,11 @@ SERVER_INSTRUCTIONS = (
     "Campaign questions (areas, bosses, quests, rewards of an act): get_area, get_quest, campaign_by. "
     "Currency questions (what an orb, essence, omen, rune or soul core does, its levels, which items change "
     "another): get_currency, currency_by; prices, drop chances and crafting steps are not in the data. "
-    "For build advice the default goal is a build that clears the campaign: call campaign_stages first and keep "
-    "each stage within its limits (max_level on gems_by / supports_for, character_level on verify_build, "
-    "by_stage on path_to, stage on export_pob); an endgame build only when asked for. "
+    "Map modifiers: waystone_mods. In-game search strings (gear to look for, waystones to run): search_string, "
+    "never written by hand. "
+    "For build advice the default goal is a build that clears the campaign and runs maps up to Tier 16: call "
+    "campaign_stages first and keep each stage within its limits (max_level on gems_by / supports_for, "
+    "character_level on verify_build, by_stage on path_to, stage on export_pob); an endgame build only when asked for. "
     "For build advice: generate the build from these records, with a reason from the data for every "
     "choice (not \"ladder characters use it\"), then call verify_build with every gem, passive, item and target modifier "
     "(at most 3 prefixes and 3 suffixes per slot; modifiers are random, so present them as targets) "
@@ -206,6 +224,11 @@ UPDATE_WHOLE_SET_STEPS = {
 2. While `done` is false, call it again with the same arguments, at most {MAX_CURRENCY_CALLS} calls in total;
    give one line of progress per call (`fetched`, `left`). A first update reads about 620 item pages.
 3. When `done` is true, report `records`, `categories`, `added`, `removed` and `item_pages_failed`.
+{ON_ERROR}""",
+    ATLAS: f"""\
+1. Call update_data with scope="atlas" and no other argument. It makes 2 requests: the Waystones page of
+   poe2db.tw in two languages (waystone tiers, the resistance penalty, waystone modifiers).
+2. Report `waystone_tiers`, `area_levels`, `resistance_penalty_rows` and `waystone_modifiers`.
 {ON_ERROR}""",
 }
 
