@@ -38,7 +38,7 @@ Path of Building。
   或要求更新超過 N 天的寶石。
 - 若頁面已無法解析，update 會停止，不寫入任何東西。單一頁面下載失敗則列為略過，下次 update 會再抓。
 - 15 分鐘內抓過的寶石，在指定名稱或要求更新舊寶石時不會再抓一次，所以重複下同一個指令不會連續重抓同一頁。
-- poe2db 的技能寶石列表也包含所有精神寶石。這類寶石只存一份，歸在精神寶石，所以要用 `spirit_gems` 更新。
+- poe2db 的技能寶石列表也包含所有精魂寶石。這類寶石只存一份，歸在精魂寶石，所以要用 `spirit_gems` 更新。
 - 同一個資料夾一次只會有一個 update 在跑，兩個用戶端共用同一個資料夾時也一樣。本機還沒有檔案的資料類別，
   第一次要在終端機完整抓取（見下方）。
 - 名詞解釋與裝備的更新會把進度暫存在 `output/cache/` 30 分鐘，中斷後會接續而不是重來。抓不到的名詞保留原本的內容。
@@ -68,7 +68,7 @@ uv run python -m src.tools.pob_update --dir "G:\POB\poe2\PoeCharm2-20250410"    
 
 | 來源 | 網址 | 用到哪些部分 | 抓取範圍與頻率 |
 |---|---|---|---|
-| poe2db.tw 英文頁面 | `https://poe2db.tw/us/{slug}`：列表頁 `Skill_Gems`、`Spirit_Gems`、`Support_Gems`、`Keystone`、`Notable`，以及每顆寶石各一頁 | 寶石名稱、階級、標籤、消耗、需求、各等級數值表、品質、隱藏屬性、可搭配的輔助；keystone／notable 卡片（屬性文字、名詞連結） | 完整抓取時 5 個列表頁加 1,012 個寶石頁（技能 347、精神 53、輔助 612），每頁間隔 0.8 秒。更新時只抓 3 個寶石列表與有變動的寶石。`refresh_gem` 依要求抓 1 頁 |
+| poe2db.tw 英文頁面 | `https://poe2db.tw/us/{slug}`：列表頁 `Skill_Gems`、`Spirit_Gems`、`Support_Gems`、`Keystone`、`Notable`，以及每顆寶石各一頁 | 寶石名稱、階級、標籤、消耗、需求、各等級數值表、品質、隱藏屬性、可搭配的輔助；keystone／notable 卡片（屬性文字、名詞連結） | 完整抓取時 5 個列表頁加 1,012 個寶石頁（技能 347、精魂 53、輔助 612），每頁間隔 0.8 秒。更新時只抓 3 個寶石列表與有變動的寶石。`refresh_gem` 依要求抓 1 頁 |
 | poe2db.tw 中文頁面 | `https://poe2db.tw/tw/{slug}`：同樣五個列表頁 | 寶石、keystone、notable 的繁體中文名稱 | 5 頁，存在本機快取；刪除快取後才會重抓 |
 | poe2db 裝備類別頁 | `https://poe2db.tw/us/{slug}` 與 `https://poe2db.tw/tw/{slug}`，即 `item_pages` 列出的 69 個類別頁（武器、副手、依屬性類型細分的防具如 `Body_Armours_str_dex`、飾品、腰帶、生命與魔力藥劑、護符、珠寶，以及 8 個存放珠寶詞綴的珠寶頁） | 裝備基底（數值、需求、固定詞綴）、傳奇（詞綴文字），以及頁面內嵌的詞綴資料：該類能出的每條詞綴的名稱、等級、前綴／後綴、族群與文字，另含褻瀆、精髓、腐化與鑲嵌物效果。不儲存出現權重 | 執行 `update items` 時抓 138 頁（每頁約 600 KB），間隔 0.8 秒 |
 | poe2db hover 片段 | `https://cdn.poe2db.tw/cache2/{lang}/Poe_Data_KeywordPopups_hover/{hash}`（`lang` = `us` / `tw`）與 `…/Poe_Data_GemEffects_hover/{hash}` | 名詞解釋（357 個名詞，英文與中文）；寶石 hover 只用來找中文的名詞連結 | 每個約 1.2 KB，間隔 0.3 秒，重建名詞解釋時才抓 |

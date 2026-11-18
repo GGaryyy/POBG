@@ -58,7 +58,7 @@ POBG 在 Claude Code 中有四個指令。這份文件畫出每個指令從輸�
 ![/pobg:update 三種寶石](img/update-gems.zh-TW.svg)
 
 - 只改數值的平衡改版不會改變列表頁，所以單純的 update 會得到 `selected` = 0。請指定改版公告提到的寶石名稱，或要求更新超過 N 天的寶石。
-- poe2db 的技能寶石列表也包含所有精神寶石；這類寶石只存一份，由 `spirit_gems` 更新。
+- poe2db 的技能寶石列表也包含所有精魂寶石；這類寶石只存一份，由 `spirit_gems` 更新。
 
 ### `passives`
 

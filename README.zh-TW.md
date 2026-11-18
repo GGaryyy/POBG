@@ -157,7 +157,7 @@ POBG 共有四個指令。指令名稱在 Claude Code 和 Codex 裡完全一樣�
 | 範圍 | 更新什麼 |
 |---|---|
 | `skill_gems` | 技能寶石 |
-| `spirit_gems` | 精神寶石（常駐技能） |
+| `spirit_gems` | 精魂寶石（常駐技能） |
 | `support_gems` | 輔助寶石 |
 | `passives` | 天賦樹，以及匯入碼用的 PoB 等級表與精魂任務獎勵 |
 | `items` | 裝備基底、傳奇與詞綴（含藥劑、護符、珠寶）；加上類別名稱就只更新那幾類 |
