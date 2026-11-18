@@ -91,8 +91,9 @@ BUILD_WORKFLOW = """\
    modifier works against the build, say so; never call the other modifiers safe. A string is a
    regular expression (\\d+, ^, $): copy it exactly as returned into a code block, never retype or
    shorten it. Give each string in the answer's language and say the client's language must match (the
-   zh-tw string for a Traditional Chinese client), what also_matches, shared_with, left_out or missing
-   report, and that it should be tried in the game. Damage and survival are not calculated:
+   zh-tw string for a Traditional Chinese client), what also_matches, shared_with (source implicit: every
+   item of that base lights up), unanchored, left_out or missing report, and that it should be tried in
+   the game. Damage and survival are not calculated:
    say so, and that PoB shows whether the resistances make up for the penalty. What campaign_stages
    lists in `not_in_data` (boss tactics, map bosses) is not in the local data: say so instead of
    guessing. """ + WRITING_RULES + """ Modifiers are random: present the

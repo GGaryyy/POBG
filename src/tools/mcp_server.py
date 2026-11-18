@@ -376,10 +376,12 @@ def search_string(kind: str, modifiers: list[str], item: str | None = None) -> d
     client's language); give it unchanged, in a code block. kind "gear": item (an item class,
     base or unique, as for modifiers_for) and modifiers (whole modifiers as modifiers_for shows
     them): items with any of them light up. kind "maps": the waystone modifiers to leave out (a
-    waystone_mods `text` or `id`): waystones with none of them stay lit. Each piece is checked
-    with a regex engine against every line of that item class. `also_matches`: other lines a
-    piece matches; `shared_with`: the same sentence in another modifier (cannot be told apart);
-    `unmatched`, `missing`, `left_out`: what is not in the string."""
+    waystone_mods `text` or `id`): waystones with none of them stay lit. Pieces are tied to a
+    line's end where possible and checked against every line of the item class and the lines every
+    item shows (rarity, item level, requirements). `also_matches`: other lines a piece matches;
+    `shared_with`: the same sentence elsewhere (`source`: modifier, implicit, unique), lit too;
+    `unanchored`: a piece tied to no end; `unmatched`, `missing`, `left_out`: what is not in the
+    string, with the reason."""
     return build_tools().search.search_string(kind, modifiers, item=item)
 
 

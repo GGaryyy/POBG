@@ -151,25 +151,35 @@ model writing one:
 The game reads the string as a regular expression, line by line and in any case (seen in the output of
 poe2.re and Cabbage Forge on 2026-11-18; GGG does not document it). Each piece is one stretch of one of the
 modifier's lines, numbers written as `\d+`, optionally tied to the line's start (`^`) or end (`$`), e.g.
-`\d+ phys`, `m life$`, `焰抗`. The shortest such piece is chosen (at equal length one tied to the end) that,
+`\d+ physical damage$`, `o maximum life$`, `焰抗性$`. A piece tied to the line's end is taken first, then one tied
+to its start, and a free one (flagged `unanchored`) only when neither works; within each, the shortest that,
 run with Python's `re`:
 
 - matches that line on every tier of the modifier, at both ends of each range;
 - matches no other line of the item class: every modifier of every group (corrupted, essence and rune
-  lines too), modifier names, base and unique names, implicits and property lines with their values
-  (`Physical Damage: 13-18`). For waystones: every other waystone modifier, the tier names and their
-  property lines (`Area Level: 65`).
+  lines too), modifier names, base and unique names, implicits, unique modifiers, property lines with their
+  values (`Physical Damage: 13-18`) and requirement lines (`Requires: Level 5, 12 Dex`, and one per
+  attribute). For waystones: every other waystone modifier, the tier names and their property lines
+  (`Area Level: 65`).
+- matches none of the lines every item shows that the modifier data does not hold, listed in the catalog
+  (`atlas.search.fixed_lines`): rarity, item level, quality, item rarity, corrupted, unidentified; for
+  waystones also revives, drop chance, monster effectiveness, monster rarity, pack size. Traditional Chinese
+  uses only wording found in the data (稀有度, 魔法, 稀有, 傳奇, 物品等級, 品質, 物品稀有度, 可用的復活, and
+  需求 / 等級 / 力量 / 敏捷 / 智慧 from poe2db's item cards).
 
-A hybrid modifier is two lines; the piece comes from the line no other modifier has. The same sentence on
-another modifier (another group's copy, or a hybrid's line) cannot be told apart by any expression: it is
-listed in `shared_with`, and such items light up too. When every piece matches something else, the one
-with the fewest is used and the rest is in `also_matches`. A modifier with no wording in a language is in
-that language's `missing` (the string is then not complete); each row says which modifier it `matched`.
+A hybrid modifier is two lines, matched up across tiers by wording; the piece comes from the line no other
+modifier has. The same sentence elsewhere cannot be told apart by any expression: it is listed in
+`shared_with` with its `source` (`modifier`: another group's copy or a hybrid's line; `implicit`: every item
+of that base lights up; `unique`). When every piece matches something else, the one with the fewest is used
+and the rest is in `also_matches` (`also_matches_total` when the list is cut). A modifier without a piece is
+in that language's `missing` with the reason (no wording in that language, the data's own notation such as
+`[3,6]`, tiers sharing no line, nothing that can be told apart); each row says which modifier it `matched`.
 
-On real data (0.15.1): every one of the 1,895 normal modifiers of every item class gets a piece; none has
-`also_matches` in English and one in Chinese; pieces average 7.1 characters in English and 3.4 in
-Chinese; the 35 waystone modifiers all get a piece of their own (4.3 and 2.1 characters on average); the
-slowest call takes about 0.4 s. Not checked, because the data does not have them: rarity, item level and
-requirement lines, a rare item's random name, a waystone's pack size, rarity, drop chance and revive
-lines. The 250-character limit is the one both tools show (`atlas.search` in the catalog). A string
-should be tried in the game, in the client's language, and given unchanged: the backslashes matter.
+On real data (0.15.2): every one of the 1,895 normal modifiers of every item class gets a piece tied to its
+line's end, with no `also_matches` and none matching a known fixed line, in either language; pieces average
+14.3 characters in English and 6.5 in Chinese. The 35 waystone modifiers all get a piece of their own (7.6
+and 3.7 characters). Six boots modifiers make a string of 91 characters in English, 45 in Chinese. The
+slowest call takes about 0.15 s. Not checked: a rare item's random name, other item classes in the same
+stash, and the Chinese fixed lines the data has no wording for (normal rarity, corrupted, unidentified,
+most waystone property lines). The 250-character limit is the one both tools show. A string should be
+tried in the game, in the client's language, and given unchanged: the backslashes matter.

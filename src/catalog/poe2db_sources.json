@@ -1028,6 +1028,21 @@
         "max_chars": 250,
         "min_fragment_ascii": 3,
         "min_fragment_cjk": 2,
+        "fixed_lines": {
+          "gear": {
+            "en": ["Rarity: Normal", "Rarity: Magic", "Rarity: Rare", "Rarity: Unique", "Item Level: 80", "Quality: +20%", "Item Rarity: +40%", "Corrupted", "Unidentified"],
+            "zh-tw": ["稀有度: 魔法", "稀有度: 稀有", "稀有度: 傳奇", "物品等級: 80", "品質: +20%", "物品稀有度: +40%"]
+          },
+          "maps": {
+            "en": ["Rarity: Normal", "Rarity: Magic", "Rarity: Rare", "Item Level: 80", "Corrupted", "Unidentified", "Revives Available: 3", "Waystone Drop Chance: +105%", "Monster Effectiveness: +16%", "Monster Rarity: +30%", "Monster Pack Size: +20%", "Item Rarity: +40%", "Players in Area are 20% Delirious"],
+            "zh-tw": ["稀有度: 魔法", "稀有度: 稀有", "物品等級: 80", "物品稀有度: +40%", "可用的復活: 3"]
+          },
+          "requirement": {
+            "en": {"level": "Requires: Level {level}", "attributes": {"str": "Str", "dex": "Dex", "int": "Int"}},
+            "zh-tw": {"level": "需求: 等級 {level}", "attributes": {"str": "力量", "dex": "敏捷", "int": "智慧"}}
+          },
+          "notes": "Lines every item or waystone shows that the modifier data does not hold; used only to rule pieces out, so a line too many does no harm. English: the rarity line is in Cabbage Forge's ^rarity: rare$ and poe2.re's y: r; the waystone property lines are what poe2.re's waystone page searches (le: N revives, p c drop chance, r ef effectiveness, r rar monster rarity, k s pack size, m rar item rarity, delir, corr), written out in full; Item Level, Quality and Unidentified are the game's tooltip words. Traditional Chinese: only words found in the data — 稀有度, 品質, 物品稀有度 (glossary), 魔法, 稀有, 傳奇 (poe2db pages), 物品等級 (poe2db item pages), 可用的復活 (poe2db Waystones page); 普通 (normal), 已腐化 and 未鑑定 are not in the data and left out. Requirement lines are rebuilt from each base's required level and attributes in the wording of poe2db's item cards (Requires: Level 5, 12 Dex / 需求: 等級 5, 12 敏捷). Checked 2026-11-18."
+        },
         "notes": "In-game search (stash and vendor windows) is a regular expression matched line by line in any case: text in quotes, | for either, ! to leave out, ^ and $ for a line's start and end, \\d+ for a number. Seen in the output of poe2.re and Cabbage Forge on 2026-11-18 (poe2.re's own pieces use \\d+, ^ and $, never .*); not documented by GGG. The 250-character limit is the one both tools show. min_fragment_*: letters (or Chinese characters) a piece holds at least."
       },
       "expect_min": {

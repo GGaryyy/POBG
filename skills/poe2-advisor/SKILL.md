@@ -115,7 +115,8 @@ Answer in the user's language. The tools accept English and 繁體中文 names.
      the other modifiers safe.
    - Give each search string in the answer's language and say the game client's language must
      match (the `zh-tw` string for a Traditional Chinese client), what `also_matches`,
-     `shared_with` (the same sentence on another modifier: it lights up too), `left_out` or
+     `shared_with` (the same sentence elsewhere: `source` modifier, implicit — every item of that
+     base lights up — or unique), `unanchored`, `left_out` or
      `missing` report (a string with `left_out` or `missing` is not complete), and that the
      string should be tried in the game. Copy each string unchanged into a code block: the
      backslashes in `\d+` matter.

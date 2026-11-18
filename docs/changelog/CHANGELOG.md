@@ -3,6 +3,36 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.15.2] - 2026-11-18
+
+Fixes from the independent review of 0.15.1 (`docs/reports/code_review_2026-11-18.md`; plan:
+`docs/plan_atlas_stages.md`, "3b 再修訂").
+
+### Fixed
+- Pieces no longer match the lines every item shows that the modifier data does not hold (High). On real data,
+  39 of 1,895 gear pieces did (`ari` → `Rarity: Rare`, `dex` → `Requires: … Dex`, `eve` → `Item Level`) and 2 of
+  35 waystone pieces (`er e` → `Monster Effectiveness`). Two defences: pieces tied to the end of their line
+  (`…$`) are taken first, then ones tied to the start, and a free piece only when neither works (flagged
+  `unanchored`); and the catalog lists those lines (`atlas.search.fixed_lines`: rarity, item level, quality,
+  corrupted, unidentified, a waystone's revives, drop chance, effectiveness, monster rarity, pack size), with
+  requirement lines rebuilt from each base and one for each attribute. Chinese uses only wording found in the
+  data. Now 0 pieces match a known fixed line in either language.
+- A line still in the data's notation (`[3,6]`, an unexpanded range) is not cut into pieces; a modifier with
+  only such lines is in `missing` with the reason. Ranges with thousands separators (`1,000—1,200`) are expanded.
+- A modifier without a piece is always in `missing` with a reason (no piece found, no wording, data notation,
+  tiers sharing no line); hybrid lines are matched up across tiers by wording, not by place.
+- `shared_with` entries say where the same sentence comes from (`modifier`, `implicit`, `unique`); a base's
+  implicit means every item of that base lights up.
+- The fallback compares full clash counts (`also_matches_total` when the list is cut); decimal numbers are
+  written `[\d.]+`; waystone ids in any case; a `waystone_mods` text is split only at " / "; the maps
+  `how_to_use` names `unmatched`; an avoid entry naming several modifiers says how many (`modifiers_named`).
+
+### Changed
+- Pieces are longer on average (English 14.3 characters, Chinese 6.5; 7.1 and 3.4 before), as almost all are
+  now tied to a line's end. Measured: six boots modifiers make a string of 91 characters in English and 45 in
+  Chinese; four waystone modifiers to leave out, 23 and 21 (the limit is 250).
+- Tool description, workflow and skill texts explain `shared_with` sources and `unanchored`; version 0.15.2.
+
 ## [0.15.1] - 2026-11-18
 
 In-game search strings are regular expressions now (`docs/plan_atlas_stages.md`, "3b 修訂"). Compared

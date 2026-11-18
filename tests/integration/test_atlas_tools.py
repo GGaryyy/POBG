@@ -264,6 +264,17 @@ def family_ids(tools, member: str) -> set[str]:
     return next({t["id"] for t in f["tiers"]} for f in tools.atlas.families() if member in {t["id"] for t in f["tiers"]})
 
 
+# Lines every item or waystone shows, written here rather than taken from the module, so that a
+# line the module forgets is still caught.
+FIXED = {"en": ["rarity: normal", "rarity: magic", "rarity: rare", "rarity: unique", "item level: 80", "quality: +20%",
+                "item rarity: +40%", "corrupted", "unidentified", "requires: level 33, 57 dex",
+                "requires: level 65, 100 str", "requires: level 65, 100 int", "revives available: 3",
+                "waystone drop chance: +105%", "monster effectiveness: +16%", "monster rarity: +30%",
+                "monster pack size: +20%"],
+         "zh-tw": ["稀有度: 魔法", "稀有度: 稀有", "稀有度: 傳奇", "物品等級: 80", "品質: +20%", "物品稀有度: +40%",
+                   "需求: 等級 33, 57 敏捷", "需求: 等級 65, 100 力量", "需求: 等級 65, 100 智慧", "可用的復活: 3"]}
+
+
 def assert_leaves_out(tools, res, ids: set[str]):
     """Each piece matches a line of each named modifier and no line of any other waystone modifier,
     tier name or property line."""
@@ -271,7 +282,7 @@ def assert_leaves_out(tools, res, ids: set[str]):
     for lang in ("en", "zh-tw"):
         lines = map_lines(tools, lang)
         other = [line for mod_id, forms in lines.items() if mod_id not in ids for line in forms]
-        other += labels[lang] + [f"{label}: 65" for label in labels[f"{lang}_properties"]]
+        other += labels[lang] + [f"{label}: 65" for label in labels[f"{lang}_properties"]] + FIXED[lang]
         pieces = [row["piece"] for row in res[lang]["pieces"]]
         assert res[lang]["strings"] == ['"!' + "|".join(pieces) + '"']
         for mod_id in ids:
@@ -294,7 +305,8 @@ def test_every_waystone_modifier_gets_a_piece_of_its_own(tools):
         ids = {t["id"] for t in family["tiers"]}
         res = tools.search.search_string("maps", [family["tiers"][0]["id"]])
         assert_leaves_out(tools, res, ids)
-        assert all(len(p) <= 20 for lang in ("en", "zh-tw") for p in (row["piece"] for row in res[lang]["pieces"]))
+        rows = [row for lang in ("en", "zh-tw") for row in res[lang]["pieces"]]
+        assert all(len(row["piece"]) <= 40 and row["piece"].endswith("$") and not row.get("unanchored") for row in rows)
 
 
 def test_map_pieces_never_match_the_tier_names_or_property_lines(tools):
@@ -364,8 +376,8 @@ def bow_lines(tools, lang: str) -> dict[tuple, list[str]]:
     suffix = "" if lang == "en" else "_zh_tw"
     names = [t[f"name{suffix}"] for f in families for t in f["tiers"] if t.get(f"name{suffix}")]
     bases = [b for b in tools.items.bases.values() if b.get("mod_page") == "Bows"]
-    lines[("item",)] = [form for line in names + ss.item_text(bases, list(tools.items.uniques.values()), suffix)
-                        for form in ss.shown(line)]
+    item = [line for _, line in ss.item_text(bases, list(tools.items.uniques.values()), suffix)]
+    lines[("item",)] = [form for line in names + item + FIXED[lang] for form in ss.shown(line)]
     return lines
 
 
@@ -422,8 +434,22 @@ def test_gear_pieces_never_match_the_bases_names_or_property_lines(tools):
         piece = res[lang]["pieces"][0]["piece"]
         assert not any(hits(piece, line) for line in bow_lines(tools, lang)[("item",)]), lang
     text = ss.item_text(list(tools.items.bases.values()), [], "")
-    assert "Physical Damage: 7-14" in text and "Shortbow" in text
-    assert any("Surpassing chance" in line for line in text)
+    assert ("property", "Physical Damage: 7-14") in text and ("name", "Shortbow") in text
+    assert any(origin == "implicit" and "Surpassing chance" in line for origin, line in text)
+
+
+def test_gear_requirement_lines_come_from_the_bases_and_every_attribute(tools):
+    lines = tools.search._requirements([{"requires_level": 5, "requires": {"dex": 12}}], "zh-tw")
+    assert lines == ["需求: 等級 65, 100 力量", "需求: 等級 65, 100 敏捷", "需求: 等級 65, 100 智慧", "需求: 等級 5, 12 敏捷"]
+    assert tools.search._requirements([], "en")[1] == "Requires: Level 65, 100 Dex"
+
+
+def test_shared_with_says_where_the_same_sentence_comes_from(tools):
+    res = tools.search.search_string("gear", ["#% increased Attack Speed"], item="Bows")
+    for lang in ("en", "zh-tw"):
+        row = res[lang]["pieces"][0]
+        assert all(entry["source"] in {"modifier", "implicit", "unique"} for entry in row.get("shared_with", []))
+        assert row["piece"].endswith("$") and not row.get("unanchored")
 
 
 @pytest.mark.parametrize("kind, modifiers, item, message", [
